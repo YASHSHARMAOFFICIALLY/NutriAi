@@ -143,6 +143,31 @@
           }
         }
       ]
+    },
+    {
+      "name": "History",
+      "item": [
+        {
+          "name": "GET /history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/history?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["history"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "from", "value": "", "disabled": true },
+                { "key": "to", "value": "", "disabled": true },
+                { "key": "minCalories", "value": "", "disabled": true },
+                { "key": "maxCalories", "value": "", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
