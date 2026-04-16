@@ -22,6 +22,12 @@ const EnvSchema = z.object({
   GOOGLE_CALLBACK_URL: z.string().url().default('http://localhost:4000/auth/google/callback'),
 
   FRONTEND_POST_LOGIN_URL: z.string().default('http://localhost:3000/auth/callback'),
+
+  OPENAI_API_KEY: z.string().optional(),
+  AI_PROVIDER: z.enum(['openai', 'stub']).default('openai'),
+  AI_MODEL_TEXT: z.string().default('gpt-4o-mini'),
+  AI_MODEL_VISION: z.string().default('gpt-4o'),
+  AI_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86_400),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
