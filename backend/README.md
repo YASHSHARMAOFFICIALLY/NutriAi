@@ -89,8 +89,22 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 | GET    | /auth/me               | Return the authenticated user                       | Bearer  |
 | POST   | /auth/dev-login        | Dev-only: upsert user by email and issue tokens     | No      |
 | POST   | /analyze-food          | Analyze calories + macros from text or image        | Bearer  |
+| GET    | /history               | List past food queries with filters + pagination    | Bearer  |
 
 Feature endpoints are added PR-by-PR.
+
+### History filters
+
+`GET /history` accepts these query params (all optional):
+
+| Param        | Type     | Notes                                 |
+| ------------ | -------- | ------------------------------------- |
+| from         | ISO date | Inclusive lower bound on createdAt    |
+| to           | ISO date | Inclusive upper bound on createdAt    |
+| minCalories  | number   | Inclusive lower bound on totalCalories|
+| maxCalories  | number   | Inclusive upper bound on totalCalories|
+| page         | integer  | Default 1                             |
+| pageSize     | integer  | Default 20, max 100                   |
 
 ### AI policy (applied to every AI-backed endpoint)
 
