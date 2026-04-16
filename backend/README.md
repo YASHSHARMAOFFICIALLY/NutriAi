@@ -88,8 +88,21 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 | POST   | /auth/logout           | Revoke active refresh token                         | No      |
 | GET    | /auth/me               | Return the authenticated user                       | Bearer  |
 | POST   | /auth/dev-login        | Dev-only: upsert user by email and issue tokens     | No      |
+| POST   | /analyze-food          | Analyze calories + macros from text or image        | Bearer  |
 
 Feature endpoints are added PR-by-PR.
+
+### AI policy (applied to every AI-backed endpoint)
+
+- **Input hashing**: SHA-256 of canonicalized input is used as a cache key so
+  equivalent queries deduplicate even when whitespace or key order differ.
+- **Redis cache**: results are cached under `ai:{provider}:{model}:{hash}` with
+  a 24h TTL by default (`AI_CACHE_TTL_SECONDS`).
+- **Token usage logging**: every provider call inserts a row into `TokenUsage`
+  and emits a pino log line tagged `ai_usage` with prompt/completion/total
+  tokens, computed cost, cache hit flag, and latency.
+- **Provider swap**: set `AI_PROVIDER=stub` to use a deterministic offline
+  provider for dev/tests — same contract, zero network calls, zero cost.
 
 ### Auth quick-test (without setting up Google OAuth)
 
