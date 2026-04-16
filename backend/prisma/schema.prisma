@@ -30,6 +30,7 @@ model User {
   tokenUsage    TokenUsage[]
   meals         Meal[]
   conversations Conversation[]
+  assets        Asset[]
 
   @@index([email])
 }
@@ -56,6 +57,7 @@ enum FoodInputType {
 model FoodQuery {
   id             String        @id @default(uuid())
   userId         String?
+  assetId        String?
   inputType      FoodInputType
   inputText      String?
   imageUrl       String?
@@ -70,11 +72,13 @@ model FoodQuery {
   cached         Boolean       @default(false)
   createdAt      DateTime      @default(now())
 
-  items    FoodItem[]
-  user     User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items FoodItem[]
+  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([inputHash])
+  @@index([assetId])
 }
 
 model FoodItem {
@@ -134,6 +138,28 @@ model MealItem {
   meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
 
   @@index([mealId])
+}
+
+enum AssetStatus {
+  PENDING
+  UPLOADED
+}
+
+model Asset {
+  id          String      @id @default(uuid())
+  userId      String
+  bucket      String
+  key         String      @unique
+  contentType String
+  size        Int?
+  status      AssetStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  uploadedAt  DateTime?
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodQueries FoodQuery[]
+
+  @@index([userId, createdAt])
 }
 
 enum MessageRole {
