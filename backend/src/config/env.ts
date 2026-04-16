@@ -27,7 +27,10 @@ const EnvSchema = z.object({
   AI_PROVIDER: z.enum(['openai', 'stub']).default('openai'),
   AI_MODEL_TEXT: z.string().default('gpt-4o-mini'),
   AI_MODEL_VISION: z.string().default('gpt-4o'),
+  AI_MODEL_CHAT: z.string().default('gpt-4o-mini'),
   AI_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86_400),
+  AI_CHAT_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(3_600),
+  AI_CHAT_HISTORY_WINDOW: z.coerce.number().int().positive().default(20),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
