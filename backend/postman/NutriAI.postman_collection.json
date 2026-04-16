@@ -8,7 +8,8 @@
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:4000" },
     { "key": "accessToken", "value": "" },
-    { "key": "refreshToken", "value": "" }
+    { "key": "refreshToken", "value": "" },
+    { "key": "conversationId", "value": "" }
   ],
   "item": [
     {
@@ -164,6 +165,162 @@
                 { "key": "minCalories", "value": "", "disabled": true },
                 { "key": "maxCalories", "value": "", "disabled": true }
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "POST /chat (new conversation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.conversationId) pm.collectionVariables.set('conversationId', json.conversationId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"How many calories are in a medium banana?\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/chat", "host": ["{{baseUrl}}"], "path": ["chat"] }
+          }
+        },
+        {
+          "name": "POST /chat (follow-up in same conversation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"And how does that compare to an apple?\",\n  \"conversationId\": \"{{conversationId}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/chat", "host": ["{{baseUrl}}"], "path": ["chat"] }
+          }
+        },
+        {
+          "name": "GET /chat/conversations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "conversations"]
+            }
+          }
+        },
+        {
+          "name": "GET /chat/conversations/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations/{{conversationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "conversations", "{{conversationId}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE /chat/conversations/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/chat/conversations/{{conversationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "conversations", "{{conversationId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Meals",
+      "item": [
+        {
+          "name": "POST /meals (from items)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mealType\": \"BREAKFAST\",\n  \"items\": [\n    { \"name\": \"oatmeal\", \"calories\": 150, \"protein\": 5, \"carbs\": 27, \"fat\": 3 },\n    { \"name\": \"banana\", \"calories\": 105, \"protein\": 1.3, \"carbs\": 27, \"fat\": 0.4 }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/meals", "host": ["{{baseUrl}}"], "path": ["meals"] }
+          }
+        },
+        {
+          "name": "POST /meals (snapshot from foodQueryId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mealType\": \"LUNCH\",\n  \"foodQueryId\": \"REPLACE_WITH_QUERY_ID\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/meals", "host": ["{{baseUrl}}"], "path": ["meals"] }
+          }
+        },
+        {
+          "name": "GET /meals?date=YYYY-MM-DD",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/meals?date=2026-04-16",
+              "host": ["{{baseUrl}}"],
+              "path": ["meals"],
+              "query": [{ "key": "date", "value": "2026-04-16" }]
+            }
+          }
+        },
+        {
+          "name": "GET /meals/daily-summary?date=YYYY-MM-DD",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/meals/daily-summary?date=2026-04-16",
+              "host": ["{{baseUrl}}"],
+              "path": ["meals", "daily-summary"],
+              "query": [{ "key": "date", "value": "2026-04-16" }]
+            }
+          }
+        },
+        {
+          "name": "DELETE /meals/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/meals/MEAL_ID",
+              "host": ["{{baseUrl}}"],
+              "path": ["meals", "MEAL_ID"]
             }
           }
         }

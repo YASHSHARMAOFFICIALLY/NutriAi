@@ -4,7 +4,8 @@ import { env } from '../config/env';
 import { AppError } from '../utils/errors';
 import { computeCostUsd } from './pricing';
 import { FOOD_ANALYSIS_SYSTEM, foodAnalysisUserPrompt } from './prompts/foodAnalysis';
-import type { AIProvider, FoodAnalysisInput, FoodAnalysisResult } from './provider';
+import { CHAT_SYSTEM } from './prompts/chat';
+import type { AIProvider, ChatInput, FoodAnalysisInput, FoodAnalysisResult } from './provider';
 
 const FoodItemSchema = z.object({
   name: z.string(),
@@ -78,6 +79,40 @@ export const openaiProvider: AIProvider = {
 
     return {
       data: parsed,
+      model,
+      usage: {
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        costUsd: computeCostUsd(model, promptTokens, completionTokens),
+      },
+    };
+  },
+
+  async chat(input: ChatInput) {
+    const openai = getClient();
+    const model = env.AI_MODEL_CHAT;
+
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: CHAT_SYSTEM },
+      ...input.messages.map((m) => ({ role: m.role, content: m.content })),
+    ];
+
+    const completion = await openai.chat.completions.create({
+      model,
+      temperature: 0.5,
+      messages,
+    });
+
+    const reply = completion.choices[0]?.message?.content?.trim();
+    if (!reply) throw new AppError(502, 'AI_EMPTY_RESPONSE', 'AI returned no content');
+
+    const promptTokens = completion.usage?.prompt_tokens ?? 0;
+    const completionTokens = completion.usage?.completion_tokens ?? 0;
+    const totalTokens = completion.usage?.total_tokens ?? promptTokens + completionTokens;
+
+    return {
+      data: { reply },
       model,
       usage: {
         promptTokens,
