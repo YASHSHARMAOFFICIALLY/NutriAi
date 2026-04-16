@@ -90,6 +90,10 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 | POST   | /auth/dev-login        | Dev-only: upsert user by email and issue tokens     | No      |
 | POST   | /analyze-food          | Analyze calories + macros from text or image        | Bearer  |
 | GET    | /history               | List past food queries with filters + pagination    | Bearer  |
+| POST   | /meals                 | Log a meal (items or snapshot from a FoodQuery)     | Bearer  |
+| GET    | /meals?date=YYYY-MM-DD | List meals logged on a UTC date                     | Bearer  |
+| GET    | /meals/daily-summary   | Aggregated totals by meal type for a UTC date       | Bearer  |
+| DELETE | /meals/:id             | Delete one of the caller's meals                    | Bearer  |
 
 Feature endpoints are added PR-by-PR.
 
