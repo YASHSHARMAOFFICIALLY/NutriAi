@@ -43,10 +43,12 @@ cp .env.example .env
 # Start infra
 docker compose up -d
 
-# Install
+# Install + generate + migrate
 npm install
+npm run prisma:generate
+npm run prisma:migrate
 
-# Run dev server (no DB models required yet — scaffold only)
+# Run dev server
 npm run dev
 ```
 
@@ -77,8 +79,27 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 
 ## Endpoints
 
-| Method | Path     | Description        | Auth |
-| ------ | -------- | ------------------ | ---- |
-| GET    | /health  | Liveness probe     | No   |
+| Method | Path                   | Description                                         | Auth    |
+| ------ | ---------------------- | --------------------------------------------------- | ------- |
+| GET    | /health                | Liveness probe                                      | No      |
+| GET    | /auth/google           | Start Google OAuth flow (browser)                   | No      |
+| GET    | /auth/google/callback  | OAuth callback; redirects to frontend with token    | No      |
+| POST   | /auth/refresh          | Rotate refresh token, return new access token       | Cookie  |
+| POST   | /auth/logout           | Revoke active refresh token                         | No      |
+| GET    | /auth/me               | Return the authenticated user                       | Bearer  |
+| POST   | /auth/dev-login        | Dev-only: upsert user by email and issue tokens     | No      |
 
 Feature endpoints are added PR-by-PR.
+
+### Auth quick-test (without setting up Google OAuth)
+
+```bash
+# 1. Upsert a user and get tokens
+curl -s -X POST http://localhost:4000/auth/dev-login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"demo@nutriai.test"}'
+
+# 2. Call a protected route
+ACCESS=...
+curl -s http://localhost:4000/auth/me -H "Authorization: Bearer $ACCESS"
+```
