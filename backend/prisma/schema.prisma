@@ -1,5 +1,5 @@
 // NutriAI Prisma schema.
-// Models are added feature-by-feature. Scaffold intentionally ships empty.
+// Models are added feature-by-feature.
 
 generator client {
   provider = "prisma-client-js"
@@ -8,4 +8,38 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id         String   @id @default(uuid())
+  googleId   String?  @unique
+  email      String   @unique
+  name       String?
+  avatarUrl  String?
+  role       Role     @default(USER)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
