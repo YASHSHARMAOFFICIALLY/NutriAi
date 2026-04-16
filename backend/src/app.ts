@@ -10,6 +10,7 @@ import { errorHandler, notFoundHandler } from './middleware/error';
 import { rateLimit } from './middleware/rateLimit';
 import { configureGooglePassport, passport } from './config/passport';
 import { authRouter } from './routes/auth.routes';
+import { foodRouter } from './routes/food.routes';
 
 export const createApp = () => {
   const app = express();
@@ -40,6 +41,7 @@ export const createApp = () => {
   app.use(rateLimit());
 
   app.use('/auth', authRouter);
+  app.use(foodRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
