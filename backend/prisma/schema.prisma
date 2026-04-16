@@ -28,6 +28,7 @@ model User {
   refreshTokens RefreshToken[]
   foodQueries   FoodQuery[]
   tokenUsage    TokenUsage[]
+  meals         Meal[]
 
   @@index([email])
 }
@@ -90,6 +91,48 @@ model FoodItem {
 
   @@index([queryId])
   @@index([name])
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model Meal {
+  id             String   @id @default(uuid())
+  userId         String
+  mealType       MealType
+  loggedAt       DateTime
+  notes          String?
+  foodQueryId    String?
+  totalCalories  Float
+  totalProtein   Float
+  totalCarbs     Float
+  totalFat       Float
+  createdAt      DateTime @default(now())
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items MealItem[]
+
+  @@index([userId, loggedAt])
+  @@index([userId, mealType])
+}
+
+model MealItem {
+  id       String  @id @default(uuid())
+  mealId   String
+  name     String
+  quantity String?
+  calories Float
+  protein  Float
+  carbs    Float
+  fat      Float
+
+  meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  @@index([mealId])
 }
 
 model TokenUsage {
