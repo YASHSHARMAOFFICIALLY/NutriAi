@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { AIProvider, FoodAnalysisInput, FoodAnalysisResult } from './provider';
+import type { AIProvider, ChatInput, FoodAnalysisInput, FoodAnalysisResult } from './provider';
 
 // Deterministic stub for local dev and tests. Never hits the network.
 // Values are derived from input so they are stable but realistic-ish.
@@ -58,6 +58,20 @@ export const stubProvider: AIProvider = {
     return {
       data,
       model: 'stub-food-v1',
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0 },
+    };
+  },
+
+  async chat(input: ChatInput) {
+    const lastUser = [...input.messages].reverse().find((m) => m.role === 'user');
+    const prompt = lastUser?.content ?? '';
+    const reply = prompt
+      ? `Stubbed NutriAI reply: a balanced plate typically pairs lean protein, whole grains, and vegetables. (echo: "${prompt.slice(0, 120)}")`
+      : 'Stubbed NutriAI reply: how can I help with your nutrition today?';
+
+    return {
+      data: { reply },
+      model: 'stub-chat-v1',
       usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0 },
     };
   },
