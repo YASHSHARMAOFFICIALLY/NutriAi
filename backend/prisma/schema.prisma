@@ -26,6 +26,8 @@ model User {
   updatedAt  DateTime @updatedAt
 
   refreshTokens RefreshToken[]
+  foodQueries   FoodQuery[]
+  tokenUsage    TokenUsage[]
 
   @@index([email])
 }
@@ -42,4 +44,70 @@ model RefreshToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+enum FoodInputType {
+  TEXT
+  IMAGE
+}
+
+model FoodQuery {
+  id             String        @id @default(uuid())
+  userId         String?
+  inputType      FoodInputType
+  inputText      String?
+  imageUrl       String?
+  inputHash      String
+  totalCalories  Float
+  totalProtein   Float
+  totalCarbs     Float
+  totalFat       Float
+  confidence     Float
+  provider       String
+  model          String
+  cached         Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+
+  items    FoodItem[]
+  user     User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([inputHash])
+}
+
+model FoodItem {
+  id         String   @id @default(uuid())
+  queryId    String
+  name       String
+  quantity   String?
+  calories   Float
+  protein    Float
+  carbs      Float
+  fat        Float
+  confidence Float?
+
+  query FoodQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+
+  @@index([queryId])
+  @@index([name])
+}
+
+model TokenUsage {
+  id               String   @id @default(uuid())
+  userId           String?
+  endpoint         String
+  provider         String
+  model            String
+  promptTokens     Int
+  completionTokens Int
+  totalTokens      Int
+  costUsd          Float
+  cached           Boolean  @default(false)
+  latencyMs        Int
+  createdAt        DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([endpoint, createdAt])
 }
