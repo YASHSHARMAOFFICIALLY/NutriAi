@@ -108,6 +108,41 @@
           }
         }
       ]
+    },
+    {
+      "name": "Food",
+      "item": [
+        {
+          "name": "POST /analyze-food (text)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"2 scrambled eggs, 1 slice of whole wheat toast, and a medium banana\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/analyze-food", "host": ["{{baseUrl}}"], "path": ["analyze-food"] }
+          }
+        },
+        {
+          "name": "POST /analyze-food (image url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"imageUrl\": \"https://upload.wikimedia.org/wikipedia/commons/6/6d/Good_Food_Display_-_NCI_Visuals_Online.jpg\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/analyze-food", "host": ["{{baseUrl}}"], "path": ["analyze-food"] }
+          }
+        }
+      ]
     }
   ]
 }
