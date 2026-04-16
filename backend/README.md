@@ -90,6 +90,14 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 | POST   | /auth/dev-login        | Dev-only: upsert user by email and issue tokens     | No      |
 | POST   | /analyze-food          | Analyze calories + macros from text or image        | Bearer  |
 | GET    | /history               | List past food queries with filters + pagination    | Bearer  |
+| POST   | /meals                 | Log a meal (items or snapshot from a FoodQuery)     | Bearer  |
+| GET    | /meals?date=YYYY-MM-DD | List meals logged on a UTC date                     | Bearer  |
+| GET    | /meals/daily-summary   | Aggregated totals by meal type for a UTC date       | Bearer  |
+| DELETE | /meals/:id             | Delete one of the caller's meals                    | Bearer  |
+| POST   | /chat                  | Send a message; continues or starts a conversation  | Bearer  |
+| GET    | /chat/conversations    | List the caller's conversations                     | Bearer  |
+| GET    | /chat/conversations/:id| Get one conversation with its full message history  | Bearer  |
+| DELETE | /chat/conversations/:id| Delete a conversation and its messages              | Bearer  |
 
 Feature endpoints are added PR-by-PR.
 
@@ -105,6 +113,16 @@ Feature endpoints are added PR-by-PR.
 | maxCalories  | number   | Inclusive upper bound on totalCalories|
 | page         | integer  | Default 1                             |
 | pageSize     | integer  | Default 20, max 100                   |
+
+### Chat assistant
+
+`POST /chat` accepts `{ message, conversationId?, title? }`. If
+`conversationId` is omitted, a new conversation is created and its title is
+derived from the first message. The server includes up to
+`AI_CHAT_HISTORY_WINDOW` prior turns in the prompt so replies remain
+context-aware. Both the user message and the assistant reply are persisted;
+`updatedAt` is bumped so the most recently used conversation floats to the
+top of `GET /chat/conversations`.
 
 ### AI policy (applied to every AI-backed endpoint)
 
