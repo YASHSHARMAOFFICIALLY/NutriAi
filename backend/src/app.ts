@@ -11,6 +11,7 @@ import { rateLimit } from './middleware/rateLimit';
 import { configureGooglePassport, passport } from './config/passport';
 import { authRouter } from './routes/auth.routes';
 import { foodRouter } from './routes/food.routes';
+import { historyRouter } from './routes/history.routes';
 
 export const createApp = () => {
   const app = express();
@@ -42,6 +43,7 @@ export const createApp = () => {
 
   app.use('/auth', authRouter);
   app.use(foodRouter);
+  app.use(historyRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
