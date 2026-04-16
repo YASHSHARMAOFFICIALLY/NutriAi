@@ -46,10 +46,30 @@ export interface FoodAnalysisInput {
   imageUrl?: string;
 }
 
+export type ChatRole = 'user' | 'assistant' | 'system';
+
+export interface ChatMessage {
+  role: ChatRole;
+  content: string;
+}
+
+export interface ChatInput {
+  messages: ChatMessage[];
+}
+
+export interface ChatResult {
+  reply: string;
+}
+
 export interface AIProvider {
   name: string;
   analyzeFood(input: FoodAnalysisInput): Promise<{
     data: FoodAnalysisResult;
+    usage: AIUsage;
+    model: string;
+  }>;
+  chat(input: ChatInput): Promise<{
+    data: ChatResult;
     usage: AIUsage;
     model: string;
   }>;
