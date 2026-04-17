@@ -103,6 +103,9 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 | GET    | /profile               | Get the caller's profile and derived targets        | Bearer  |
 | PUT    | /profile               | Create or update the caller's profile (PATCH-like)  | Bearer  |
 | DELETE | /profile               | Delete the caller's profile                         | Bearer  |
+| GET    | /analytics/daily       | Per-day calorie + macro series (default last 7d)    | Bearer  |
+| GET    | /analytics/macros      | Macro totals, energy share, target adherence        | Bearer  |
+| GET    | /analytics/streak      | Logging streak + calorie-target streak              | Bearer  |
 
 Feature endpoints are added PR-by-PR.
 
@@ -118,6 +121,24 @@ Feature endpoints are added PR-by-PR.
 | maxCalories  | number   | Inclusive upper bound on totalCalories|
 | page         | integer  | Default 1                             |
 | pageSize     | integer  | Default 20, max 100                   |
+
+### Analytics
+
+`GET /analytics/daily?from&to` buckets meals by UTC day, fills missing days
+with zeros, and attaches `calorieTargetPct` when a profile target is set.
+
+`GET /analytics/macros?from&to` returns aggregated totals, the macro
+energy share (4/4/9 kcal per gram → % protein/carbs/fat), and per-day
+average adherence vs. profile targets.
+
+`GET /analytics/streak` returns:
+- `loggingStreak` — consecutive days with at least one meal ending today
+  (or yesterday if today has no log yet, so the streak doesn't break
+  until a full day is missed).
+- `calorieTargetStreak` — same window, but each day must fall within
+  80%–120% of the effective calorie target. `null` if no target is set.
+
+Ranges accept `from` / `to` as ISO dates; default is the last 7 UTC days.
 
 ### Personalization
 

@@ -16,6 +16,7 @@ import { mealRouter } from './routes/meal.routes';
 import { chatRouter } from './routes/chat.routes';
 import { uploadRouter } from './routes/upload.routes';
 import { profileRouter } from './routes/profile.routes';
+import { analyticsRouter } from './routes/analytics.routes';
 
 export const createApp = () => {
   const app = express();
@@ -52,6 +53,7 @@ export const createApp = () => {
   app.use(chatRouter);
   app.use(uploadRouter);
   app.use(profileRouter);
+  app.use(analyticsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
