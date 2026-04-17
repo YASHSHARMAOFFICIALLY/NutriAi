@@ -106,6 +106,7 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 | GET    | /analytics/daily       | Per-day calorie + macro series (default last 7d)    | Bearer  |
 | GET    | /analytics/macros      | Macro totals, energy share, target adherence        | Bearer  |
 | GET    | /analytics/streak      | Logging streak + calorie-target streak              | Bearer  |
+| GET    | /recommendations/meals | Ranked meal suggestions from history                | Bearer  |
 
 Feature endpoints are added PR-by-PR.
 
@@ -121,6 +122,28 @@ Feature endpoints are added PR-by-PR.
 | maxCalories  | number   | Inclusive upper bound on totalCalories|
 | page         | integer  | Default 1                             |
 | pageSize     | integer  | Default 20, max 100                   |
+
+### Recommendations
+
+`GET /recommendations/meals?mealType=&limit=&remainingCalories=&remainingProtein=&remainingCarbs=&remainingFat=`
+
+The engine pulls meals the user has logged in the last 45 days, groups them
+by a normalized item-name signature (order-insensitive; ignores parenthetical
+quantities and unit tokens), filters out any bucket that matches an entry in
+`UserProfile.allergies`, and ranks the remaining candidates with a weighted
+score:
+
+| Component        | Weight | What it rewards                                   |
+| ---------------- | ------ | ------------------------------------------------- |
+| calorie fit      | 0.40   | Total kcal that fits inside the remaining budget  |
+| protein fit      | 0.25   | Closes the remaining protein gap                  |
+| frequency        | 0.20   | `sqrt(freq)/4` — flattened so favorites don't win outright |
+| recency          | 0.15   | Ramps toward 1.0 as days-since-last approaches 7  |
+
+"Remaining budget" defaults to `profile.effective*Target* − today's totals`.
+Clients can override via `remaining*` query params (useful for previewing a
+meal that hasn't been logged yet). Returns `remaining` alongside the
+`recommendations` list so UIs can render both consistently.
 
 ### Analytics
 
