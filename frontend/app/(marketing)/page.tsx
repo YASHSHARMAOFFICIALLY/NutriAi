@@ -15,6 +15,9 @@ export default function MarketingHome() {
       <Nav />
       <Hero />
       <LogoCloud />
+      {/* Remaining sections (FeatureBento, HowItWorks, ChatShowcase,
+          AnalyticsShowcase, DeveloperAPI, Pricing, FinalCTA, Footer)
+          land in follow-up PRs. */}
       <FeatureBento />
       <HowItWorks />
       {/* Remaining: ChatShowcase, AnalyticsShowcase, DeveloperAPI,
