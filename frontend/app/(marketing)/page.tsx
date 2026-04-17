@@ -17,6 +17,8 @@ export default function MarketingHome() {
       <LogoCloud />
       <FeatureBento />
       <HowItWorks />
+      {/* Remaining: ChatShowcase, AnalyticsShowcase, DeveloperAPI,
+          Pricing, FinalCTA, Footer — follow-up PRs. */}
       <ChatShowcase />
       <AnalyticsShowcase />
       {/* Remaining: DeveloperAPI, Pricing, FinalCTA, Footer — follow-up PR. */}
