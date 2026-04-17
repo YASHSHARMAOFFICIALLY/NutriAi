@@ -9,7 +9,9 @@
     { "key": "baseUrl", "value": "http://localhost:4000" },
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
-    { "key": "conversationId", "value": "" }
+    { "key": "conversationId", "value": "" },
+    { "key": "assetId", "value": "" },
+    { "key": "uploadUrl", "value": "" }
   ],
   "item": [
     {
@@ -141,6 +143,92 @@
               "raw": "{\n  \"imageUrl\": \"https://upload.wikimedia.org/wikipedia/commons/6/6d/Good_Food_Display_-_NCI_Visuals_Online.jpg\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/analyze-food", "host": ["{{baseUrl}}"], "path": ["analyze-food"] }
+          }
+        },
+        {
+          "name": "POST /analyze-food (assetId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assetId\": \"{{assetId}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/analyze-food", "host": ["{{baseUrl}}"], "path": ["analyze-food"] },
+            "description": "Analyze a previously uploaded image. Run the Uploads folder (presign → PUT → confirm) first."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "item": [
+        {
+          "name": "POST /uploads/presign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.assetId) pm.collectionVariables.set('assetId', json.assetId);",
+                  "if (json.uploadUrl) pm.collectionVariables.set('uploadUrl', json.uploadUrl);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"image/jpeg\",\n  \"size\": 245760\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/uploads/presign",
+              "host": ["{{baseUrl}}"],
+              "path": ["uploads", "presign"]
+            },
+            "description": "Returns { assetId, uploadUrl, key, bucket, expiresIn, requiredHeaders }. PUT the file bytes to uploadUrl with the returned Content-Type."
+          }
+        },
+        {
+          "name": "PUT uploadUrl (direct to S3)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "image/jpeg" }],
+            "body": {
+              "mode": "file",
+              "file": { "src": "" }
+            },
+            "url": { "raw": "{{uploadUrl}}", "host": ["{{uploadUrl}}"] },
+            "description": "Upload file bytes directly to the presigned S3 URL. Select a local image in the Body tab."
+          }
+        },
+        {
+          "name": "POST /uploads/confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assetId\": \"{{assetId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/uploads/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["uploads", "confirm"]
+            }
           }
         }
       ]
