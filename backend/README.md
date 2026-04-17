@@ -100,6 +100,9 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 | DELETE | /chat/conversations/:id| Delete a conversation and its messages              | Bearer  |
 | POST   | /uploads/presign       | Get a presigned S3 PUT URL for an image             | Bearer  |
 | POST   | /uploads/confirm       | Confirm the upload and mark the asset UPLOADED      | Bearer  |
+| GET    | /profile               | Get the caller's profile and derived targets        | Bearer  |
+| PUT    | /profile               | Create or update the caller's profile (PATCH-like)  | Bearer  |
+| DELETE | /profile               | Delete the caller's profile                         | Bearer  |
 
 Feature endpoints are added PR-by-PR.
 
@@ -115,6 +118,25 @@ Feature endpoints are added PR-by-PR.
 | maxCalories  | number   | Inclusive upper bound on totalCalories|
 | page         | integer  | Default 1                             |
 | pageSize     | integer  | Default 20, max 100                   |
+
+### Personalization
+
+`PUT /profile` is a PATCH-like upsert — only fields you include are written,
+so partial onboarding flows work naturally. When the caller supplies
+`sex`, `birthYear`, `heightCm`, `weightKg`, `activityLevel`, and `goal`,
+the server computes:
+
+- `bmr` via Mifflin-St Jeor
+- `tdee = bmr * activityMultiplier`
+- `dailyCalorieTarget = tdee + goalDelta` (`LOSE=-500`, `MAINTAIN=0`,
+  `GAIN=+300`), floored at 1200 kcal
+- Macro split: 30% protein / 40% carbs / 30% fat (4/4/9 kcal per gram)
+
+These land under `derived` in the response. If you set
+`dailyCalorieTarget`, `proteinTargetG`, `carbsTargetG`, or `fatTargetG`
+explicitly, your manual overrides win and are surfaced as
+`effectiveCalorieTarget`, `effective*TargetG`. This profile is what the
+upcoming recommendation engine reads from.
 
 ### Image upload flow
 
