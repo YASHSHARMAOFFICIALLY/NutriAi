@@ -521,6 +521,89 @@
           }
         }
       ]
+    },
+    {
+      "name": "Api Keys",
+      "item": [
+        {
+          "name": "POST /api-keys",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"partner-prod\",\n  \"scopes\": [\"calories:read\"],\n  \"rateLimitPerMin\": 120\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api-keys", "host": ["{{baseUrl}}"], "path": ["api-keys"] }
+          }
+        },
+        {
+          "name": "GET /api-keys",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api-keys", "host": ["{{baseUrl}}"], "path": ["api-keys"] }
+          }
+        },
+        {
+          "name": "DELETE /api-keys/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api-keys/API_KEY_ID",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-keys", "API_KEY_ID"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public API",
+      "item": [
+        {
+          "name": "POST /v1/public/calories (text, x-api-key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"2 boiled eggs and a slice of whole wheat toast\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/public/calories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "public", "calories"]
+            }
+          }
+        },
+        {
+          "name": "POST /v1/public/calories (imageUrl, Bearer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"imageUrl\": \"https://example.com/meal.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/public/calories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "public", "calories"]
+            }
+          }
+        }
+      ]
     }
   ]
 }

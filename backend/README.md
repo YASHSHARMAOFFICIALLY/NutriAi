@@ -107,6 +107,10 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 | GET    | /analytics/macros      | Macro totals, energy share, target adherence        | Bearer  |
 | GET    | /analytics/streak      | Logging streak + calorie-target streak              | Bearer  |
 | GET    | /recommendations/meals | Ranked meal suggestions from history                | Bearer  |
+| POST   | /api-keys              | Issue a new API key (token returned once)           | Bearer  |
+| GET    | /api-keys              | List the caller's API keys (hashes not returned)    | Bearer  |
+| DELETE | /api-keys/:id          | Revoke an API key                                   | Bearer  |
+| POST   | /v1/public/calories    | Analyze calories from text or imageUrl              | ApiKey  |
 
 Feature endpoints are added PR-by-PR.
 
@@ -225,6 +229,53 @@ top of `GET /chat/conversations`.
   tokens, computed cost, cache hit flag, and latency.
 - **Provider swap**: set `AI_PROVIDER=stub` to use a deterministic offline
   provider for dev/tests — same contract, zero network calls, zero cost.
+
+### Public B2B API
+
+The public API is a thin, stateless surface meant for third-party integrations.
+Callers authenticate with an API key issued under their NutriAI account.
+
+Issue a key from the authenticated management endpoints:
+
+| Method | Path             | Description                               |
+| ------ | ---------------- | ----------------------------------------- |
+| POST   | /api-keys        | Create a key; the token is returned once  |
+| GET    | /api-keys        | List the caller's keys (no secrets)       |
+| DELETE | /api-keys/:id    | Revoke a key (idempotent)                 |
+
+Token format: `nk_<prefix>.<secret>` — the prefix is stored alongside a
+SHA-256 of the full token so the secret half is never persisted. Tokens are
+shown exactly once at creation.
+
+Send the token to the public surface via either:
+
+- `x-api-key: nk_<prefix>.<secret>`, or
+- `Authorization: Bearer nk_<prefix>.<secret>`
+
+Scopes (optional) are exact-match. An empty `scopes` array grants all
+public endpoints; otherwise each route declares its required scope (e.g.
+`calories:read` on `POST /v1/public/calories`).
+
+Per-key rate limit defaults to 60 req/min and is enforced by a Redis
+bucket keyed on the key's id. Every successful or failing request is
+metered into `ApiUsage { apiKeyId, endpoint, statusCode, latencyMs,
+createdAt }` via a response-finish hook so billing and diagnostics can
+be derived directly from the table.
+
+```bash
+# 1. Issue a key (requires a user access token)
+curl -s -X POST http://localhost:4000/api-keys \
+  -H "Authorization: Bearer $ACCESS" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"partner","scopes":["calories:read"]}'
+# => { id, name, prefix, scopes, rateLimitPerMin, createdAt, token }
+
+# 2. Call the public endpoint with that token
+curl -s -X POST http://localhost:4000/v1/public/calories \
+  -H "x-api-key: $API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"2 boiled eggs and a slice of toast"}'
+```
 
 ### Auth quick-test (without setting up Google OAuth)
 
