@@ -342,6 +342,55 @@
       ]
     },
     {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "GET /analytics/daily (last 7 days)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/daily",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "daily"],
+              "query": [
+                { "key": "from", "value": "", "disabled": true },
+                { "key": "to", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /analytics/macros?from=...&to=...",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/macros?from=2026-04-10&to=2026-04-16",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "macros"],
+              "query": [
+                { "key": "from", "value": "2026-04-10" },
+                { "key": "to", "value": "2026-04-16" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /analytics/streak",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/streak",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "streak"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Profile",
       "item": [
         {
