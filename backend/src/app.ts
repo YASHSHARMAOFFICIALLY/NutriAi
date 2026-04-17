@@ -14,6 +14,7 @@ import { foodRouter } from './routes/food.routes';
 import { historyRouter } from './routes/history.routes';
 import { mealRouter } from './routes/meal.routes';
 import { chatRouter } from './routes/chat.routes';
+import { uploadRouter } from './routes/upload.routes';
 
 export const createApp = () => {
   const app = express();
@@ -48,6 +49,7 @@ export const createApp = () => {
   app.use(historyRouter);
   app.use(mealRouter);
   app.use(chatRouter);
+  app.use(uploadRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
