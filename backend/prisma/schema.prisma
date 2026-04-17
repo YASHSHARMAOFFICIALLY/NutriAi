@@ -32,6 +32,7 @@ model User {
   conversations Conversation[]
   assets        Asset[]
   profile       UserProfile?
+  apiKeys       ApiKey[]
 
   @@index([email])
 }
@@ -139,6 +140,39 @@ model MealItem {
   meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
 
   @@index([mealId])
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String
+  prefix      String    @unique
+  tokenHash   String    @unique
+  scopes      String[]  @default([])
+  rateLimitPerMin Int   @default(60)
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usage ApiUsage[]
+
+  @@index([userId])
+  @@index([revokedAt])
+}
+
+model ApiUsage {
+  id         String   @id @default(uuid())
+  apiKeyId   String
+  endpoint   String
+  statusCode Int
+  latencyMs  Int
+  createdAt  DateTime @default(now())
+
+  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId, createdAt])
+  @@index([endpoint, createdAt])
 }
 
 enum Sex {
