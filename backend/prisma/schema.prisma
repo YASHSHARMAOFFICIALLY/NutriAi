@@ -31,6 +31,7 @@ model User {
   meals         Meal[]
   conversations Conversation[]
   assets        Asset[]
+  profile       UserProfile?
 
   @@index([email])
 }
@@ -138,6 +139,50 @@ model MealItem {
   meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
 
   @@index([mealId])
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum Goal {
+  LOSE
+  MAINTAIN
+  GAIN
+}
+
+model UserProfile {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  sex             Sex?
+  birthYear       Int?
+  heightCm        Float?
+  weightKg        Float?
+  activityLevel   ActivityLevel?
+  goal            Goal?
+  targetWeightKg  Float?
+  dailyCalorieTarget Int?
+  proteinTargetG  Int?
+  carbsTargetG    Int?
+  fatTargetG      Int?
+  dietaryPrefs    String[]       @default([])
+  allergies       String[]       @default([])
+  dailyBudgetUsd  Float?
+  timezone        String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum AssetStatus {
