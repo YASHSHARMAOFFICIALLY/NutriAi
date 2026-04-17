@@ -342,6 +342,29 @@
       ]
     },
     {
+      "name": "Recommendations",
+      "item": [
+        {
+          "name": "GET /recommendations/meals",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/recommendations/meals?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["recommendations", "meals"],
+              "query": [
+                { "key": "limit", "value": "5" },
+                { "key": "mealType", "value": "DINNER", "disabled": true },
+                { "key": "remainingCalories", "value": "800", "disabled": true },
+                { "key": "remainingProtein", "value": "40", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Analytics",
       "item": [
         {
