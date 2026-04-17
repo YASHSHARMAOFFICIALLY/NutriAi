@@ -44,6 +44,7 @@ export interface FoodAnalysisResult {
 export interface FoodAnalysisInput {
   text?: string;
   imageUrl?: string;
+  assetId?: string;
 }
 
 export type ChatRole = 'user' | 'assistant' | 'system';
