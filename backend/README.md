@@ -98,6 +98,8 @@ populated in their respective feature PRs (Auth, S3, AI, etc).
 | GET    | /chat/conversations    | List the caller's conversations                     | Bearer  |
 | GET    | /chat/conversations/:id| Get one conversation with its full message history  | Bearer  |
 | DELETE | /chat/conversations/:id| Delete a conversation and its messages              | Bearer  |
+| POST   | /uploads/presign       | Get a presigned S3 PUT URL for an image             | Bearer  |
+| POST   | /uploads/confirm       | Confirm the upload and mark the asset UPLOADED      | Bearer  |
 
 Feature endpoints are added PR-by-PR.
 
@@ -113,6 +115,28 @@ Feature endpoints are added PR-by-PR.
 | maxCalories  | number   | Inclusive upper bound on totalCalories|
 | page         | integer  | Default 1                             |
 | pageSize     | integer  | Default 20, max 100                   |
+
+### Image upload flow
+
+Clients never stream bytes through the API. Instead:
+
+1. `POST /uploads/presign` with `{ contentType, size? }` returns an
+   `assetId` plus a short-lived `uploadUrl` (S3 PUT) and the required
+   headers (`Content-Type`).
+2. Client uploads the file directly to S3 with an HTTP `PUT` to
+   `uploadUrl`.
+3. `POST /uploads/confirm` with `{ assetId }` verifies the object exists
+   via `HeadObject`, records its size, and flips the asset to
+   `UPLOADED`.
+4. `POST /analyze-food` accepts `{ assetId }` — the server resolves it
+   to a short-lived signed GET URL and passes that to the vision model.
+   The query row is persisted with `assetId` so the original image is
+   discoverable in history.
+
+Only `image/jpeg`, `image/png`, `image/webp`, `image/heic`, and
+`image/heif` are allowed; `UPLOAD_MAX_SIZE_BYTES` caps the size a caller
+may declare. Use `AWS_S3_ENDPOINT` + `AWS_S3_FORCE_PATH_STYLE=true` to
+point at LocalStack or MinIO during local dev.
 
 ### Chat assistant
 

@@ -23,6 +23,15 @@ const EnvSchema = z.object({
 
   FRONTEND_POST_LOGIN_URL: z.string().default('http://localhost:3000/auth/callback'),
 
+  AWS_REGION: z.string().default('us-east-1'),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_S3_BUCKET: z.string().optional(),
+  AWS_S3_ENDPOINT: z.string().url().optional(),
+  AWS_S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
+  UPLOAD_PRESIGN_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+  UPLOAD_MAX_SIZE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
+
   OPENAI_API_KEY: z.string().optional(),
   AI_PROVIDER: z.enum(['openai', 'stub']).default('openai'),
   AI_MODEL_TEXT: z.string().default('gpt-4o-mini'),
