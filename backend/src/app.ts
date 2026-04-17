@@ -18,6 +18,8 @@ import { uploadRouter } from './routes/upload.routes';
 import { profileRouter } from './routes/profile.routes';
 import { analyticsRouter } from './routes/analytics.routes';
 import { recommendationRouter } from './routes/recommendation.routes';
+import { apiKeyRouter } from './routes/apiKey.routes';
+import { publicRouter } from './routes/public.routes';
 
 export const createApp = () => {
   const app = express();
@@ -56,6 +58,8 @@ export const createApp = () => {
   app.use(profileRouter);
   app.use(analyticsRouter);
   app.use(recommendationRouter);
+  app.use(apiKeyRouter);
+  app.use(publicRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
