@@ -2,15 +2,25 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { Check, ArrowRight, Warning } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { InputPanel } from "./_components/InputPanel";
 import { AnalyzingState } from "./_components/AnalyzingState";
-import { ResultCard, MOCK_RESULT } from "./_components/ResultCard";
+import { ResultCard, type AnalysisResult } from "./_components/ResultCard";
+import { analyzeFood } from "@/lib/api/food";
+import { createMeal, inferMealType } from "@/lib/api/meals";
+import { ApiError } from "@/lib/api/client";
 
 type SnapState = "idle" | "analyzing" | "result" | "logged";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+const MACRO_COLORS = [
+  "text-sage-600 bg-sage/10",
+  "text-forest bg-forest/8",
+  "text-ink bg-ink/5",
+  "text-sage bg-sage/8",
+] as const;
 
 function LoggedConfirmation({ onReset }: { onReset: () => void }) {
   return (
@@ -68,16 +78,67 @@ export default function SnapPage() {
   const [state, setState] = useState<SnapState>("idle");
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"describe" | "photo">("describe");
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [queryId, setQueryId] = useState<string | null>(null);
+  const [logging, setLogging] = useState(false);
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
+    if (tab !== "describe" || !query.trim()) return;
+    setError(null);
     setState("analyzing");
-    setTimeout(() => setState("result"), 1800);
+
+    try {
+      const resp = await analyzeFood({ text: query.trim() });
+      setQueryId(resp.queryId);
+      setResult({
+        name: resp.items[0]?.name ?? query.trim(),
+        totalKcal: Math.round(resp.totals.calories),
+        confidence: Math.round(resp.confidence * 100),
+        macros: [
+          { label: "Protein", value: `${Math.round(resp.totals.protein)}g`, color: MACRO_COLORS[0] },
+          { label: "Carbs",   value: `${Math.round(resp.totals.carbs)}g`,   color: MACRO_COLORS[1] },
+          { label: "Fat",     value: `${Math.round(resp.totals.fat)}g`,     color: MACRO_COLORS[2] },
+          { label: "Items",   value: `${resp.items.length}`,                color: MACRO_COLORS[3] },
+        ],
+        items: resp.items.map((i) => ({
+          name: i.name,
+          weight: i.quantity ?? "",
+          kcal: Math.round(i.calories),
+        })),
+      });
+      setState("result");
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Couldn't analyze that. Try rephrasing.";
+      setError(msg);
+      setState("idle");
+    }
   };
 
-  const handleLog = () => setState("logged");
+  const handleLog = async () => {
+    if (!queryId) return;
+    setLogging(true);
+    setError(null);
+    try {
+      await createMeal({
+        mealType: inferMealType(),
+        foodQueryId: queryId,
+        notes: query.trim() || null,
+      });
+      setState("logged");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Couldn't save that meal.");
+    } finally {
+      setLogging(false);
+    }
+  };
+
   const handleReset = () => {
     setState("idle");
     setQuery("");
+    setResult(null);
+    setQueryId(null);
+    setError(null);
   };
 
   return (
@@ -90,6 +151,13 @@ export default function SnapPage() {
       </header>
 
       <div className="max-w-xl">
+        {error && state === "idle" && (
+          <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+            <Warning size={15} weight="fill" className="mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {state === "idle" && (
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
@@ -107,12 +175,14 @@ export default function SnapPage() {
             <AnalyzingState key="analyzing" query={query || "your meal"} />
           )}
 
-          {state === "result" && (
+          {state === "result" && result && (
             <ResultCard
               key="result"
-              result={MOCK_RESULT}
+              result={result}
               onLog={handleLog}
               onReset={handleReset}
+              logging={logging}
+              error={error}
             />
           )}
 

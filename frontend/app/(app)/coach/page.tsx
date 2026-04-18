@@ -2,20 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { PaperPlaneTilt, Sparkle } from "@phosphor-icons/react/dist/ssr";
+import { PaperPlaneTilt, Sparkle, Warning } from "@phosphor-icons/react/dist/ssr";
 import { ChatMessage, type Message } from "./_components/ChatMessage";
 import { NutritionContext } from "./_components/NutritionContext";
+import { sendChatMessage } from "@/lib/api/chat";
+import type { ChatMessageDTO } from "@/lib/api/types";
+import { ApiError } from "@/lib/api/client";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: "1",
-    role: "ria",
-    text: "Hey! I've reviewed your intake so far today. You're at 1,240 kcal — solid start. You're 76g short on protein though. Want a quick fix for dinner?",
-    timestamp: "3:30 PM",
-  },
-];
 
 const SUGGESTIONS = [
   "What should I eat for dinner?",
@@ -24,31 +18,24 @@ const SUGGESTIONS = [
   "Give me a high-protein snack idea",
 ];
 
-const RIA_REPLIES: Record<string, string> = {
-  dinner:
-    "For dinner I'd go with 5oz salmon fillet (280 kcal, 34g protein) + a side of roasted sweet potato. That closes your protein gap and keeps fat in range. Simple 20-min cook.",
-  protein:
-    "You've had 54g protein today against a 130g goal — so you're at 42%. A 5oz chicken breast or Greek yogurt bowl at dinner gets you close to target.",
-  calories:
-    "You've logged 1,240 kcal against your 1,800 kcal goal — 560 remaining. That's a healthy buffer for dinner without going over.",
-  snack:
-    "Best high-protein snacks right now: cottage cheese (28g/cup), hard-boiled eggs (12g each), or a protein shake with almond milk (~25g). All under 200 kcal.",
-};
-
-function getRiaReply(input: string): string {
-  const lower = input.toLowerCase();
-  if (lower.includes("dinner") || lower.includes("eat")) return RIA_REPLIES.dinner;
-  if (lower.includes("protein")) return RIA_REPLIES.protein;
-  if (lower.includes("calorie") || lower.includes("left") || lower.includes("remaining"))
-    return RIA_REPLIES.calories;
-  if (lower.includes("snack")) return RIA_REPLIES.snack;
-  return "Great question! Based on your intake today, you're on a solid track. Keep focusing on whole proteins and complex carbs — your body will thank you. Want me to suggest a specific meal?";
+function toMessage(dto: ChatMessageDTO): Message {
+  return {
+    id: dto.id,
+    role: dto.role === "USER" ? "user" : "ria",
+    text: dto.content,
+    timestamp: new Date(dto.createdAt).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+  };
 }
 
 export default function CoachPage() {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -56,28 +43,38 @@ export default function CoachPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const send = (text: string) => {
-    if (!text.trim()) return;
-    const userMsg: Message = {
-      id: Date.now().toString(),
+  const send = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isTyping) return;
+    setError(null);
+
+    const optimistic: Message = {
+      id: `temp-${Date.now()}`,
       role: "user",
-      text: text.trim(),
-      timestamp: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+      text: trimmed,
+      timestamp: new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, optimistic]);
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
+    try {
+      const resp = await sendChatMessage({ message: trimmed, conversationId });
+      setConversationId(resp.id);
+      setMessages(resp.messages.map(toMessage));
+    } catch (e) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : "Couldn't reach Ria. Check your connection and try again."
+      );
+    } finally {
       setIsTyping(false);
-      const riaMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "ria",
-        text: getRiaReply(text),
-        timestamp: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-      };
-      setMessages((prev) => [...prev, riaMsg]);
-    }, 1400);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -86,6 +83,8 @@ export default function CoachPage() {
       send(input);
     }
   };
+
+  const showEmptyState = messages.length === 0 && !isTyping;
 
   return (
     <div className="flex min-h-screen gap-6 p-8 lg:p-12">
@@ -104,6 +103,23 @@ export default function CoachPage() {
 
         {/* Messages */}
         <div className="flex flex-1 flex-col gap-4 pb-4">
+          {showEmptyState && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: EASE }}
+              className="flex flex-col gap-2 rounded-2xl border border-white/70 bg-white/60 px-5 py-6 backdrop-blur-sm"
+            >
+              <p className="text-[15px] font-semibold text-ink">
+                Hey! I&apos;m Ria — your AI nutritionist.
+              </p>
+              <p className="text-[13px] leading-relaxed text-ink-muted">
+                Ask me anything about your meals, targets, or what to eat next.
+                I&apos;ll factor in everything you&apos;ve logged.
+              </p>
+            </motion.div>
+          )}
+
           {messages.map((msg, i) => (
             <ChatMessage key={msg.id} message={msg} index={i} />
           ))}
@@ -135,12 +151,12 @@ export default function CoachPage() {
             )}
           </AnimatePresence>
 
-          {/* Suggestions (only when conversation is short) */}
-          {messages.length <= 1 && !isTyping && (
+          {/* Suggestions (only when no messages yet) */}
+          {showEmptyState && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: EASE, delay: 0.3 }}
+              transition={{ duration: 0.4, ease: EASE, delay: 0.15 }}
               className="mt-2 flex flex-wrap gap-2"
             >
               {SUGGESTIONS.map((s) => (
@@ -153,6 +169,14 @@ export default function CoachPage() {
                 </button>
               ))}
             </motion.div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+              <Warning size={15} weight="fill" className="mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
 
           <div ref={bottomRef} />

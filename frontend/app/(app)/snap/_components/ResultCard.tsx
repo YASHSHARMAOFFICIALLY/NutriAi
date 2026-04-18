@@ -35,9 +35,11 @@ interface Props {
   result: AnalysisResult;
   onLog: () => void;
   onReset: () => void;
+  logging?: boolean;
+  error?: string | null;
 }
 
-export function ResultCard({ result, onLog, onReset }: Props) {
+export function ResultCard({ result, onLog, onReset, logging = false, error }: Props) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -136,16 +138,23 @@ export function ResultCard({ result, onLog, onReset }: Props) {
         transition={{ duration: 0.4, ease: EASE, delay: 0.5 }}
         className="flex flex-col gap-2"
       >
+        {error && (
+          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[12px] text-red-700">
+            {error}
+          </p>
+        )}
         <button
           onClick={onLog}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-forest py-4 text-[15px] font-semibold text-cream shadow-[0_4px_20px_rgba(31,59,45,0.25)] transition-all hover:opacity-90 hover:shadow-[0_8px_30px_rgba(31,59,45,0.32)] active:scale-[0.99]"
+          disabled={logging}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-forest py-4 text-[15px] font-semibold text-cream shadow-[0_4px_20px_rgba(31,59,45,0.25)] transition-all hover:opacity-90 hover:shadow-[0_8px_30px_rgba(31,59,45,0.32)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Check size={16} weight="bold" />
-          Log this meal
+          {logging ? "Logging…" : "Log this meal"}
         </button>
         <button
           onClick={onReset}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[14px] font-medium text-ink-muted transition-colors hover:bg-ink/[0.04] hover:text-ink"
+          disabled={logging}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[14px] font-medium text-ink-muted transition-colors hover:bg-ink/[0.04] hover:text-ink disabled:opacity-60"
         >
           <ArrowCounterClockwise size={15} />
           Try again
