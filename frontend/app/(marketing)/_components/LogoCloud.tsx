@@ -11,7 +11,7 @@ export function LogoCloud() {
     <section className="pt-24 md:pt-32">
       <Container>
         <Reveal as="p" className="text-center text-[12px] font-medium uppercase tracking-[0.2em] text-ink-muted">
-          Trusted by 12,000+ founders, athletes, and coaches
+          Loved by 12,000+ people who are serious about what they eat
         </Reveal>
         <Reveal className="mt-8">
           <ul className="grid grid-cols-2 gap-x-10 gap-y-6 md:grid-cols-6">

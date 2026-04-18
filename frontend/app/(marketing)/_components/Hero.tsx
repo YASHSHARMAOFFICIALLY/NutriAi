@@ -112,10 +112,10 @@ export function Hero() {
                 Start free
               </Button>
               <a
-                href="#developers"
+                href="#how"
                 className="text-base font-medium text-white/55 underline decoration-white/25 underline-offset-4 transition-colors duration-200 hover:text-white/90 hover:decoration-white/60"
               >
-                Read the docs
+                See how it works
               </a>
             </Reveal>
 

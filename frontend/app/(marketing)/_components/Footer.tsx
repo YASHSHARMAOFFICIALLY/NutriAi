@@ -2,9 +2,9 @@ import { Container } from "../_primitives/Container";
 
 const GROUPS = [
   { title: "Product", links: ["Features", "How it works", "Pricing", "Changelog"] },
-  { title: "Developers", links: ["API", "Docs", "Status", "Open source"] },
+  { title: "Resources", links: ["Help center", "Community", "Blog", "Recipes"] },
   { title: "Company", links: ["About", "Careers", "Contact", "Press"] },
-  { title: "Legal", links: ["Privacy", "Terms", "Security", "DPA"] },
+  { title: "Legal", links: ["Privacy", "Terms", "Security", "Accessibility"] },
 ] as const;
 
 export function Footer() {

@@ -4,7 +4,6 @@ import { Button } from "../_primitives/Button";
 const LINKS = [
   { href: "#features", label: "Features" },
   { href: "#how", label: "How it works" },
-  { href: "#developers", label: "Developers" },
   { href: "#pricing", label: "Pricing" },
 ] as const;
 
