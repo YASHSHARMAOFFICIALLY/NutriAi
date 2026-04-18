@@ -37,19 +37,6 @@ const PLANS: Plan[] = [
     cta: "Start 14-day trial",
     highlight: true,
   },
-  {
-    name: "Team",
-    price: "$29",
-    cadence: "per seat / month",
-    tagline: "For coaches, clinics, and B2B integrations.",
-    features: [
-      "Everything in Pro",
-      "Public API (60 rpm per key)",
-      "Scoped keys + usage metering",
-      "Priority support",
-    ],
-    cta: "Talk to sales",
-  },
 ];
 
 export function Pricing() {
@@ -65,7 +52,7 @@ export function Pricing() {
           </Reveal>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="mx-auto grid max-w-[740px] grid-cols-1 gap-5 md:grid-cols-2">
           {PLANS.map((plan) => (
             <Reveal key={plan.name}>
               <div
