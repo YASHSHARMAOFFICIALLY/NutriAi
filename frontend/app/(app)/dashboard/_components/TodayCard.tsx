@@ -1,30 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-
-const CALORIES = { eaten: 1462, target: 2150 };
-const PCT = CALORIES.eaten / CALORIES.target;
-
-const MACROS = [
-  { label: "Protein", eaten: 82, target: 128, color: "#5E8A69", delay: 0.5 },
-  { label: "Carbs", eaten: 140, target: 200, color: "#1F3B2D", delay: 0.65 },
-  { label: "Fat", eaten: 38, target: 60, color: "#7FA687", delay: 0.8 },
-] as const;
+import { ArrowClockwise } from "@phosphor-icons/react/dist/ssr";
+import { getDailySummary } from "@/lib/api/meals";
+import { getProfile } from "@/lib/api/profile";
+import type { DailySummary, UserProfile } from "@/lib/api/types";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-function CalorieRing() {
+const DEFAULT_TARGETS = {
+  calories: 2150,
+  protein: 128,
+  carbs: 200,
+  fat: 60,
+};
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function CalorieRing({ eaten, target }: { eaten: number; target: number }) {
+  const pct = target > 0 ? Math.min(eaten / target, 1) : 0;
   return (
     <div className="relative shrink-0">
       <svg width="148" height="148" viewBox="0 0 148 148" className="-rotate-90" aria-hidden>
-        {/* Track */}
-        <circle
-          cx="74" cy="74" r="54"
-          fill="none"
-          stroke="rgba(31,59,45,0.07)"
-          strokeWidth="13"
-        />
-        {/* Fill */}
+        <circle cx="74" cy="74" r="54" fill="none" stroke="rgba(31,59,45,0.07)" strokeWidth="13" />
         <motion.circle
           cx="74" cy="74" r="54"
           fill="none"
@@ -32,12 +33,10 @@ function CalorieRing() {
           strokeWidth="13"
           strokeLinecap="round"
           initial={{ pathLength: 0 }}
-          animate={{ pathLength: PCT }}
+          animate={{ pathLength: pct }}
           transition={{ duration: 1.6, ease: EASE, delay: 0.25 }}
         />
       </svg>
-
-      {/* Center label */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.span
           className="font-display text-[28px] font-bold leading-none text-ink"
@@ -45,31 +44,33 @@ function CalorieRing() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.6 }}
         >
-          {CALORIES.eaten.toLocaleString()}
+          {Math.round(eaten).toLocaleString()}
         </motion.span>
         <span className="mt-1 text-[11px] text-ink-muted">
-          of {CALORIES.target.toLocaleString()} kcal
+          of {Math.round(target).toLocaleString()} kcal
         </span>
       </div>
     </div>
   );
 }
 
-function MacroBar({
-  label,
-  eaten,
-  target,
-  color,
-  delay,
-}: (typeof MACROS)[number]) {
-  const pct = eaten / target;
+interface MacroBarProps {
+  label: string;
+  eaten: number;
+  target: number;
+  color: string;
+  delay: number;
+}
+
+function MacroBar({ label, eaten, target, color, delay }: MacroBarProps) {
+  const pct = target > 0 ? Math.min(eaten / target, 1) : 0;
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between text-[13px]">
         <span className="text-ink-muted">{label}</span>
         <span className="font-medium text-ink">
-          {eaten}g{" "}
-          <span className="font-normal text-ink-muted">/ {target}g</span>
+          {Math.round(eaten)}g{" "}
+          <span className="font-normal text-ink-muted">/ {Math.round(target)}g</span>
         </span>
       </div>
       <div className="h-[5px] w-full overflow-hidden rounded-full bg-ink/[0.06]">
@@ -85,7 +86,97 @@ function MacroBar({
   );
 }
 
+function Skeleton() {
+  return (
+    <div className="rounded-3xl border border-white/70 bg-white/60 p-8 shadow-[0_10px_40px_rgba(31,59,45,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-sm">
+      <div className="mb-7 h-4 w-32 animate-pulse rounded-full bg-ink/[0.06]" />
+      <div className="flex items-center gap-10">
+        <div className="h-[148px] w-[148px] animate-pulse rounded-full bg-ink/[0.06]" />
+        <div className="flex flex-1 flex-col gap-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex flex-col gap-1.5">
+              <div className="h-3 w-24 animate-pulse rounded-full bg-ink/[0.06]" />
+              <div className="h-[5px] w-full animate-pulse rounded-full bg-ink/[0.06]" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TodayCard() {
+  const [summary, setSummary] = useState<DailySummary | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [s, p] = await Promise.all([
+        getDailySummary(todayISO()),
+        getProfile().catch(() => null),
+      ]);
+      setSummary(s);
+      setProfile(p);
+    } catch {
+      setError("Couldn't load today's intake.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  if (loading && !summary) return <Skeleton />;
+
+  if (error && !summary) {
+    return (
+      <div className="flex items-center justify-between rounded-3xl border border-white/70 bg-white/60 p-8 backdrop-blur-sm">
+        <p className="text-[13px] text-ink-muted">{error}</p>
+        <button
+          onClick={load}
+          className="flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1.5 text-[12px] font-medium text-ink-muted transition-colors hover:border-sage/40 hover:text-sage-600"
+        >
+          <ArrowClockwise size={12} weight="bold" />
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const eatenCals = summary?.totalCalories ?? 0;
+  const targetCals = profile?.dailyCalorieTarget ?? DEFAULT_TARGETS.calories;
+  const pct = targetCals > 0 ? Math.round((eatenCals / targetCals) * 100) : 0;
+
+  const macros = [
+    {
+      label: "Protein",
+      eaten: summary?.totalProtein ?? 0,
+      target: profile?.proteinTargetG ?? DEFAULT_TARGETS.protein,
+      color: "#5E8A69",
+      delay: 0.5,
+    },
+    {
+      label: "Carbs",
+      eaten: summary?.totalCarbs ?? 0,
+      target: profile?.carbsTargetG ?? DEFAULT_TARGETS.carbs,
+      color: "#1F3B2D",
+      delay: 0.65,
+    },
+    {
+      label: "Fat",
+      eaten: summary?.totalFat ?? 0,
+      target: profile?.fatTargetG ?? DEFAULT_TARGETS.fat,
+      color: "#7FA687",
+      delay: 0.8,
+    },
+  ];
+
   return (
     <div className="rounded-3xl border border-white/70 bg-white/60 p-8 shadow-[0_10px_40px_rgba(31,59,45,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-sm">
       <div className="mb-7 flex items-start justify-between">
@@ -98,14 +189,14 @@ export function TodayCard() {
           </h2>
         </div>
         <span className="rounded-full bg-sage/[0.12] px-3 py-1 text-[12px] font-semibold text-sage-600">
-          {Math.round(PCT * 100)}% of goal
+          {pct}% of goal
         </span>
       </div>
 
       <div className="flex items-center gap-10">
-        <CalorieRing />
+        <CalorieRing eaten={eatenCals} target={targetCals} />
         <div className="flex flex-1 flex-col gap-4">
-          {MACROS.map((m) => (
+          {macros.map((m) => (
             <MacroBar key={m.label} {...m} />
           ))}
         </div>
