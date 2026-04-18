@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "motion/react";
+import { useRouter } from "next/navigation";
 import { Check } from "@phosphor-icons/react/dist/ssr";
+import { devLogin } from "@/lib/api/account";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const IS_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(API_URL);
 
 const FEATURES = [
   "Snap a meal — calories back in seconds",
@@ -84,6 +88,22 @@ const itemVariants = {
 };
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [devLoading, setDevLoading] = useState(false);
+  const [devError, setDevError] = useState<string | null>(null);
+
+  const handleDevLogin = async () => {
+    setDevLoading(true);
+    setDevError(null);
+    try {
+      await devLogin("dev@nutriai.test");
+      router.replace("/dashboard");
+    } catch (e) {
+      setDevError(e instanceof Error ? e.message : "Dev login failed.");
+      setDevLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen">
 
@@ -203,6 +223,20 @@ export default function LoginPage() {
               </span>
             ))}
           </div>
+
+          {/* Dev-only login */}
+          {IS_LOCAL && (
+            <div className="mt-6 flex flex-col items-center gap-1.5">
+              <button
+                onClick={handleDevLogin}
+                disabled={devLoading}
+                className="text-[12px] text-ink-muted/70 underline underline-offset-2 transition-colors hover:text-sage-600 disabled:opacity-50"
+              >
+                {devLoading ? "Signing in…" : "Use dev login (localhost only)"}
+              </button>
+              {devError && <p className="text-[11px] text-red-600">{devError}</p>}
+            </div>
+          )}
 
           {/* Legal */}
           <p className="mt-10 text-center text-[11px] leading-[1.6] text-ink-muted/60">
