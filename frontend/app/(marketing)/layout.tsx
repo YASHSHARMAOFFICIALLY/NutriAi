@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { LenisProvider } from "./_lib/lenis-provider";
 
 // Fonts — self-hosted via next/font/local. The .woff2 files live in
 // public/fonts/ (see public/fonts/README.md for filenames + sources).
@@ -34,5 +35,9 @@ export const metadata: Metadata = {
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   // Once localFont is enabled, add `${grotesk.variable} ${caudex.variable}` here.
-  return <div className="relative min-h-screen bg-cream text-ink">{children}</div>;
+  return (
+    <LenisProvider>
+      <div className="relative min-h-screen bg-cream text-ink">{children}</div>
+    </LenisProvider>
+  );
 }

@@ -1,10 +1,23 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+const TrustProxySchema = z
+  .string()
+  .default('false')
+  .transform((value) => value.trim())
+  .transform((value) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    if (/^\d+$/.test(value)) return Number(value);
+    if (value === 'loopback' || value === 'linklocal' || value === 'uniquelocal') return value;
+    throw new Error('TRUST_PROXY must be false, true, a non-negative integer, or a supported preset');
+  });
+
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  TRUST_PROXY: TrustProxySchema,
 
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),

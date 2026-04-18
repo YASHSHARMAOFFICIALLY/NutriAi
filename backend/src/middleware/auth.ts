@@ -6,8 +6,6 @@ import { UnauthorizedError } from '../utils/errors';
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
-    // Augments the existing User interface from @types/passport so that
-    // req.user is typed consistently whether set by passport or requireAuth.
     interface User {
       id: string;
       email: string;

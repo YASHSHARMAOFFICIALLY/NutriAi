@@ -93,11 +93,20 @@ export const confirmUpload = async ({ userId, assetId }: ConfirmArgs) => {
 
   const s3 = getS3Client();
   let size: number | undefined;
+  let contentType: string | undefined;
   try {
     const head = await s3.send(new HeadObjectCommand({ Bucket: asset.bucket, Key: asset.key }));
     size = head.ContentLength;
+    contentType = head.ContentType;
   } catch {
     throw new BadRequestError('Upload not found in storage');
+  }
+
+  if (size != null && size > env.UPLOAD_MAX_SIZE_BYTES) {
+    throw new BadRequestError('Uploaded file exceeds maximum size');
+  }
+  if (contentType && contentType !== asset.contentType) {
+    throw new BadRequestError('Uploaded file content type does not match the presigned request');
   }
 
   const updated = await prisma.asset.update({

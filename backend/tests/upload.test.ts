@@ -48,4 +48,21 @@ describe('analyzeFoodSchema with assetId', () => {
   it('rejects a non-uuid assetId', () => {
     expect(() => analyzeFoodSchema.parse({ assetId: 'nope' })).toThrow();
   });
+
+  it('rejects non-https imageUrl values', () => {
+    expect(() => analyzeFoodSchema.parse({ imageUrl: 'http://example.com/a.png' })).toThrow();
+  });
+
+  it('accepts https imageUrl values', () => {
+    const parsed = analyzeFoodSchema.parse({ imageUrl: 'https://example.com/a.png' });
+    expect(parsed.imageUrl).toBe('https://example.com/a.png');
+  });
+
+  it('rejects localhost imageUrl values', () => {
+    expect(() => analyzeFoodSchema.parse({ imageUrl: 'https://localhost/a.png' })).toThrow();
+  });
+
+  it('rejects IP-literal imageUrl values', () => {
+    expect(() => analyzeFoodSchema.parse({ imageUrl: 'https://127.0.0.1/a.png' })).toThrow();
+  });
 });
