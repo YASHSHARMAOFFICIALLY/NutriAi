@@ -5,9 +5,9 @@ import { FeatureBento } from "./_components/FeatureBento";
 import { HowItWorks } from "./_components/HowItWorks";
 import { ChatShowcase } from "./_components/ChatShowcase";
 import { AnalyticsShowcase } from "./_components/AnalyticsShowcase";
-// Landing page shell. Section components are added in follow-up PRs:
-// Nav, Hero, LogoCloud, FeatureBento, HowItWorks, ChatShowcase,
-// AnalyticsShowcase, DeveloperAPI, Pricing, FinalCTA, Footer.
+import { Pricing } from "./_components/Pricing";
+import { FinalCTA } from "./_components/FinalCTA";
+import { Footer } from "./_components/Footer";
 
 export default function MarketingHome() {
   return (
@@ -15,17 +15,13 @@ export default function MarketingHome() {
       <Nav />
       <Hero />
       <LogoCloud />
-      {/* Remaining sections (FeatureBento, HowItWorks, ChatShowcase,
-          AnalyticsShowcase, DeveloperAPI, Pricing, FinalCTA, Footer)
-          land in follow-up PRs. */}
       <FeatureBento />
       <HowItWorks />
-      {/* Remaining: ChatShowcase, AnalyticsShowcase, DeveloperAPI,
-          Pricing, FinalCTA, Footer — follow-up PRs. */}
       <ChatShowcase />
       <AnalyticsShowcase />
-      {/* Remaining: DeveloperAPI, Pricing, FinalCTA, Footer — follow-up PR. */}
-      {/* sections mount here */}
+      <Pricing />
+      <FinalCTA />
+      <Footer />
     </main>
   );
 }
