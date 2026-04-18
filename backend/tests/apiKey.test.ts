@@ -67,4 +67,8 @@ describe('publicAnalyzeSchema', () => {
   it('rejects an invalid imageUrl', () => {
     expect(() => publicAnalyzeSchema.parse({ imageUrl: 'not-a-url' })).toThrow();
   });
+
+  it('rejects localhost imageUrl values', () => {
+    expect(() => publicAnalyzeSchema.parse({ imageUrl: 'https://localhost/x.jpg' })).toThrow();
+  });
 });

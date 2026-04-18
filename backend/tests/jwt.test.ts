@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import jwt from 'jsonwebtoken';
 import { signAccessToken, verifyAccessToken } from '../src/utils/jwt';
 import { UnauthorizedError } from '../src/utils/errors';
+import { env } from '../src/config/env';
 
 describe('jwt utils', () => {
   it('signs and verifies an access token round-trip', () => {
@@ -19,5 +21,14 @@ describe('jwt utils', () => {
 
   it('rejects garbage tokens', () => {
     expect(() => verifyAccessToken('not-a-jwt')).toThrow(UnauthorizedError);
+  });
+
+  it('rejects tokens signed with an unexpected algorithm', () => {
+    const token = jwt.sign(
+      { sub: 'user-1', email: 'a@b.com', role: 'USER' },
+      env.JWT_ACCESS_SECRET,
+      { algorithm: 'HS512' },
+    );
+    expect(() => verifyAccessToken(token)).toThrow(UnauthorizedError);
   });
 });

@@ -1,11 +1,16 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
 import { analyzeFood } from '../services/foodService';
+import { isSafeExternalHttpsUrl } from '../utils/urlSafety';
+
+const httpsUrlSchema = z.string().url().refine(isSafeExternalHttpsUrl, {
+  message: 'imageUrl must be a safe external https URL',
+});
 
 export const analyzeFoodSchema = z
   .object({
     text: z.string().trim().min(1).max(2000).optional(),
-    imageUrl: z.string().url().optional(),
+    imageUrl: httpsUrlSchema.optional(),
     assetId: z.string().uuid().optional(),
   })
   .refine((v) => Boolean(v.text || v.imageUrl || v.assetId), {

@@ -4,11 +4,9 @@ import { redis } from '../config/redis';
 import { UnauthorizedError, RateLimitError, ForbiddenError } from '../utils/errors';
 import { findActiveByToken, recordApiUsage, touchLastUsed } from '../services/apiKeyService';
 
-declare global {
-  namespace Express {
-    interface Request {
-      apiKey?: ApiKey;
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    apiKey?: ApiKey;
   }
 }
 
