@@ -8,7 +8,12 @@ const app = createApp();
 
 const server = app.listen(env.PORT, () => {
   logger.info(`nutriai-backend listening on :${env.PORT}`);
-  if (env.NODE_ENV !== 'test') scheduleDigestJobs();
+  const server = app.listen(env.PORT, () => {
+    logger.info(`nutriai-backend listening on :${env.PORT}`);
+    if (env.NODE_ENV !== 'test' && env.ENABLE_DIGEST_JOBS === 'true') {
+      scheduleDigestJobs();
+    }
+  });
 });
 
 const shutdown = async (signal: string) => {
