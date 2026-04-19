@@ -39,6 +39,7 @@ model User {
   profile                 UserProfile?
   apiKeys                 ApiKey[]
   userChallenges          UserChallenge[]
+  weightEntries           WeightEntry[]
 
   @@index([email])
 }
@@ -380,4 +381,19 @@ model UserChallenge {
 
   @@index([userId, status])
   @@index([userId, createdAt])
+}
+
+// ── Weight tracking ─────────────────────────────────────────────────────────
+
+model WeightEntry {
+  id         String   @id @default(uuid())
+  userId     String
+  weightKg   Decimal  @db.Decimal(5, 2)
+  note       String?
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt(sort: Desc)])
 }
