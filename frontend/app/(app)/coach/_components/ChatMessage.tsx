@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { Sparkle } from "@phosphor-icons/react/dist/ssr";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];

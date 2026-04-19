@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { TrendUp, Lightning, ForkKnife, Flame } from "@phosphor-icons/react/dist/ssr";
 import { WeeklyChart } from "./_components/WeeklyChart";
 import { MacroRing } from "./_components/MacroRing";

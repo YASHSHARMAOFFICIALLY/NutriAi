@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { Sparkle, Plus } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
