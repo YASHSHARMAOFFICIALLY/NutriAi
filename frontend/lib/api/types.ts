@@ -179,3 +179,41 @@ export interface RecommendationsQuery {
   remainingCarbs?: number;
   remainingFat?: number;
 }
+
+// ── /challenges ──
+export type ChallengeCategory = "SUGAR" | "PROTEIN" | "HYDRATION" | "CALORIES" | "STEPS" | "HABIT";
+export type ChallengeStatus = "ACTIVE" | "COMPLETED" | "ABANDONED";
+
+export interface ChallengePreset {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  category: ChallengeCategory;
+  durationDays: number;
+  icon: string;
+  createdAt: string;
+}
+
+export interface UserChallengeDTO {
+  id: string;
+  userId: string;
+  challengeId: string | null;
+  title: string;
+  description: string | null;
+  durationDays: number;
+  startDate: string;
+  status: ChallengeStatus;
+  daysCheckedIn: number;
+  lastCheckInDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  challenge: ChallengePreset | null;
+}
+
+export interface StartChallengeInput {
+  challengeId?: string;
+  title: string;
+  description?: string | null;
+  durationDays: number;
+}
