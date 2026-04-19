@@ -22,8 +22,11 @@ export const rateLimit = (opts: Options = {}): RequestHandler => {
     if (count === 1) {
       await redis.pexpire(key, windowMs);
     }
+    const ttlMs = count === 1 ? windowMs : await redis.pttl(key);
+    const resetSec = Math.ceil(Date.now() / 1000 + Math.max(0, ttlMs) / 1000);
     res.setHeader('X-RateLimit-Limit', String(max));
     res.setHeader('X-RateLimit-Remaining', String(Math.max(0, max - count)));
+    res.setHeader('X-RateLimit-Reset', String(resetSec));
     if (count > max) {
       throw new RateLimitError();
     }

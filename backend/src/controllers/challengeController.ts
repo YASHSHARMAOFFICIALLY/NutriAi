@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
-import type { ChallengeCategory, ChallengeStatus } from '@prisma/client';
-import { UnauthorizedError } from '../utils/errors';
+import { z } from 'zod';
+import { UnauthorizedError, BadRequestError } from '../utils/errors';
 import {
   abandonChallenge,
   checkIn,
@@ -9,22 +9,27 @@ import {
   listUserChallenges,
 } from '../services/challengeService';
 
+const presetsQuerySchema = z.object({
+  category: z.enum(['SUGAR', 'PROTEIN', 'HYDRATION', 'CALORIES', 'STEPS', 'HABIT']).optional(),
+  durationDays: z.coerce.number().int().positive().max(365).optional(),
+});
+
+const userChallengesQuerySchema = z.object({
+  status: z.enum(['ACTIVE', 'COMPLETED', 'ABANDONED']).optional(),
+});
+
 export const getPresets: RequestHandler = async (req, res) => {
-  const { category, durationDays } = req.query as {
-    category?: ChallengeCategory;
-    durationDays?: string;
-  };
-  const challenges = await listPresets({
-    category,
-    durationDays: durationDays ? Number(durationDays) : undefined,
-  });
+  const parsed = presetsQuerySchema.safeParse(req.query);
+  if (!parsed.success) throw new BadRequestError('Invalid query parameters', parsed.error.flatten());
+  const challenges = await listPresets(parsed.data);
   res.json({ challenges });
 };
 
 export const getUserChallenges: RequestHandler = async (req, res) => {
   if (!req.user) throw new UnauthorizedError();
-  const { status } = req.query as { status?: ChallengeStatus };
-  const challenges = await listUserChallenges(req.user.id, status);
+  const parsed = userChallengesQuerySchema.safeParse(req.query);
+  if (!parsed.success) throw new BadRequestError('Invalid query parameters', parsed.error.flatten());
+  const challenges = await listUserChallenges(req.user.id, parsed.data.status);
   res.json({ challenges });
 };
 
