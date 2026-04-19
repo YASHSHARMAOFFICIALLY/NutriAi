@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
 import { ArrowClockwise } from "@phosphor-icons/react/dist/ssr";
 import { getDailySummary } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import type { DailySummary, UserProfile } from "@/lib/api/types";
+import { motion } from "framer-motion";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 

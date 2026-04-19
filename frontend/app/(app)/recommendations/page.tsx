@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sparkle, ArrowRight } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { RecommendationCard, type Recommendation } from "./_components/RecommendationCard";

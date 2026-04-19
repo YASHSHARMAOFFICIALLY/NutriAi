@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { DayGroup } from "./_components/DayGroup";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion } from "framer-motion";
 import { PaperPlaneTilt, Sparkle, Warning } from "@phosphor-icons/react/dist/ssr";
 import { ChatMessage, type Message } from "./_components/ChatMessage";
 import { NutritionContext } from "./_components/NutritionContext";

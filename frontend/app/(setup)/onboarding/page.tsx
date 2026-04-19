@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Check, Sparkle } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { StepGoal } from "./_components/StepGoal";
