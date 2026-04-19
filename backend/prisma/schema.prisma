@@ -28,16 +28,17 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  refreshTokens          RefreshToken[]
+  refreshTokens           RefreshToken[]
   emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens    PasswordResetToken[]
-  foodQueries            FoodQuery[]
-  tokenUsage             TokenUsage[]
-  meals                  Meal[]
-  conversations          Conversation[]
-  assets                 Asset[]
-  profile                UserProfile?
-  apiKeys                ApiKey[]
+  passwordResetTokens     PasswordResetToken[]
+  foodQueries             FoodQuery[]
+  tokenUsage              TokenUsage[]
+  meals                   Meal[]
+  conversations           Conversation[]
+  assets                  Asset[]
+  profile                 UserProfile?
+  apiKeys                 ApiKey[]
+  userChallenges          UserChallenge[]
 
   @@index([email])
 }
@@ -323,4 +324,60 @@ model TokenUsage {
 
   @@index([userId, createdAt])
   @@index([endpoint, createdAt])
+}
+
+// ── Challenges ──────────────────────────────────────────────────────────────
+
+enum ChallengeCategory {
+  SUGAR
+  PROTEIN
+  HYDRATION
+  CALORIES
+  STEPS
+  HABIT
+}
+
+enum ChallengeStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+// Preset challenge templates (seeded, not user-created).
+model Challenge {
+  id           String            @id @default(uuid())
+  slug         String            @unique
+  title        String
+  description  String
+  category     ChallengeCategory
+  durationDays Int
+  icon         String            // emoji
+  createdAt    DateTime          @default(now())
+
+  userChallenges UserChallenge[]
+
+  @@index([category])
+  @@index([durationDays])
+}
+
+// A user's participation in a preset or custom challenge.
+model UserChallenge {
+  id              String          @id @default(uuid())
+  userId          String
+  challengeId     String?         // null for custom challenges
+  title           String
+  description     String?
+  durationDays    Int
+  startDate       DateTime        @default(now())
+  status          ChallengeStatus @default(ACTIVE)
+  daysCheckedIn   Int             @default(0)
+  lastCheckInDate DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
