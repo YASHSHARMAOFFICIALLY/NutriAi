@@ -49,6 +49,22 @@ export async function sendVerificationEmail(to: string, token: string): Promise<
   await send(to, 'Confirm your email — NutriAI', html, text);
 }
 
+export async function sendFamilyInviteEmail(
+  to: string,
+  inviterName: string,
+): Promise<void> {
+  const url = `${env.FRONTEND_URL}/family?tab=pending`;
+  const html = layout(
+    `${inviterName} wants to share their nutrition with you`,
+    `${inviterName} invited you to view their meals, streak, and daily progress on NutriAI. You'll only be able to view — never edit or delete their data.`,
+    'Review invite',
+    url,
+    `You can accept or ignore this invite anytime from your NutriAI settings.`,
+  );
+  const text = `${inviterName} invited you to view their NutriAI data. Review: ${url}`;
+  await send(to, `${inviterName} invited you to view their nutrition — NutriAI`, html, text);
+}
+
 export async function sendPasswordResetEmail(to: string, token: string): Promise<void> {
   const url = `${env.FRONTEND_URL}/auth/reset-password?token=${encodeURIComponent(token)}`;
   const html = layout(

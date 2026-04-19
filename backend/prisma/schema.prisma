@@ -39,8 +39,34 @@ model User {
   profile                 UserProfile?
   apiKeys                 ApiKey[]
   userChallenges          UserChallenge[]
+  sharesGiven             PartnerShare[] @relation("ShareOwner")
+  sharesReceived          PartnerShare[] @relation("ShareViewer")
 
   @@index([email])
+}
+
+enum ShareStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+model PartnerShare {
+  id            String      @id @default(uuid())
+  ownerId       String
+  viewerId      String
+  invitedEmail  String
+  status        ShareStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
+  acceptedAt    DateTime?
+  revokedAt     DateTime?
+
+  owner  User @relation("ShareOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  viewer User @relation("ShareViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, viewerId])
+  @@index([ownerId, status])
+  @@index([viewerId, status])
 }
 
 model EmailVerificationToken {
