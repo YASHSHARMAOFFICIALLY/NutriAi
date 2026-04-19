@@ -38,7 +38,8 @@ export const requireScope = (scope: string): RequestHandler => {
   return (req, _res, next) => {
     const key = req.apiKey;
     if (!key) throw new UnauthorizedError('Missing API key');
-    if (key.scopes.length > 0 && !key.scopes.includes(scope)) {
+    // Empty scopes array = no permissions. Use '*' to grant all scopes.
+    if (!key.scopes.includes('*') && !key.scopes.includes(scope)) {
       throw new ForbiddenError(`API key is missing required scope: ${scope}`);
     }
     next();

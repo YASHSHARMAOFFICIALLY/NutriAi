@@ -50,7 +50,7 @@ export const googleCallback: RequestHandler = (req, res, next) => {
 };
 
 export const refresh: RequestHandler = async (req, res) => {
-  const presented = (req.cookies?.[REFRESH_COOKIE] as string | undefined) ?? req.body?.refreshToken;
+  const presented = req.cookies?.[REFRESH_COOKIE] as string | undefined;
   if (!presented) throw new UnauthorizedError('Missing refresh token');
   const tokens = await rotateRefresh(presented);
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
@@ -58,7 +58,7 @@ export const refresh: RequestHandler = async (req, res) => {
 };
 
 export const logout: RequestHandler = async (req, res) => {
-  const presented = (req.cookies?.[REFRESH_COOKIE] as string | undefined) ?? req.body?.refreshToken;
+  const presented = req.cookies?.[REFRESH_COOKIE] as string | undefined;
   if (presented) await revokeRefresh(presented);
   clearRefreshCookie(res);
   res.status(204).end();
