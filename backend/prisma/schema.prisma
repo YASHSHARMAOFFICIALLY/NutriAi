@@ -16,25 +16,58 @@ enum Role {
 }
 
 model User {
-  id         String   @id @default(uuid())
-  googleId   String?  @unique
-  email      String   @unique
-  name       String?
-  avatarUrl  String?
-  role       Role     @default(USER)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String    @id @default(uuid())
+  googleId        String?   @unique
+  email           String    @unique
+  name            String?
+  avatarUrl       String?
+  passwordHash    String?
+  emailVerified   Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  role            Role      @default(USER)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  refreshTokens RefreshToken[]
-  foodQueries   FoodQuery[]
-  tokenUsage    TokenUsage[]
-  meals         Meal[]
-  conversations Conversation[]
-  assets        Asset[]
-  profile       UserProfile?
-  apiKeys       ApiKey[]
+  refreshTokens          RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens    PasswordResetToken[]
+  foodQueries            FoodQuery[]
+  tokenUsage             TokenUsage[]
+  meals                  Meal[]
+  conversations          Conversation[]
+  assets                 Asset[]
+  profile                UserProfile?
+  apiKeys                ApiKey[]
 
   @@index([email])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model RefreshToken {
