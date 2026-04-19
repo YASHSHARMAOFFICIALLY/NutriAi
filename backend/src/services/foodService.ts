@@ -6,6 +6,8 @@ import { canonicalize, canonicalizeText } from '../ai/canonicalize';
 import { aiCacheKey, getCached, setCached } from '../ai/cache';
 import { recordTokenUsage } from '../ai/usage';
 import { getAssetForUser, getAssetReadUrl } from './uploadService';
+import { lookupDb } from '../ai/dbLookup';
+import { lookupUsda } from '../ai/usdaLookup';
 import type { AICallResult, FoodAnalysisInput, FoodAnalysisResult } from '../ai/provider';
 import type { FoodInputType } from '@prisma/client';
 
@@ -21,13 +23,15 @@ interface CachedEnvelope {
 
 const ENDPOINT = 'food.analyze';
 
-export const analyzeFood = async ({ userId, input }: AnalyzeArgs): Promise<AICallResult<FoodAnalysisResult> & { queryId: string }> => {
+export const analyzeFood = async ({
+  userId,
+  input,
+}: AnalyzeArgs): Promise<AICallResult<FoodAnalysisResult> & { queryId: string }> => {
   if (!input.text && !input.imageUrl && !input.assetId) {
     throw new BadRequestError('Provide text, imageUrl, or assetId');
   }
 
-  // If an assetId is supplied, resolve it to a short-lived signed URL and
-  // hash by the immutable S3 key so equivalent uploads dedupe cleanly.
+  // Resolve asset → signed URL + stable hash part.
   let resolvedImageUrl = input.imageUrl ?? undefined;
   let assetHashPart: string | null = null;
   let assetRecordId: string | null = null;
@@ -39,55 +43,119 @@ export const analyzeFood = async ({ userId, input }: AnalyzeArgs): Promise<AICal
     assetRecordId = asset.id;
   }
 
-  const provider = getAIProvider();
+  const started = Date.now();
   const canonicalInput = {
     text: input.text ? canonicalizeText(input.text) : null,
-    // Use the stable asset reference (not the expiring signed URL) in the hash.
     imageUrl: assetHashPart ?? input.imageUrl ?? null,
   };
   const hash = sha256Hex(canonicalize(canonicalInput));
-  const started = Date.now();
+  const isImageQuery = !!resolvedImageUrl;
+  const inputType: FoodInputType = isImageQuery ? 'IMAGE' : 'TEXT';
 
-  // For text inputs the model is deterministic; for vision we use a different model.
-  // We cache per (provider, model, hash). Since model is derived from input type,
-  // checking with the input-type-appropriate model is fine.
-  const expectedModelHint = resolvedImageUrl ? 'vision' : 'text';
+  // ── Tier 0: Redis cache (identical query, any source) ──────────────────────
+  const provider = getAIProvider();
+  const expectedModelHint = isImageQuery ? 'vision' : 'text';
   const cacheKey = aiCacheKey(provider.name, expectedModelHint, hash);
   const cached = await getCached<CachedEnvelope>(cacheKey);
 
-  let result: FoodAnalysisResult;
-  let model: string;
-  let cachedFlag = false;
+  if (cached) {
+    const latencyMs = Date.now() - started;
+    await recordTokenUsage({
+      userId,
+      endpoint: ENDPOINT,
+      provider: 'cache',
+      model: cached.model,
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0 },
+      cached: true,
+      latencyMs,
+    });
+
+    const stored = await prisma.foodQuery.create({
+      data: {
+        userId,
+        assetId: assetRecordId,
+        inputType,
+        inputText: input.text ?? null,
+        imageUrl: input.imageUrl ?? null,
+        inputHash: hash,
+        totalCalories: cached.data.totals.calories,
+        totalProtein: cached.data.totals.protein,
+        totalCarbs: cached.data.totals.carbs,
+        totalFat: cached.data.totals.fat,
+        confidence: cached.data.confidence,
+        provider: 'cache',
+        model: cached.model,
+        cached: true,
+        items: { create: cached.data.items.map(mapItem) },
+      },
+    });
+
+    return {
+      data: cached.data,
+      provider: 'cache',
+      model: cached.model,
+      cached: true,
+      latencyMs,
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0 },
+      queryId: stored.id,
+    };
+  }
+
+  // ── Tier 1: DB history lookup (text queries only) ──────────────────────────
+  // Check if we've previously analysed a high-confidence match for this food.
+  let result: FoodAnalysisResult | null = null;
+  let resultProvider = provider.name;
+  let resultModel = '';
   let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0 };
 
-  if (cached) {
-    result = cached.data;
-    model = cached.model;
-    cachedFlag = true;
-  } else {
+  if (!isImageQuery && input.text) {
+    const dbHit = await lookupDb(input.text);
+    if (dbHit) {
+      result = dbHit.result;
+      resultProvider = 'db';
+      resultModel = 'db-lookup-v1';
+    }
+  }
+
+  // ── Tier 2: USDA FoodData Central (text queries only) ─────────────────────
+  // Free public nutrition database — great for simple single-food queries.
+  if (!result && !isImageQuery && input.text) {
+    const usdaHit = await lookupUsda(input.text);
+    if (usdaHit) {
+      result = usdaHit.result;
+      resultProvider = 'usda';
+      resultModel = 'usda-fdc-v1';
+    }
+  }
+
+  // ── Tier 3: AI provider (OpenAI / Gemini / stub) ───────────────────────────
+  if (!result) {
     const call = await provider.analyzeFood({
       text: input.text,
       imageUrl: resolvedImageUrl,
     });
     result = call.data;
-    model = call.model;
+    resultProvider = provider.name;
+    resultModel = call.model;
     usage = call.usage;
-    await setCached(cacheKey, { data: result, model });
   }
+
+  // Cache the result (keyed to the AI provider so USDA/DB results don't
+  // pollute AI-specific cache slots).
+  const finalCacheKey = aiCacheKey(resultProvider, resultModel, hash);
+  await setCached(finalCacheKey, { data: result, model: resultModel });
 
   const latencyMs = Date.now() - started;
 
   await recordTokenUsage({
     userId,
     endpoint: ENDPOINT,
-    provider: provider.name,
-    model,
+    provider: resultProvider,
+    model: resultModel,
     usage,
-    cached: cachedFlag,
+    cached: false,
     latencyMs,
   });
-
-  const inputType: FoodInputType = resolvedImageUrl ? 'IMAGE' : 'TEXT';
 
   const stored = await prisma.foodQuery.create({
     data: {
@@ -95,8 +163,6 @@ export const analyzeFood = async ({ userId, input }: AnalyzeArgs): Promise<AICal
       assetId: assetRecordId,
       inputType,
       inputText: input.text ?? null,
-      // Persist the caller-provided URL; the signed URL derived from an asset
-      // would be short-lived and of no value in history.
       imageUrl: input.imageUrl ?? null,
       inputHash: hash,
       totalCalories: result.totals.calories,
@@ -104,30 +170,30 @@ export const analyzeFood = async ({ userId, input }: AnalyzeArgs): Promise<AICal
       totalCarbs: result.totals.carbs,
       totalFat: result.totals.fat,
       confidence: result.confidence,
-      provider: provider.name,
-      model,
-      cached: cachedFlag,
-      items: {
-        create: result.items.map((it) => ({
-          name: it.name,
-          quantity: it.quantity ?? null,
-          calories: it.calories,
-          protein: it.protein,
-          carbs: it.carbs,
-          fat: it.fat,
-          confidence: it.confidence ?? null,
-        })),
-      },
+      provider: resultProvider,
+      model: resultModel,
+      cached: false,
+      items: { create: result.items.map(mapItem) },
     },
   });
 
   return {
     data: result,
-    provider: provider.name,
-    model,
-    cached: cachedFlag,
+    provider: resultProvider,
+    model: resultModel,
+    cached: false,
     latencyMs,
     usage,
     queryId: stored.id,
   };
 };
+
+const mapItem = (it: FoodAnalysisResult['items'][number]) => ({
+  name: it.name,
+  quantity: it.quantity ?? null,
+  calories: it.calories,
+  protein: it.protein,
+  carbs: it.carbs,
+  fat: it.fat,
+  confidence: it.confidence ?? null,
+});

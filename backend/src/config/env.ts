@@ -53,7 +53,9 @@ const EnvSchema = z.object({
   UPLOAD_MAX_SIZE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
 
   OPENAI_API_KEY: z.string().optional(),
-  AI_PROVIDER: z.enum(['openai', 'stub']).default('openai'),
+  AI_PROVIDER: z.enum(['openai', 'gemini', 'stub']).default('openai'),
+  GEMINI_API_KEY: z.string().optional(),
+  USDA_API_KEY: z.string().default('DEMO_KEY'),
   AI_MODEL_TEXT: z.string().default('gpt-4o-mini'),
   AI_MODEL_VISION: z.string().default('gpt-4o'),
   AI_MODEL_CHAT: z.string().default('gpt-4o-mini'),
