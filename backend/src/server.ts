@@ -2,11 +2,13 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { logger } from './config/logger';
 import { redis } from './config/redis';
+import { scheduleDigestJobs } from './workers/emailDigest';
 
 const app = createApp();
 
 const server = app.listen(env.PORT, () => {
   logger.info(`nutriai-backend listening on :${env.PORT}`);
+  if (env.NODE_ENV !== 'test') scheduleDigestJobs();
 });
 
 const shutdown = async (signal: string) => {
