@@ -245,9 +245,11 @@ model UserProfile {
   fatTargetG      Int?
   dietaryPrefs    String[]       @default([])
   allergies       String[]       @default([])
-  dailyBudgetUsd  Float?
-  timezone        String?
-  createdAt       DateTime       @default(now())
+  dailyBudgetUsd      Float?
+  timezone            String?
+  notifyStreakRisk     Boolean        @default(false)
+  notifyWeeklyDigest  Boolean        @default(false)
+  createdAt           DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
