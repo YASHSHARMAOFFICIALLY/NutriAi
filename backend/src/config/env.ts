@@ -35,6 +35,13 @@ const EnvSchema = z.object({
   GOOGLE_CALLBACK_URL: z.string().url().default('http://localhost:4000/auth/google/callback'),
 
   FRONTEND_POST_LOGIN_URL: z.string().default('http://localhost:3000/auth/callback'),
+  FRONTEND_URL: z.string().default('http://localhost:3000'),
+
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default('NutriAI <noreply@nutriai.local>'),
+
+  EMAIL_VERIFICATION_TTL_HOURS: z.coerce.number().int().positive().default(24),
+  PASSWORD_RESET_TTL_HOURS: z.coerce.number().int().positive().default(1),
 
   AWS_REGION: z.string().default('us-east-1'),
   AWS_ACCESS_KEY_ID: z.string().optional(),

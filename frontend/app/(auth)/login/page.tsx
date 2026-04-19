@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { Check } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, Check, Warning } from "@phosphor-icons/react/dist/ssr";
 import { devLogin } from "@/lib/api/account";
+import { login } from "@/lib/api/emailAuth";
+import { ApiError } from "@/lib/api/client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const IS_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(API_URL);
@@ -91,6 +94,10 @@ export default function LoginPage() {
   const router = useRouter();
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDevLogin = async () => {
     setDevLoading(true);
@@ -101,6 +108,19 @@ export default function LoginPage() {
     } catch (e) {
       setDevError(e instanceof Error ? e.message : "Dev login failed.");
       setDevLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await login({ email, password });
+      router.replace("/dashboard");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Couldn't sign in. Try again.");
+      setLoading(false);
     }
   };
 
@@ -208,15 +228,61 @@ export default function LoginPage() {
           </motion.a>
 
           {/* Divider */}
-          <div className="my-8 flex items-center gap-4">
+          <div className="my-6 flex items-center gap-4">
             <div className="h-px flex-1 bg-ink/8" />
-            <span className="text-[12px] text-ink-muted">Free forever · No credit card</span>
+            <span className="text-[11px] uppercase tracking-[0.15em] text-ink-muted/70">or</span>
             <div className="h-px flex-1 bg-ink/8" />
           </div>
 
+          {/* Email / password */}
+          <form onSubmit={handleLogin} className="flex flex-col gap-3">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              placeholder="Email"
+              className="w-full rounded-xl border border-ink/12 bg-white px-4 py-3 text-[14px] text-ink outline-none transition-colors placeholder:text-ink/35 focus:border-sage-600"
+            />
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="Password"
+              className="w-full rounded-xl border border-ink/12 bg-white px-4 py-3 text-[14px] text-ink outline-none transition-colors placeholder:text-ink/35 focus:border-sage-600"
+            />
+
+            {error && (
+              <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+                <Warning size={13} weight="fill" className="mt-0.5 shrink-0" />
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-forest py-3 text-[14px] font-semibold text-cream shadow-[0_2px_8px_rgba(31,59,45,0.25)] transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Signing in…" : (<>Sign in <ArrowRight size={13} weight="bold" /></>)}
+            </button>
+
+            <div className="flex items-center justify-between text-[12px]">
+              <Link href="/signup" className="text-ink-muted hover:text-sage-600">
+                Create account
+              </Link>
+              <Link href="/forgot-password" className="text-ink-muted hover:text-sage-600">
+                Forgot password?
+              </Link>
+            </div>
+          </form>
+
           {/* Trust badges */}
-          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
-            {["20 free analyses / mo", "Cancel anytime", "SOC 2 ready"].map((t) => (
+          <div className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2">
+            {["Free forever tier", "Cancel anytime", "SOC 2 ready"].map((t) => (
               <span key={t} className="flex items-center gap-1.5 text-[12px] text-ink-muted">
                 <Check size={11} weight="bold" className="text-sage-600" />
                 {t}
