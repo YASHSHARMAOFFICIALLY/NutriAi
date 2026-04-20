@@ -22,6 +22,7 @@ import { recommendationRouter } from './routes/recommendation.routes';
 import { apiKeyRouter } from './routes/apiKey.routes';
 import { publicRouter } from './routes/public.routes';
 import { challengeRouter } from './routes/challenge.routes';
+import { weightRouter } from './routes/weight.routes';
 
 export const createApp = () => {
   const app = express();
@@ -91,6 +92,7 @@ export const createApp = () => {
   app.use(apiKeyRouter);
   app.use(publicRouter);
   app.use('/challenges', challengeRouter);
+  app.use(weightRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
