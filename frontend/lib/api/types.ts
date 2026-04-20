@@ -154,6 +154,8 @@ export interface UserProfile {
   allergies: string[];
   dailyBudgetUsd: number | null;
   timezone: string | null;
+  notifyStreakRisk: boolean;
+  notifyWeeklyDigest: boolean;
   createdAt: string;
   updatedAt: string;
 }
