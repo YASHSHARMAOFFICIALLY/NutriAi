@@ -35,6 +35,8 @@ export const upsertProfileSchema = z.object({
   allergies: z.array(z.string().min(1).max(40)).max(20).optional(),
   dailyBudgetUsd: z.number().positive().max(10_000).nullable().optional(),
   timezone: z.string().max(60).nullable().optional(),
+  notifyStreakRisk: z.boolean().optional(),
+  notifyWeeklyDigest: z.boolean().optional(),
 });
 
 export type UpsertProfileBody = z.infer<typeof upsertProfileSchema>;
