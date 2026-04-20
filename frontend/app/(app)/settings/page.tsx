@@ -1,21 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { User, SignOut, Trash } from "@phosphor-icons/react/dist/ssr";
+import { User, SignOut, Trash, Check, X } from "@phosphor-icons/react/dist/ssr";
 import { SettingsSection, SettingsRow } from "./_components/SettingsSection";
 import { Toggle } from "./_components/Toggle";
+import { getProfile, updateProfile } from "@/lib/api/profile";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 const GOALS = ["Lose weight", "Maintain weight", "Build muscle", "Eat healthier"];
 const ACTIVITY = ["Sedentary", "Lightly active", "Moderately active", "Very active"];
 
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
 export default function SettingsPage() {
   const [goal, setGoal] = useState("Build muscle");
   const [activity, setActivity] = useState("Moderately active");
   const [calories, setCalories] = useState("1800");
   const [protein, setProtein] = useState("130");
+
+  const [notifyStreakRisk, setNotifyStreakRisk] = useState(false);
+  const [notifyWeeklyDigest, setNotifyWeeklyDigest] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    getProfile()
+      .then((p) => {
+        setNotifyStreakRisk(p.notifyStreakRisk ?? false);
+        setNotifyWeeklyDigest(p.notifyWeeklyDigest ?? false);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    setSaveStatus("saving");
+    setSaveError("");
+    try {
+      await updateProfile({ notifyStreakRisk, notifyWeeklyDigest });
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch {
+      setSaveStatus("error");
+      setSaveError("Couldn't save. Try again.");
+    }
+  };
 
   return (
     <div className="min-h-screen p-8 lg:p-12">
@@ -85,24 +115,44 @@ export default function SettingsPage() {
 
         {/* Notifications */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE, delay: 0.16 }}>
-          <SettingsSection title="Notifications" description="Choose what Ria alerts you about.">
-            <SettingsRow label="Daily summary" sublabel="End-of-day recap from Coach Ria">
-              <Toggle defaultOn />
+          <SettingsSection title="Notifications" description="Email nudges to keep your streak alive.">
+            <SettingsRow label="Streak reminders" sublabel="Email when your streak is at risk (past 7 PM, no meal logged)">
+              <Toggle value={notifyStreakRisk} onChange={setNotifyStreakRisk} />
             </SettingsRow>
-            <SettingsRow label="Streak reminders" sublabel="Nudge if you haven't logged by 8 PM">
-              <Toggle defaultOn />
-            </SettingsRow>
-            <SettingsRow label="Protein alerts" sublabel="Warn when you're falling short" last>
-              <Toggle />
+            <SettingsRow label="Weekly digest" sublabel="Sunday morning summary of last week" last>
+              <Toggle value={notifyWeeklyDigest} onChange={setNotifyWeeklyDigest} />
             </SettingsRow>
           </SettingsSection>
         </motion.div>
 
         {/* Save */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE, delay: 0.22 }}>
-          <button className="flex items-center gap-2 rounded-2xl bg-forest px-6 py-3 text-[14px] font-semibold text-cream shadow-[0_4px_20px_rgba(31,59,45,0.25)] transition-all hover:opacity-90 active:scale-[0.99]">
-            Save changes
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: EASE, delay: 0.22 }}
+          className="flex items-center gap-4"
+        >
+          <button
+            onClick={handleSave}
+            disabled={saveStatus === "saving"}
+            className={`flex items-center gap-2 rounded-2xl px-6 py-3 text-[14px] font-semibold shadow-[0_4px_20px_rgba(31,59,45,0.25)] transition-all active:scale-[0.99] disabled:opacity-60 ${
+              saveStatus === "saved"
+                ? "bg-sage text-cream"
+                : saveStatus === "error"
+                ? "border border-amber-400 bg-white text-amber-700"
+                : "bg-forest text-cream hover:opacity-90"
+            }`}
+          >
+            {saveStatus === "saving" && (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-cream/40 border-t-cream" />
+            )}
+            {saveStatus === "saved" && <Check size={14} weight="bold" />}
+            {saveStatus === "error" && <X size={14} weight="bold" />}
+            {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : saveStatus === "error" ? "Retry" : "Save changes"}
           </button>
+          {saveStatus === "error" && (
+            <p className="text-[13px] text-amber-600">{saveError}</p>
+          )}
         </motion.div>
 
         {/* Danger zone */}
