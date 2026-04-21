@@ -81,6 +81,8 @@ export interface ProfilePayload {
   allergies?: string[];
   dailyBudgetUsd?: number | null;
   timezone?: string | null;
+  notifyStreakRisk?: boolean;
+  notifyWeeklyDigest?: boolean;
 }
 
 // Zod .partial() + exactOptionalPropertyTypes friendly: only write keys the
@@ -102,6 +104,8 @@ const buildWriteData = (p: ProfilePayload): Prisma.UserProfileUpsertArgs['update
   if ('allergies' in p && p.allergies) d.allergies = { set: p.allergies };
   if ('dailyBudgetUsd' in p) d.dailyBudgetUsd = p.dailyBudgetUsd ?? null;
   if ('timezone' in p) d.timezone = p.timezone ?? null;
+  if ('notifyStreakRisk' in p) d.notifyStreakRisk = p.notifyStreakRisk ?? false;
+  if ('notifyWeeklyDigest' in p) d.notifyWeeklyDigest = p.notifyWeeklyDigest ?? false;
   return d;
 };
 
@@ -127,6 +131,8 @@ export const upsertProfile = async (userId: string, payload: ProfilePayload) => 
       allergies: payload.allergies ?? [],
       dailyBudgetUsd: payload.dailyBudgetUsd ?? null,
       timezone: payload.timezone ?? null,
+      notifyStreakRisk: payload.notifyStreakRisk ?? false,
+      notifyWeeklyDigest: payload.notifyWeeklyDigest ?? false,
     },
   });
 

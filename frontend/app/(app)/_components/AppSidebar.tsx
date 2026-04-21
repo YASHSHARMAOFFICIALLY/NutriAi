@@ -10,6 +10,7 @@ import {
   ForkKnife,
   Star,
   Trophy,
+  Barbell,
   Gear,
 } from "@phosphor-icons/react/dist/ssr";
 
@@ -19,6 +20,7 @@ const NAV = [
   { href: "/coach",       label: "Coach Ria",   icon: Sparkle },
   { href: "/analytics",   label: "Analytics",   icon: ChartBar },
   { href: "/meals",       label: "Meals",        icon: ForkKnife },
+  { href: "/weight",      label: "Weight",       icon: Barbell },
   { href: "/challenges",  label: "Challenges",   icon: Trophy },
   { href: "/recommendations", label: "For You", icon: Star },
 ] as const;
