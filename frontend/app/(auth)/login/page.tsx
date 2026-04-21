@@ -1,9 +1,12 @@
 "use client";
 import { useState } from "react";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+
 import { motion } from "framer-motion";
+
+import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Warning } from "@phosphor-icons/react/dist/ssr";
 import { devLogin } from "@/lib/api/account";
 import { login } from "@/lib/api/emailAuth";

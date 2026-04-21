@@ -39,6 +39,7 @@ model User {
   profile                 UserProfile?
   apiKeys                 ApiKey[]
   userChallenges          UserChallenge[]
+  weightEntries           WeightEntry[]
 
   @@index([email])
 }
@@ -245,9 +246,11 @@ model UserProfile {
   fatTargetG      Int?
   dietaryPrefs    String[]       @default([])
   allergies       String[]       @default([])
-  dailyBudgetUsd  Float?
-  timezone        String?
-  createdAt       DateTime       @default(now())
+  dailyBudgetUsd      Float?
+  timezone            String?
+  notifyStreakRisk     Boolean        @default(false)
+  notifyWeeklyDigest  Boolean        @default(false)
+  createdAt           DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -380,4 +383,19 @@ model UserChallenge {
 
   @@index([userId, status])
   @@index([userId, createdAt])
+}
+
+// ── Weight tracking ─────────────────────────────────────────────────────────
+
+model WeightEntry {
+  id         String   @id @default(uuid())
+  userId     String
+  weightKg   Decimal  @db.Decimal(5, 2)
+  note       String?
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt(sort: Desc)])
 }
