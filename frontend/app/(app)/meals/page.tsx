@@ -51,7 +51,12 @@ export default function MealsPage() {
   const [filter, setFilter] = useState<Filter>("week");
 
   const visible = ALL_MEALS.slice(0, FILTER_COUNTS[filter]);
-  let cardIndex = 0;
+  const visibleGroups = visible.map((group, index) => ({
+    group,
+    startIndex: visible
+      .slice(0, index)
+      .reduce((total, previousGroup) => total + previousGroup.meals.length, 0),
+  }));
 
   return (
     <div className="min-h-screen p-8 lg:p-12">
@@ -100,16 +105,14 @@ export default function MealsPage() {
           transition={{ duration: 0.25, ease: EASE }}
           className="flex flex-col gap-8"
         >
-          {visible.map((group) => {
-            const start = cardIndex;
-            cardIndex += group.meals.length;
+          {visibleGroups.map(({ group, startIndex }) => {
             return (
               <DayGroup
                 key={group.label}
                 label={group.label}
                 meals={group.meals}
                 totalKcal={group.meals.reduce((s, m) => s + m.kcal, 0)}
-                startIndex={start}
+                startIndex={startIndex}
               />
             );
           })}

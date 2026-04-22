@@ -37,7 +37,6 @@ export async function lookupDb(text: string): Promise<DbResult | null> {
   // Multi-food queries are not suitable for a single-item DB hit.
   if (/[,+]|\band\b|\bwith\b|\bplus\b/i.test(text)) return null;
 
-  const normalized = canonicalizeText(text);
   const foodOnly = canonicalizeText(stripQuantity(text));
   const grams = parseGramsFromText(text);
 

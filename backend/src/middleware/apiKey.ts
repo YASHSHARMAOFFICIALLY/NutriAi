@@ -1,8 +1,11 @@
 import type { Request, RequestHandler } from 'express';
 import type { ApiKey } from '@prisma/client';
 import { redis } from '../config/redis';
+import { env } from '../config/env';
+import { logger } from '../config/logger';
 import { UnauthorizedError, RateLimitError, ForbiddenError } from '../utils/errors';
 import { findActiveByToken, recordApiUsage, touchLastUsed } from '../services/apiKeyService';
+import { recordRateLimitBypass } from '../services/runtimeMetrics';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -53,14 +56,21 @@ export const apiKeyRateLimit: RequestHandler = async (req, res, next) => {
   if (!key) throw new UnauthorizedError('Missing API key');
 
   const bucket = `rl:apiKey:${key.id}`;
-  const count = await redis.incr(bucket);
-  if (count === 1) {
-    await redis.pexpire(bucket, 60_000);
-  }
-  res.setHeader('X-RateLimit-Limit', String(key.rateLimitPerMin));
-  res.setHeader('X-RateLimit-Remaining', String(Math.max(0, key.rateLimitPerMin - count)));
-  if (count > key.rateLimitPerMin) {
-    throw new RateLimitError();
+  try {
+    const count = await redis.incr(bucket);
+    if (count === 1) {
+      await redis.pexpire(bucket, 60_000);
+    }
+    res.setHeader('X-RateLimit-Limit', String(key.rateLimitPerMin));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, key.rateLimitPerMin - count)));
+    if (count > key.rateLimitPerMin) {
+      throw new RateLimitError();
+    }
+  } catch (err) {
+    if (err instanceof RateLimitError || !env.RATE_LIMIT_FAIL_OPEN) throw err;
+    recordRateLimitBypass();
+    logger.warn({ err, apiKeyId: key.id }, 'api key rate limit bypassed after redis failure');
+    res.setHeader('X-RateLimit-Policy', 'fail-open');
   }
   next();
 };

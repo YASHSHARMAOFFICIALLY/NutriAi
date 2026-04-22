@@ -25,9 +25,14 @@ export default function AuthCallbackPage() {
     const token = params.access_token;
 
     if (!token) {
-      setError("No access token returned. Please try signing in again.");
-      const t = setTimeout(() => router.replace("/login"), 1500);
-      return () => clearTimeout(t);
+      const errorTimer = setTimeout(() => {
+        setError("No access token returned. Please try signing in again.");
+      }, 0);
+      const redirectTimer = setTimeout(() => router.replace("/login"), 1500);
+      return () => {
+        clearTimeout(errorTimer);
+        clearTimeout(redirectTimer);
+      };
     }
 
     setAccessToken(token);
