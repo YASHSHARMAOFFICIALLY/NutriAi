@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Barbell, Trash, TrendDown, TrendUp } from "@phosphor-icons/react/dist/ssr";
+import { EmptyState, ErrorState, InlineNotice } from "../_components/AppState";
 import {
   createWeight,
   deleteWeight,
@@ -54,14 +55,17 @@ export default function WeightPage() {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async (days: number) => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await listWeight({ from: isoAgo(days) });
       setData(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load weight history");
+      setLoadError(e instanceof Error ? e.message : "Failed to load weight history");
     } finally {
       setLoading(false);
     }
@@ -100,12 +104,16 @@ export default function WeightPage() {
   };
 
   const onDelete = async (id: string) => {
+    setDeletingId(id);
+    setError(null);
     try {
       await deleteWeight(id);
       const days = RANGES.find((r) => r.key === range)?.days ?? 90;
       await load(days);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to delete");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -230,7 +238,9 @@ export default function WeightPage() {
           </button>
         </div>
         {error ? (
-          <p className="mt-3 text-[12px] text-red-700">{error}</p>
+          <div className="mt-4">
+            <InlineNotice title="Couldn't save this entry" message={error} />
+          </div>
         ) : null}
       </motion.form>
 
@@ -257,13 +267,21 @@ export default function WeightPage() {
             ))}
           </div>
         </div>
-        {loading ? (
+        {loadError && !loading ? (
+          <ErrorState
+            title="Couldn't load weight history"
+            message={loadError}
+            onRetry={() => load(RANGES.find((r) => r.key === range)?.days ?? 90)}
+            className="min-h-48"
+          />
+        ) : loading ? (
           <div className="h-48 animate-pulse rounded-xl bg-ink/5" />
         ) : entries.length < 2 ? (
-          <div className="flex h-48 flex-col items-center justify-center text-center text-[13px] text-ink-muted">
-            <Barbell size={28} className="mb-2 text-ink-muted/40" />
-            Log at least two entries to see your trend.
-          </div>
+          <EmptyState
+            title="Trend needs two entries"
+            message="Log at least two weights in this range to see your progress line."
+            className="min-h-48"
+          />
         ) : (
           <Chart entries={entries} unit={unit} />
         )}
@@ -278,7 +296,10 @@ export default function WeightPage() {
       >
         <h2 className="mb-4 font-display text-[18px] font-bold text-ink">History</h2>
         {entries.length === 0 ? (
-          <p className="text-[13px] text-ink-muted">No entries in this range.</p>
+          <EmptyState
+            title="No entries in this range"
+            message="Log your first weight above or switch to a wider date range."
+          />
         ) : (
           <ul className="divide-y divide-ink/5">
             <AnimatePresence initial={false}>
@@ -303,7 +324,8 @@ export default function WeightPage() {
                   </div>
                   <button
                     onClick={() => onDelete(e.id)}
-                    className="rounded-full p-2 text-ink-muted transition hover:bg-red-50 hover:text-red-600"
+                    disabled={deletingId === e.id}
+                    className="rounded-full p-2 text-ink-muted transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Delete entry"
                   >
                     <Trash size={16} />

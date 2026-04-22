@@ -13,6 +13,11 @@ const TrustProxySchema = z
     throw new Error('TRUST_PROXY must be false, true, a non-negative integer, or a supported preset');
   });
 
+const OptionalUrlSchema = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().url().optional(),
+);
+
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
@@ -24,6 +29,8 @@ const EnvSchema = z.object({
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
+  RATE_LIMIT_FAIL_OPEN: z.coerce.boolean().default(true),
+  READINESS_CHECK_TIMEOUT_MS: z.coerce.number().int().positive().default(1500),
 
   JWT_ACCESS_SECRET: z.string().min(16),
   JWT_REFRESH_SECRET: z.string().min(16),
@@ -47,7 +54,7 @@ const EnvSchema = z.object({
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_S3_BUCKET: z.string().optional(),
-  AWS_S3_ENDPOINT: z.string().url().optional(),
+  AWS_S3_ENDPOINT: OptionalUrlSchema,
   AWS_S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
   UPLOAD_PRESIGN_TTL_SECONDS: z.coerce.number().int().positive().default(300),
   UPLOAD_MAX_SIZE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
@@ -62,13 +69,16 @@ const EnvSchema = z.object({
   AI_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86_400),
   AI_CHAT_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(3_600),
   AI_CHAT_HISTORY_WINDOW: z.coerce.number().int().positive().default(20),
+  AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(25_000),
+  AI_MAX_CONCURRENT_REQUESTS: z.coerce.number().int().positive().default(20),
+  AI_QUEUE_TIMEOUT_MS: z.coerce.number().int().positive().default(2_000),
+  ENABLE_DIGEST_JOBS: z.coerce.boolean().default(false),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
 
 const parsed = EnvSchema.safeParse(process.env);
 if (!parsed.success) {
-  // eslint-disable-next-line no-console
   console.error('Invalid environment variables:', parsed.error.flatten().fieldErrors);
   process.exit(1);
 }

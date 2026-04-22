@@ -59,7 +59,7 @@ export const openaiProvider: AIProvider = {
         { role: 'system', content: FOOD_ANALYSIS_SYSTEM },
         { role: 'user', content: userContent },
       ],
-    });
+    }, { timeout: env.AI_REQUEST_TIMEOUT_MS });
 
     const raw = completion.choices[0]?.message?.content;
     if (!raw) throw new AppError(502, 'AI_EMPTY_RESPONSE', 'AI returned no content');
@@ -102,7 +102,7 @@ export const openaiProvider: AIProvider = {
       model,
       temperature: 0.5,
       messages,
-    });
+    }, { timeout: env.AI_REQUEST_TIMEOUT_MS });
 
     const reply = completion.choices[0]?.message?.content?.trim();
     if (!reply) throw new AppError(502, 'AI_EMPTY_RESPONSE', 'AI returned no content');

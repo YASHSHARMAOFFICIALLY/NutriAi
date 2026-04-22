@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowClockwise } from "@phosphor-icons/react/dist/ssr";
+import { ErrorState } from "../../_components/AppState";
 import { getDailySummary } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import type { DailySummary, UserProfile } from "@/lib/api/types";
@@ -136,16 +136,12 @@ export function TodayCard() {
 
   if (error && !summary) {
     return (
-      <div className="flex items-center justify-between rounded-3xl border border-white/70 bg-white/60 p-8 backdrop-blur-sm">
-        <p className="text-[13px] text-ink-muted">{error}</p>
-        <button
-          onClick={load}
-          className="flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1.5 text-[12px] font-medium text-ink-muted transition-colors hover:border-sage/40 hover:text-sage-600"
-        >
-          <ArrowClockwise size={12} weight="bold" />
-          Retry
-        </button>
-      </div>
+      <ErrorState
+        title="Couldn't load today's intake"
+        message={error}
+        onRetry={load}
+        className="min-h-[250px]"
+      />
     );
   }
 

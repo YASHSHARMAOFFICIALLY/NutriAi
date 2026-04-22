@@ -1,16 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Trophy,
   Plus,
   CheckCircle,
-  ArrowClockwise,
   X,
   Fire,
   Warning,
 } from "@phosphor-icons/react/dist/ssr";
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from "../_components/AppState";
 import {
   abandonChallenge,
   checkInToday,
@@ -61,13 +61,19 @@ function canCheckIn(uc: UserChallengeDTO): boolean {
 function ActiveChallengeCard({
   uc,
   onCheckIn,
+  onRequestAbandon,
   onAbandon,
+  onCancelAbandon,
   busy,
+  confirmingAbandon,
 }: {
   uc: UserChallengeDTO;
   onCheckIn: () => void;
+  onRequestAbandon: () => void;
   onAbandon: () => void;
+  onCancelAbandon: () => void;
   busy: boolean;
+  confirmingAbandon: boolean;
 }) {
   const progress = pct(uc);
   const checkable = canCheckIn(uc);
@@ -88,7 +94,7 @@ function ActiveChallengeCard({
           </div>
         </div>
         <button
-          onClick={onAbandon}
+          onClick={onRequestAbandon}
           disabled={busy}
           className="shrink-0 rounded-full p-1.5 text-ink-muted/50 transition-colors hover:bg-ink/[0.05] hover:text-ink-muted disabled:opacity-40"
           title="Give up challenge"
@@ -127,6 +133,31 @@ function ActiveChallengeCard({
         <CheckCircle size={16} weight="fill" />
         {busy ? "Saving…" : checkable ? "Check in for today" : "Already checked in today ✓"}
       </button>
+
+      {confirmingAbandon ? (
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-[13px] font-semibold text-amber-800">Give up this challenge?</p>
+          <p className="mt-0.5 text-[12px] text-amber-700">Your current progress will move to past challenges.</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={onAbandon}
+              disabled={busy}
+              className="rounded-full bg-amber-700 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+            >
+              {busy ? "Saving…" : "Give up"}
+            </button>
+            <button
+              type="button"
+              onClick={onCancelAbandon}
+              disabled={busy}
+              className="rounded-full border border-amber-300 px-3 py-1.5 text-[12px] font-semibold text-amber-800 disabled:opacity-50"
+            >
+              Keep going
+            </button>
+          </div>
+        </div>
+      ) : null}
     </motion.div>
   );
 }
@@ -294,6 +325,8 @@ export default function ChallengesPage() {
   const [showCustom, setShowCustom] = useState(false);
   const [customBusy, setCustomBusy] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmingAbandonId, setConfirmingAbandonId] = useState<string | null>(null);
 
   const loadPresets = useCallback(async () => {
     setLoadingPresets(true);
@@ -332,6 +365,7 @@ export default function ChallengesPage() {
 
   const handleStart = async (preset: ChallengePreset) => {
     setBusyId(preset.id);
+    setActionError(null);
     try {
       const uc = await startChallenge({
         challengeId: preset.id,
@@ -341,7 +375,7 @@ export default function ChallengesPage() {
       });
       setMyChallenges((prev) => [uc, ...prev]);
     } catch (e) {
-      alert(e instanceof ApiError ? e.message : "Couldn't start challenge.");
+      setActionError(e instanceof ApiError ? e.message : "Couldn't start challenge.");
     } finally {
       setBusyId(null);
     }
@@ -349,24 +383,26 @@ export default function ChallengesPage() {
 
   const handleCheckIn = async (ucId: string) => {
     setBusyId(ucId);
+    setActionError(null);
     try {
       const updated = await checkInToday(ucId);
       setMyChallenges((prev) => prev.map((c) => (c.id === ucId ? updated : c)));
     } catch (e) {
-      alert(e instanceof ApiError ? e.message : "Check-in failed.");
+      setActionError(e instanceof ApiError ? e.message : "Check-in failed.");
     } finally {
       setBusyId(null);
     }
   };
 
   const handleAbandon = async (ucId: string) => {
-    if (!confirm("Give up this challenge?")) return;
     setBusyId(ucId);
+    setActionError(null);
     try {
       const updated = await abandonChallenge(ucId);
       setMyChallenges((prev) => prev.map((c) => (c.id === ucId ? updated : c)));
+      setConfirmingAbandonId(null);
     } catch (e) {
-      alert(e instanceof ApiError ? e.message : "Couldn't abandon challenge.");
+      setActionError(e instanceof ApiError ? e.message : "Couldn't abandon challenge.");
     } finally {
       setBusyId(null);
     }
@@ -379,6 +415,7 @@ export default function ChallengesPage() {
       const uc = await startChallenge({ title, description, durationDays: days });
       setMyChallenges((prev) => [uc, ...prev]);
       setShowCustom(false);
+      setActionError(null);
     } catch (e) {
       setCustomError(e instanceof ApiError ? e.message : "Couldn't create challenge.");
     } finally {
@@ -397,27 +434,33 @@ export default function ChallengesPage() {
       </header>
 
       <div className="max-w-2xl space-y-8">
+        {actionError ? (
+          <InlineNotice title="Challenge update failed" message={actionError} />
+        ) : null}
 
         {/* Active challenge / completed banner */}
         {loadingMine ? (
-          <div className="h-40 animate-pulse rounded-3xl bg-white/40" />
+          <LoadingState className="min-h-40" />
         ) : mineError ? (
-          <div className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/50 px-5 py-4 text-[13px] text-ink-muted">
-            <span>{mineError}</span>
-            <button onClick={loadMine} className="flex items-center gap-1.5 text-[12px] hover:text-sage-600">
-              <ArrowClockwise size={12} /> Retry
-            </button>
-          </div>
+          <ErrorState title="Couldn't load your challenges" message={mineError} onRetry={loadMine} />
         ) : activeChallenge ? (
           <ActiveChallengeCard
             uc={activeChallenge}
             onCheckIn={() => handleCheckIn(activeChallenge.id)}
+            onRequestAbandon={() => setConfirmingAbandonId(activeChallenge.id)}
             onAbandon={() => handleAbandon(activeChallenge.id)}
+            onCancelAbandon={() => setConfirmingAbandonId(null)}
             busy={busyId === activeChallenge.id}
+            confirmingAbandon={confirmingAbandonId === activeChallenge.id}
           />
         ) : recentCompleted ? (
           <CompletedBanner uc={recentCompleted} />
-        ) : null}
+        ) : (
+          <EmptyState
+            title="No active challenge"
+            message="Pick a preset or create a small personal challenge to build consistency."
+          />
+        )}
 
         {/* Custom challenge form (toggle) */}
         <div>
@@ -471,14 +514,12 @@ export default function ChallengesPage() {
               ))}
             </div>
           ) : presetsError ? (
-            <div className="flex items-center justify-between rounded-xl border border-white/60 bg-white/50 px-5 py-4 text-[13px] text-ink-muted">
-              <span>{presetsError}</span>
-              <button onClick={loadPresets} className="flex items-center gap-1.5 text-[12px] hover:text-sage-600">
-                <ArrowClockwise size={12} /> Retry
-              </button>
-            </div>
+            <ErrorState title="Couldn't load presets" message={presetsError} onRetry={loadPresets} />
           ) : filteredPresets.length === 0 ? (
-            <p className="text-[14px] text-ink-muted">No presets available for this filter.</p>
+            <EmptyState
+              title="No presets for this filter"
+              message="Try another duration or create your own challenge."
+            />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {filteredPresets.map((preset) => (

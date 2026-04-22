@@ -4,6 +4,7 @@ import { getAIProvider } from '../ai';
 import { canonicalize, canonicalizeText } from '../ai/canonicalize';
 import { aiCacheKey, getCached, setCached } from '../ai/cache';
 import { recordTokenUsage } from '../ai/usage';
+import { guardedAiCall } from '../ai/guard';
 import type { FoodAnalysisResult } from '../ai/provider';
 
 interface PublicAnalyzeArgs {
@@ -49,7 +50,7 @@ export const analyzeFoodPublic = async ({ text, imageUrl }: PublicAnalyzeArgs) =
     model = cached.model;
     cachedFlag = true;
   } else {
-    const call = await provider.analyzeFood({ text, imageUrl });
+    const call = await guardedAiCall(() => provider.analyzeFood({ text, imageUrl }));
     data = call.data;
     model = call.model;
     usage = call.usage;

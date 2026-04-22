@@ -205,9 +205,9 @@ export default function LoginPage() {
         <div className="w-full max-w-[380px]">
 
           {/* Mobile-only logo */}
-          <a href="/" className="mb-10 block font-display text-xl font-bold tracking-tight text-ink md:hidden">
+          <Link href="/" className="mb-10 block font-display text-xl font-bold tracking-tight text-ink md:hidden">
             NutriAI
-          </a>
+          </Link>
 
           {/* Headline */}
           <div className="mb-10">

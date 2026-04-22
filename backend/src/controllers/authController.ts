@@ -97,7 +97,6 @@ export const devLogin: RequestHandler = async (req: Request, res) => {
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
   res.json({
     accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
     user: { id: user.id, email: user.email, role: user.role },
   });
 };

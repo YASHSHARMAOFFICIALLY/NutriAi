@@ -3,6 +3,7 @@ export * from "./client";
 export * from "./types";
 
 export * as account from "./account";
+export * as admin from "./admin";
 export * as food from "./food";
 export * as meals from "./meals";
 export * as chat from "./chat";
