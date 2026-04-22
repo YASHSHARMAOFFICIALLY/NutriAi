@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowClockwise, Plus } from "@phosphor-icons/react/dist/ssr";
+import { Plus } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
+import { EmptyState, ErrorState } from "../../_components/AppState";
 import { listMeals } from "@/lib/api/meals";
 import type { MealDTO, MealType } from "@/lib/api/types";
 
@@ -66,41 +68,27 @@ export function TodayMeals() {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-display text-[20px] font-bold text-ink">Meals today</h3>
-        <a
+        <Link
           href="/snap"
           className="flex items-center gap-1.5 rounded-full bg-forest px-4 py-2 text-[13px] font-semibold text-cream transition-opacity hover:opacity-85"
         >
           <Plus size={13} weight="bold" />
           Log meal
-        </a>
+        </Link>
       </div>
 
       {loading && !meals && <Skeleton />}
 
       {error && !meals && (
-        <div className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/50 px-5 py-4 text-[13px] text-ink-muted">
-          <span>{error}</span>
-          <button
-            onClick={load}
-            className="flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-[12px] font-medium transition-colors hover:border-sage/40 hover:text-sage-600"
-          >
-            <ArrowClockwise size={12} weight="bold" />
-            Retry
-          </button>
-        </div>
+        <ErrorState title="Couldn't load today's meals" message={error} onRetry={load} />
       )}
 
       {meals && meals.length === 0 && (
-        <a
-          href="/snap"
-          className="flex items-center justify-between rounded-2xl border border-dashed border-ink/10 px-5 py-6 text-ink-muted transition-colors hover:border-sage/40 hover:text-sage-600"
-        >
-          <div>
-            <p className="text-[14px] font-medium">No meals logged yet</p>
-            <p className="mt-0.5 text-[12px] text-ink-muted/70">Snap your first meal to start tracking.</p>
-          </div>
-          <Plus size={15} className="opacity-50" />
-        </a>
+        <EmptyState
+          title="No meals logged yet"
+          message="Snap your first meal to start tracking today's nutrition."
+          action={{ label: "Log meal", href: "/snap" }}
+        />
       )}
 
       {meals && meals.length > 0 && (

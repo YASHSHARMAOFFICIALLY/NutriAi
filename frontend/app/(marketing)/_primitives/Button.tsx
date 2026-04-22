@@ -39,17 +39,25 @@ export function Button(props: ButtonProps) {
   const classes = `${base} ${SIZE[size]} ${className}`;
 
   if ("href" in props && props.href !== undefined) {
-    const { href, variant: _v, size: _s, className: _c, children: _ch, ...rest } = props;
+    const rest = { ...props } as Partial<AnchorProps>;
+    delete rest.variant;
+    delete rest.size;
+    delete rest.className;
+    delete rest.children;
     return (
-      <a href={href} className={classes} {...rest}>
+      <a href={props.href} className={classes} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}>
         {children}
       </a>
     );
   }
 
-  const { variant: _v, size: _s, className: _c, children: _ch, ...rest } = props as NativeButtonProps;
+  const rest = { ...props } as Partial<NativeButtonProps>;
+  delete rest.variant;
+  delete rest.size;
+  delete rest.className;
+  delete rest.children;
   return (
-    <button className={classes} {...rest}>
+    <button className={classes} {...(rest as ButtonHTMLAttributes<HTMLButtonElement>)}>
       {children}
     </button>
   );

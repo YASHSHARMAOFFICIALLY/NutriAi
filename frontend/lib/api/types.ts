@@ -219,3 +219,73 @@ export interface StartChallengeInput {
   description?: string | null;
   durationDays: number;
 }
+
+// ── /admin ──
+export interface AdminOverview {
+  users: { total: number; newThisWeek: number };
+  meals: { today: number; thisWeek: number };
+  ai: {
+    requestsToday: number;
+    tokensToday: number;
+    costTodayUsd: number;
+    costThisWeekUsd: number;
+  };
+  api: { activeKeys: number; failedCallsToday: number };
+}
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  name: string | null;
+  role: UserRole;
+  createdAt: string;
+  emailVerified: boolean;
+  goal: Goal | null;
+  notifications: { streakRisk: boolean; weeklyDigest: boolean };
+  counts: {
+    meals: number;
+    apiKeys: number;
+    weightEntries: number;
+    challenges: number;
+  };
+  lastMealAt: string | null;
+  ai: { requests: number; totalTokens: number; costUsd: number };
+}
+
+export interface AdminUsersResponse {
+  items: AdminUserRow[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface AdminUsageResponse {
+  summary: {
+    requests: number;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    costUsd: number;
+    avgLatencyMs: number;
+    cacheHitRate: number;
+  };
+  byProvider: Array<{ provider: string; requests: number; totalTokens: number; costUsd: number }>;
+  byModel: Array<{ model: string; requests: number; totalTokens: number; costUsd: number }>;
+  byEndpoint: Array<{ endpoint: string; requests: number; totalTokens: number; costUsd: number }>;
+}
+
+export type AdminActivityType = "meal" | "analysis" | "ai_usage" | "api_usage";
+
+export interface AdminActivityItem {
+  id: string;
+  type: AdminActivityType;
+  createdAt: string;
+  title: string;
+  detail: string;
+  user: { id: string; email: string; name: string | null } | null;
+}
+
+export interface AdminActivityResponse {
+  items: AdminActivityItem[];
+}

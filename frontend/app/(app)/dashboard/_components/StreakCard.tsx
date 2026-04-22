@@ -95,7 +95,7 @@ export function StreakCard() {
       </div>
 
       <div className="mt-5 flex gap-1.5">
-        {dates.map((date, i) => {
+        {dates.map((date) => {
           const logged = loggedByDate.get(date) ?? false;
           const isToday = date === today;
           return (

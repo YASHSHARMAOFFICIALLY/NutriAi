@@ -8,7 +8,7 @@
 //   4. Uncomment the implementation blocks below and remove the stubs.
 
 import { AppError } from '../utils/errors';
-import type { AIProvider, ChatInput, FoodAnalysisInput, FoodAnalysisResult } from './provider';
+import type { AIProvider, ChatInput, FoodAnalysisInput } from './provider';
 
 // ── Stub types (remove once SDK is installed) ────────────────────────────────
 // These keep TS happy without the @google/generative-ai package installed.
@@ -24,23 +24,23 @@ const getClient = (): GeminiClient => {
 };
 
 // ── Model names ──────────────────────────────────────────────────────────────
-const MODEL_TEXT   = 'gemini-1.5-flash';   // fast + cheap for text
-const MODEL_VISION = 'gemini-1.5-pro';     // vision support
+// const MODEL_TEXT = 'gemini-1.5-flash'; // fast + cheap for text
+// const MODEL_VISION = 'gemini-1.5-pro'; // vision support
 
 // ── Food analysis system prompt (mirrors OpenAI version) ────────────────────
-const FOOD_ANALYSIS_SYSTEM = `You are a nutrition expert. Analyze the food described and return ONLY a JSON object with this exact shape:
-{
-  "items": [{ "name": string, "quantity": string|null, "calories": number, "protein": number, "carbs": number, "fat": number, "confidence": number }],
-  "totals": { "calories": number, "protein": number, "carbs": number, "fat": number },
-  "confidence": number
-}
-All macros in grams. Confidence 0-1. Be accurate.`;
+// const FOOD_ANALYSIS_SYSTEM = `You are a nutrition expert. Analyze the food described and return ONLY a JSON object with this exact shape:
+// {
+//   "items": [{ "name": string, "quantity": string|null, "calories": number, "protein": number, "carbs": number, "fat": number, "confidence": number }],
+//   "totals": { "calories": number, "protein": number, "carbs": number, "fat": number },
+//   "confidence": number
+// }
+// All macros in grams. Confidence 0-1. Be accurate.`;
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 export const geminiProvider: AIProvider = {
   name: 'gemini',
 
-  async analyzeFood(input: FoodAnalysisInput) {
+  async analyzeFood(_input: FoodAnalysisInput) {
     void getClient(); // validates key + throws if SDK missing
 
     // ── Implementation (uncomment after installing SDK) ────────────────────
@@ -77,7 +77,7 @@ export const geminiProvider: AIProvider = {
     throw new AppError(503, 'AI_NOT_CONFIGURED', 'Gemini provider is not yet activated');
   },
 
-  async chat(input: ChatInput) {
+  async chat(_input: ChatInput) {
     void getClient();
 
     // ── Implementation (uncomment after installing SDK) ────────────────────
