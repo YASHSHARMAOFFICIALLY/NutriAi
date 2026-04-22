@@ -1,7 +1,11 @@
 "use client";
 import { useState } from "react";
+
 import Link from "next/link";
-import { motion } from "motion/react";
+
+
+import { motion } from "framer-motion";
+
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Warning } from "@phosphor-icons/react/dist/ssr";
 import { devLogin } from "@/lib/api/account";
@@ -201,9 +205,9 @@ export default function LoginPage() {
         <div className="w-full max-w-[380px]">
 
           {/* Mobile-only logo */}
-          <a href="/" className="mb-10 block font-display text-xl font-bold tracking-tight text-ink md:hidden">
+          <Link href="/" className="mb-10 block font-display text-xl font-bold tracking-tight text-ink md:hidden">
             NutriAI
-          </a>
+          </Link>
 
           {/* Headline */}
           <div className="mb-10">

@@ -15,13 +15,11 @@ function Inner() {
   const params = useSearchParams();
   const token = params.get("token");
 
-  const [state, setState] = useState<State>("loading");
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<State>(token ? "loading" : "error");
+  const [error, setError] = useState<string | null>(token ? null : "Missing verification token.");
 
   useEffect(() => {
     if (!token) {
-      setState("error");
-      setError("Missing verification token.");
       return;
     }
     let cancelled = false;

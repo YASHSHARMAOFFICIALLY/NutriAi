@@ -6,6 +6,7 @@ import { getAIProvider } from '../ai';
 import { canonicalize, canonicalizeText } from '../ai/canonicalize';
 import { aiCacheKey, getCached, setCached } from '../ai/cache';
 import { recordTokenUsage } from '../ai/usage';
+import { guardedAiCall } from '../ai/guard';
 import type { ChatMessage, ChatResult } from '../ai/provider';
 import type { Prisma } from '@prisma/client';
 
@@ -89,7 +90,7 @@ export const sendMessage = async ({ userId, conversationId, message, title }: Se
     model = cached.model;
     cachedFlag = true;
   } else {
-    const call = await provider.chat({ messages: outgoing });
+    const call = await guardedAiCall(() => provider.chat({ messages: outgoing }));
     data = call.data;
     model = call.model;
     usage = call.usage;

@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma';
 import { logger } from '../config/logger';
 import type { AIUsage } from './provider';
+import { recordAiUsageMetric } from '../services/runtimeMetrics';
 
 export interface UsageRecord {
   userId: string | null;
@@ -13,6 +14,16 @@ export interface UsageRecord {
 }
 
 export const recordTokenUsage = async (rec: UsageRecord): Promise<void> => {
+  recordAiUsageMetric({
+    endpoint: rec.endpoint,
+    provider: rec.provider,
+    model: rec.model,
+    cached: rec.cached,
+    latencyMs: rec.latencyMs,
+    costUsd: rec.usage.costUsd,
+    totalTokens: rec.usage.totalTokens,
+  });
+
   logger.info(
     {
       tag: 'ai_usage',
