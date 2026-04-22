@@ -8,6 +8,7 @@ import { recordTokenUsage } from '../ai/usage';
 import { getAssetForUser, getAssetReadUrl } from './uploadService';
 import { lookupDb } from '../ai/dbLookup';
 import { lookupUsda } from '../ai/usdaLookup';
+import { guardedAiCall } from '../ai/guard';
 import type { AICallResult, FoodAnalysisInput, FoodAnalysisResult } from '../ai/provider';
 import type { FoodInputType } from '@prisma/client';
 
@@ -130,10 +131,10 @@ export const analyzeFood = async ({
 
   // ── Tier 3: AI provider (OpenAI / Gemini / stub) ───────────────────────────
   if (!result) {
-    const call = await provider.analyzeFood({
+    const call = await guardedAiCall(() => provider.analyzeFood({
       text: input.text,
       imageUrl: resolvedImageUrl,
-    });
+    }));
     result = call.data;
     resultProvider = provider.name;
     resultModel = call.model;
