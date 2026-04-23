@@ -73,6 +73,12 @@ const EnvSchema = z.object({
   AI_MAX_CONCURRENT_REQUESTS: z.coerce.number().int().positive().default(20),
   AI_QUEUE_TIMEOUT_MS: z.coerce.number().int().positive().default(2_000),
   ENABLE_DIGEST_JOBS: z.coerce.boolean().default(false),
+
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_BOT_USERNAME: z.string().optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
+  TELEGRAM_LINK_TOKEN_TTL_MINUTES: z.coerce.number().int().positive().default(10),
+  TELEGRAM_PENDING_ACTION_TTL_MINUTES: z.coerce.number().int().positive().default(15),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

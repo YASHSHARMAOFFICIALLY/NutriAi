@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { SignOut, Check, X } from "@phosphor-icons/react/dist/ssr";
+import { SignOut, Check, X, TelegramLogo, LinkBreak } from "@phosphor-icons/react/dist/ssr";
 import { useRouter } from "next/navigation";
 import { ErrorState, InlineNotice, LoadingState, PrivacyNotice } from "../_components/AppState";
 import { SettingsSection, SettingsRow } from "./_components/SettingsSection";
 import { Toggle } from "./_components/Toggle";
 import { getProfile, updateProfile } from "@/lib/api/profile";
 import { logout } from "@/lib/api/account";
+import { createTelegramLink, getTelegramStatus, unlinkTelegram } from "@/lib/api/telegram";
+import type { TelegramStatus } from "@/lib/api/types";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -31,6 +33,10 @@ export default function SettingsPage() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null);
+  const [telegramLoading, setTelegramLoading] = useState(true);
+  const [telegramBusy, setTelegramBusy] = useState(false);
+  const [telegramError, setTelegramError] = useState("");
 
   const loadProfile = () => {
     setProfileLoading(true);
@@ -44,6 +50,15 @@ export default function SettingsPage() {
         setProfileError("Couldn't load your saved privacy and notification preferences.");
       })
       .finally(() => setProfileLoading(false));
+  };
+
+  const loadTelegramStatus = () => {
+    setTelegramLoading(true);
+    setTelegramError("");
+    getTelegramStatus()
+      .then(setTelegramStatus)
+      .catch(() => setTelegramError("Couldn't load Telegram connection status."))
+      .finally(() => setTelegramLoading(false));
   };
 
   useEffect(() => {
@@ -67,6 +82,23 @@ export default function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    getTelegramStatus()
+      .then((status) => {
+        if (!cancelled) setTelegramStatus(status);
+      })
+      .catch(() => {
+        if (!cancelled) setTelegramError("Couldn't load Telegram connection status.");
+      })
+      .finally(() => {
+        if (!cancelled) setTelegramLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSave = async () => {
     setSaveStatus("saving");
     setSaveError("");
@@ -84,6 +116,36 @@ export default function SettingsPage() {
     setSigningOut(true);
     await logout();
     router.replace("/login");
+  };
+
+  const handleConnectTelegram = async () => {
+    setTelegramBusy(true);
+    setTelegramError("");
+    try {
+      const link = await createTelegramLink();
+      if (!link.deepLink) {
+        setTelegramError("Telegram bot username is not configured on the backend.");
+        return;
+      }
+      window.open(link.deepLink, "_blank", "noopener,noreferrer");
+    } catch {
+      setTelegramError("Couldn't create a Telegram connection link.");
+    } finally {
+      setTelegramBusy(false);
+    }
+  };
+
+  const handleUnlinkTelegram = async () => {
+    setTelegramBusy(true);
+    setTelegramError("");
+    try {
+      await unlinkTelegram();
+      await loadTelegramStatus();
+    } catch {
+      setTelegramError("Couldn't unlink Telegram.");
+    } finally {
+      setTelegramBusy(false);
+    }
   };
 
   return (
@@ -169,6 +231,58 @@ export default function SettingsPage() {
             <SettingsRow label="Weekly digest" sublabel="Sunday morning summary of last week" last>
               <Toggle value={notifyWeeklyDigest} onChange={setNotifyWeeklyDigest} disabled={profileLoading} />
             </SettingsRow>
+          </SettingsSection>
+        </motion.div>
+
+        {/* Telegram */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE, delay: 0.18 }}>
+          <SettingsSection title="Telegram" description="Log meals and check analytics from chat.">
+            <SettingsRow
+              label="Bot connection"
+              sublabel={
+                telegramStatus?.linked
+                  ? `Connected${telegramStatus.account?.username ? ` as @${telegramStatus.account.username}` : ""}`
+                  : "Connect once, then send food photos or text to the bot"
+              }
+            >
+              {telegramLoading ? (
+                <span className="text-[13px] text-ink-muted">Checking…</span>
+              ) : telegramStatus?.linked ? (
+                <span className="rounded-full bg-forest/10 px-3 py-1 text-[11px] font-semibold text-forest">
+                  Connected
+                </span>
+              ) : (
+                <span className="rounded-full border border-ink/10 px-3 py-1 text-[11px] font-semibold text-ink-muted">
+                  Not connected
+                </span>
+              )}
+            </SettingsRow>
+            <SettingsRow label="Daily logging" sublabel="/today, /week, /macros, /streak, food text, and meal photos" last>
+              {telegramStatus?.linked ? (
+                <button
+                  onClick={handleUnlinkTelegram}
+                  disabled={telegramBusy}
+                  className="flex items-center gap-1.5 rounded-xl border border-ink/[0.08] px-4 py-1.5 text-[13px] font-medium text-ink-muted transition hover:border-ink/20 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <LinkBreak size={14} />
+                  {telegramBusy ? "Unlinking…" : "Unlink"}
+                </button>
+              ) : (
+                <button
+                  onClick={handleConnectTelegram}
+                  disabled={telegramBusy || telegramLoading}
+                  className="flex items-center gap-1.5 rounded-xl bg-forest px-4 py-1.5 text-[13px] font-semibold text-cream shadow-[0_4px_20px_rgba(31,59,45,0.18)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <TelegramLogo size={14} weight="fill" />
+                  {telegramBusy ? "Creating…" : "Connect"}
+                </button>
+              )}
+            </SettingsRow>
+            {telegramError ? (
+              <div className="mt-4">
+                <InlineNotice title="Telegram unavailable" message={telegramError} />
+              </div>
+            ) : null}
           </SettingsSection>
         </motion.div>
 

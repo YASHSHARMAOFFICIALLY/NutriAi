@@ -162,6 +162,26 @@ export interface UserProfile {
 
 export type UpdateProfileInput = Partial<Omit<UserProfile, "id" | "userId" | "createdAt" | "updatedAt">>;
 
+// ── /telegram ──
+export interface TelegramStatus {
+  linked: boolean;
+  botUsername: string | null;
+  account: {
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    linkedAt: string;
+    lastSeenAt: string | null;
+  } | null;
+}
+
+export interface TelegramLinkResponse {
+  token: string;
+  expiresAt: string;
+  botUsername: string | null;
+  deepLink: string | null;
+}
+
 // ── /recommendations/meals ──
 export interface MealRecommendation {
   name: string;

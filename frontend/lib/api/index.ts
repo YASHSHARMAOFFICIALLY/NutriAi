@@ -9,4 +9,5 @@ export * as meals from "./meals";
 export * as chat from "./chat";
 export * as analytics from "./analytics";
 export * as profile from "./profile";
+export * as telegram from "./telegram";
 export * as recommendations from "./recommendations";
