@@ -128,7 +128,6 @@ export default function MealsPage() {
                   <p className="mt-1 text-[13px] text-[#5f675f]">{day.meals.length} meals · {totals.calories} kcal · {totals.protein}g protein</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <SourceBadge label={source} />
                   <SourceBadge label="editable items" />
                 </div>
               </div>
@@ -171,8 +170,6 @@ export default function MealsPage() {
               <div>
                 <div className="mb-2 flex flex-wrap gap-2">
                   <SourceBadge label={entry.inputType.toLowerCase()} />
-                  <SourceBadge label={entry.provider} />
-                  <SourceBadge label={entry.cached ? "cached" : "fresh"} />
                   <SourceBadge label={`${Math.round(entry.confidence * 100)}% confidence`} />
                 </div>
                 <p className="text-[15px] font-semibold">{entry.inputText || entry.items.map((item) => item.name).slice(0, 3).join(", ") || "Image analysis"}</p>
