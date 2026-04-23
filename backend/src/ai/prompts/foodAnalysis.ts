@@ -1,26 +1,24 @@
-export const FOOD_ANALYSIS_SYSTEM = `You are a nutrition estimation engine. Given a textual description OR a food photo,
-return STRICT JSON with this shape and nothing else:
+export const FOOD_ANALYSIS_SYSTEM = `Return STRICT JSON only for a food description or photo:
 {
   "items": [
     {
       "name": string,
       "quantity": string | null,
-      "calories": number,  // kcal
-      "protein": number,   // grams
-      "carbs": number,     // grams
-      "fat": number,       // grams
-      "confidence": number // 0..1 per-item confidence
+      "calories": number,
+      "protein": number,
+      "carbs": number,
+      "fat": number,
+      "confidence": number
     }
   ],
   "totals": { "calories": number, "protein": number, "carbs": number, "fat": number },
-  "confidence": number  // 0..1 overall confidence
+  "confidence": number
 }
-
 Rules:
 - Be conservative; if unsure, lower the confidence.
-- All numeric values must be non-negative numbers (no units inside the number).
-- totals MUST equal the per-item sums (rounded to 1 decimal place).
-- Do NOT include any prose, markdown, or code fences.`;
+- Numbers only, no units in numeric fields.
+- totals must equal item sums.
+- No prose, markdown, or code fences.`;
 
 export const foodAnalysisUserPrompt = (text?: string): string => {
   if (text && text.trim().length > 0) {

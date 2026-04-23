@@ -2,6 +2,10 @@ import Link from "next/link";
 import { ArrowRight, Check, ForkKnife } from "@phosphor-icons/react/dist/ssr";
 import type { Meal } from "./mock-data";
 
+function safeNumber(value: number, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
 export function PageHeader({
   eyebrow,
   title,
@@ -12,18 +16,18 @@ export function PageHeader({
   action?: { label: string; href: string };
 }) {
   return (
-    <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
-        <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#0f8b8d]">{eyebrow}</p>
-        <h1 className="mt-1 text-[34px] font-semibold leading-[1.04] md:text-[42px]">{title}</h1>
+        <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-teal">{eyebrow}</p>
+        <h1 className="mt-2 text-[38px] font-bold tracking-tight text-forest md:text-[48px] leading-[1.1]">{title}</h1>
       </div>
       {action ? (
         <Link
           href={action.href}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-[#173c2b] px-4 py-2.5 text-[14px] font-semibold text-white"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-forest px-6 py-3 text-[14px] font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
         >
           {action.label}
-          <ArrowRight size={14} weight="bold" />
+          <ArrowRight size={16} weight="bold" />
         </Link>
       ) : null}
     </header>
@@ -38,7 +42,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`rounded-lg border border-black/10 bg-white shadow-[0_10px_30px_rgba(16,21,16,0.05)] ${className}`}>
+    <section className={`rounded-2xl border border-border bg-surface shadow-md transition-shadow hover:shadow-lg ${className}`}>
       {children}
     </section>
   );
@@ -46,10 +50,12 @@ export function Panel({
 
 export function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <Panel className="p-4">
-      <p className="text-[12px] font-semibold text-[#5f675f]">{label}</p>
-      <p className="mt-2 text-[30px] font-semibold leading-none">{value}</p>
-      {sub ? <p className="mt-2 text-[12px] text-[#5f675f]">{sub}</p> : null}
+    <Panel className="p-6">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p>
+      <div className="mt-3 flex items-baseline gap-1">
+        <p className="text-[34px] font-bold tracking-tight text-forest leading-none">{value}</p>
+      </div>
+      {sub ? <p className="mt-2 text-[12px] font-medium text-muted/80">{sub}</p> : null}
     </Panel>
   );
 }
@@ -67,26 +73,32 @@ export function BudgetBar({
   unit: string;
   tone?: "forest" | "teal" | "sage" | "amber";
 }) {
-  const pct = Math.min(100, Math.round((value / target) * 100));
-  const color = {
-    forest: "#173c2b",
-    teal: "#0f8b8d",
-    sage: "#5f8f72",
-    amber: "#b7791f",
-  }[tone];
+  const safeValue = safeNumber(value);
+  const safeTarget = safeNumber(target);
+  const pct =
+    safeTarget > 0 ? Math.min(100, Math.round((safeValue / safeTarget) * 100)) : 0;
+  const colors = {
+    forest: "bg-forest",
+    teal: "bg-teal",
+    sage: "bg-sage",
+    amber: "bg-[#b7791f]",
+  };
 
   return (
-    <div>
-      <div className="mb-2 flex justify-between text-[13px]">
-        <span className="font-semibold">{label}</span>
-        <span className="text-[#5f675f]">
-          {value}
-          {unit} / {target}
+    <div className="group">
+      <div className="mb-2.5 flex justify-between text-[13px]">
+        <span className="font-bold text-forest">{label}</span>
+        <span className="font-medium text-muted">
+          <span className="text-forest font-bold">{safeValue}</span>
+          {unit} / {safeTarget}
           {unit}
         </span>
       </div>
-      <div className="h-2 rounded-full bg-black/8">
-        <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+      <div className="h-2.5 overflow-hidden rounded-full bg-surface-alt">
+        <div 
+          className={`h-full rounded-full transition-all duration-1000 ease-out ${colors[tone]}`} 
+          style={{ width: `${pct}%` }} 
+        />
       </div>
     </div>
   );
@@ -103,7 +115,7 @@ export function MealLine({ meal, expanded = false, action }: { meal: Meal; expan
           <div className="min-w-0">
             <p className="truncate text-[14px] font-semibold">{meal.title}</p>
             <p className="mt-1 text-[12px] text-[#5f675f]">
-              {meal.loggedAt} · {meal.mealType.toLowerCase()} · {meal.source.toLowerCase()}
+              {meal.loggedAt} · {meal.mealType.toLowerCase()}
             </p>
           </div>
         </div>
@@ -163,5 +175,21 @@ export function CheckRow({ children }: { children: React.ReactNode }) {
       </span>
       <p className="text-[13px] font-semibold">{children}</p>
     </div>
+  );
+}
+
+export function Skeleton({ className = "" }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded-md bg-forest/5 ${className}`} />
+  );
+}
+
+export function StatSkeleton() {
+  return (
+    <Panel className="p-6">
+      <Skeleton className="h-3 w-20" />
+      <Skeleton className="mt-4 h-10 w-32" />
+      <Skeleton className="mt-3 h-3 w-24" />
+    </Panel>
   );
 }

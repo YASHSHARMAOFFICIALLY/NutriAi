@@ -5,10 +5,11 @@ import { PaperPlaneTilt, Sparkle } from "@phosphor-icons/react/dist/ssr";
 import { getStreak } from "@/lib/api/analytics";
 import { listMyChallenge } from "@/lib/api/challenges";
 import { deleteConversation, getConversation, listConversations, sendChatMessage } from "@/lib/api/chat";
+import { ApiError } from "@/lib/api/client";
 import { getDailySummary, listMeals } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import { getMealRecommendations } from "@/lib/api/recommendations";
-import type { ConversationSummary, MealDTO, SendChatResponse } from "@/lib/api/types";
+import type { ConversationSummary, MealDTO } from "@/lib/api/types";
 import { challenge, profile, recommendations, summary, todayMeals } from "../_components/mock-data";
 import type { Meal } from "../_components/mock-data";
 import { BudgetBar, MealLine, PageHeader, Panel } from "../_components/ui";
@@ -67,8 +68,6 @@ export default function CoachPage() {
   const [targets, setTargets] = useState(profile.targets);
   const [topMeal, setTopMeal] = useState(recommendations[0].title);
   const [activeChallenge, setActiveChallenge] = useState(challenge);
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
-  const [replyMeta, setReplyMeta] = useState<SendChatResponse["meta"] | null>(null);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -115,9 +114,8 @@ export default function CoachPage() {
             category: apiChallenges[0].challenge?.category ?? "HABIT",
           });
         }
-        setSource("live");
       })
-      .catch(() => setSource("fallback"));
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -142,11 +140,12 @@ export default function CoachPage() {
       });
       setConversationId(response.conversationId);
       setMessages((current) => [...current, { role: "assistant", text: response.reply }]);
-      setReplyMeta(response.meta);
-      setSource("live");
-    } catch {
-      setMessages((current) => [...current, { role: "assistant", text: "I could not reach the coach API. The live chat will work once the backend session is available." }]);
-      setSource("fallback");
+    } catch (error) {
+      const fallbackMessage =
+        error instanceof ApiError
+          ? error.message
+          : "I could not reach the coach API. The live chat will work once the backend session is available.";
+      setMessages((current) => [...current, { role: "assistant", text: fallbackMessage }]);
     } finally {
       setSending(false);
     }
@@ -160,11 +159,7 @@ export default function CoachPage() {
         role: item.role === "USER" ? "user" : "assistant",
         text: item.content,
       })));
-      setReplyMeta(null);
-      setSource("live");
-    } catch {
-      setSource("fallback");
-    }
+    } catch {}
   }
 
   async function handleDeleteConversation(id: string) {
@@ -174,12 +169,8 @@ export default function CoachPage() {
       if (conversationId === id) {
         setConversationId(null);
         setMessages(fallbackMessages);
-        setReplyMeta(null);
       }
-      setSource("live");
-    } catch {
-      setSource("fallback");
-    }
+    } catch {}
   }
 
   return (
@@ -215,7 +206,7 @@ export default function CoachPage() {
             </span>
             <div>
               <h2 className="text-[20px] font-semibold">Dinner with {liveRemaining.calories} kcal left</h2>
-              <p className="text-[12px] text-[#5f675f]">Uses meals, targets, profile, allergies, and active challenge · {source}</p>
+              <p className="text-[12px] text-[#5f675f]">Uses your meals, targets, preferences, and active challenge.</p>
             </div>
           </div>
 
@@ -231,15 +222,6 @@ export default function CoachPage() {
               );
             })}
           </div>
-          {replyMeta ? (
-            <div className="mt-4 flex flex-wrap gap-2 rounded-md bg-[#f8f8f3] p-3 text-[11px] font-bold text-[#5f675f]">
-              <span>{replyMeta.provider}</span>
-              <span>{replyMeta.model}</span>
-              <span>{replyMeta.cached ? "cached" : "fresh"}</span>
-              <span>{replyMeta.latencyMs}ms</span>
-            </div>
-          ) : null}
-
           <div className="mt-5 flex flex-wrap gap-2">
             {[
               `What fits ${liveRemaining.calories} kcal?`,

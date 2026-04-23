@@ -14,6 +14,10 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function safeNumber(value: number, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
 export default function RecommendationsPage() {
   const [items, setItems] = useState<MealRecommendation[]>([]);
   const [remaining, setRemaining] = useState(fallbackRemaining);
@@ -88,7 +92,7 @@ export default function RecommendationsPage() {
       <Panel className="mb-5 p-5">
         <div className="grid gap-4 lg:grid-cols-[1fr_420px] lg:items-center">
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#0f8b8d]">Remaining budget · {source}</p>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#0f8b8d]">Remaining budget</p>
             <h2 className="mt-1 text-[26px] font-semibold">Dinner candidates are scored against what is left today.</h2>
           </div>
           <div className="grid grid-cols-4 gap-2 text-center">
@@ -99,7 +103,7 @@ export default function RecommendationsPage() {
               [`${remaining.fat}g`, "fat"],
             ].map(([value, label]) => (
               <div key={label} className="rounded-md bg-[#f8f8f3] p-3">
-                <p className="font-semibold">{value}</p>
+                <p className="font-semibold">{typeof value === "number" ? safeNumber(value) : value}</p>
                 <p className="text-[11px] text-[#5f675f]">{label}</p>
               </div>
             ))}
@@ -134,7 +138,6 @@ export default function RecommendationsPage() {
               <div>
                 <div className="mb-3 flex flex-wrap gap-2">
                   <SourceBadge label={rec.mealType.toLowerCase()} />
-                  <SourceBadge label={source} />
                   <SourceBadge label={rec.frequency ? `${rec.frequency}x logged` : "new fit"} />
                   {index === 0 ? <SourceBadge label="best fit" /> : null}
                 </div>

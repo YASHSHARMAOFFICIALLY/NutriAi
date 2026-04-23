@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { stubProvider } from '../src/ai/stubProvider';
 import { chatSendSchema } from '../src/controllers/chatController';
+import { assertChatMessageAllowed, countWords, startOfUtcDay } from '../src/services/chatPolicy';
 
 describe('stubProvider.chat', () => {
   it('echoes the last user message and reports zero usage', async () => {
@@ -55,5 +56,35 @@ describe('chatSendSchema', () => {
     expect(() =>
       chatSendSchema.parse({ message: 'hi', conversationId: 'not-a-uuid' }),
     ).toThrow();
+  });
+});
+
+describe('chatPolicy', () => {
+  it('counts words across repeated whitespace', () => {
+    expect(countWords('  how   many calories are in this meal  ')).toBe(7);
+  });
+
+  it('rejects messages over the configured word limit', () => {
+    expect(() =>
+      assertChatMessageAllowed('one two three four five six', 0, {
+        dailyMessageLimit: 5,
+        maxWordsPerMessage: 5,
+      }),
+    ).toThrow(/limited to 5 words/i);
+  });
+
+  it('rejects messages after the daily quota is exhausted', () => {
+    expect(() =>
+      assertChatMessageAllowed('hello there', 5, {
+        dailyMessageLimit: 5,
+        maxWordsPerMessage: 20,
+      }),
+    ).toThrow(/5 messages per day/i);
+  });
+
+  it('computes the start of the UTC day', () => {
+    expect(startOfUtcDay(new Date('2026-04-23T18:42:11.000Z')).toISOString()).toBe(
+      '2026-04-23T00:00:00.000Z',
+    );
   });
 });

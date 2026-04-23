@@ -40,6 +40,12 @@ model User {
   apiKeys                 ApiKey[]
   userChallenges          UserChallenge[]
   weightEntries           WeightEntry[]
+  telegramAccount         TelegramAccount?
+  telegramLinkTokens      TelegramLinkToken[]
+  telegramPendingActions  TelegramPendingAction[]
+  ownedFamilies           Family[]                @relation("OwnedFamilies")
+  familyMemberships       FamilyMember[]          @relation("FamilyMemberships")
+  familyInvitesSent       FamilyInvite[]          @relation("FamilyInvitesSent")
 
   @@index([email])
 }
@@ -109,9 +115,10 @@ model FoodQuery {
   cached         Boolean       @default(false)
   createdAt      DateTime      @default(now())
 
-  items FoodItem[]
-  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  items                  FoodItem[]
+  user                   User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  asset                  Asset?                  @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  telegramPendingActions TelegramPendingAction[]
 
   @@index([userId, createdAt])
   @@index([inputHash])
@@ -256,6 +263,74 @@ model UserProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// ── Family analytics sharing ───────────────────────────────────────────────
+
+enum FamilyRole {
+  OWNER
+  VIEWER
+}
+
+enum FamilyInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+model Family {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User           @relation("OwnedFamilies", fields: [ownerId], references: [id], onDelete: Cascade)
+  members FamilyMember[]
+  invites FamilyInvite[]
+
+  @@index([ownerId])
+}
+
+model FamilyMember {
+  id              String     @id @default(uuid())
+  familyId        String
+  userId          String
+  role            FamilyRole @default(VIEWER)
+  analyticsAccess Boolean    @default(true)
+  joinedAt        DateTime   @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation("FamilyMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@index([userId])
+  @@index([familyId])
+}
+
+model FamilyInvite {
+  id              String             @id @default(uuid())
+  familyId        String
+  inviterId       String
+  email           String
+  tokenHash       String             @unique
+  role            FamilyRole         @default(VIEWER)
+  analyticsAccess Boolean            @default(true)
+  status          FamilyInviteStatus @default(PENDING)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  family  Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  inviter User   @relation("FamilyInvitesSent", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([inviterId])
+  @@index([email])
+  @@index([status, expiresAt])
+}
+
 enum AssetStatus {
   PENDING
   UPLOADED
@@ -329,6 +404,19 @@ model TokenUsage {
   @@index([endpoint, createdAt])
 }
 
+model AppSettings {
+  id                        String   @id @default("default")
+  aiDailyBudgetUsd          Float?
+  aiChatDailyMessageLimit   Int?
+  aiChatMaxWords            Int?
+  aiChatHistoryWindow       Int?
+  aiChatMaxOutputTokens     Int?
+  aiFoodTextMaxWords        Int?
+  aiImageDailyLimit         Int?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
 // ── Challenges ──────────────────────────────────────────────────────────────
 
 enum ChallengeCategory {
@@ -398,4 +486,55 @@ model WeightEntry {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, recordedAt(sort: Desc)])
+}
+
+// ── Telegram bot integration ───────────────────────────────────────────────
+
+model TelegramAccount {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  telegramUserId String    @unique
+  chatId         String
+  username       String?
+  firstName      String?
+  lastName       String?
+  linkedAt       DateTime  @default(now())
+  lastSeenAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([telegramUserId])
+  @@index([chatId])
+}
+
+model TelegramLinkToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model TelegramPendingAction {
+  id             String   @id @default(uuid())
+  telegramUserId String
+  userId         String
+  foodQueryId    String
+  messageId      String?
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodQuery FoodQuery @relation(fields: [foodQueryId], references: [id], onDelete: Cascade)
+
+  @@index([telegramUserId])
+  @@index([userId])
+  @@index([foodQueryId])
+  @@index([expiresAt])
 }

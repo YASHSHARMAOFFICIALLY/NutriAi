@@ -1,6 +1,7 @@
 import { apiFetch } from "./client";
 import type {
   AdminActivityResponse,
+  AdminAiSettings,
   AdminOverview,
   AdminRuntimeResponse,
   AdminUsageResponse,
@@ -43,4 +44,15 @@ export function getAdminUsage(params: {
 
 export function getAdminActivity(limit = 20): Promise<AdminActivityResponse> {
   return apiFetch<AdminActivityResponse>(`/admin/activity${query({ limit })}`);
+}
+
+export function getAdminAiSettings(): Promise<AdminAiSettings> {
+  return apiFetch<AdminAiSettings>("/admin/ai-settings");
+}
+
+export function updateAdminAiSettings(input: AdminAiSettings): Promise<AdminAiSettings> {
+  return apiFetch<AdminAiSettings>("/admin/ai-settings", {
+    method: "PUT",
+    body: input,
+  });
 }

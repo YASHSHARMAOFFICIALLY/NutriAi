@@ -1,6 +1,15 @@
 import { apiFetch } from "./client";
 import type { CreateMealInput, DailySummary, MealDTO } from "./types";
 
+interface ListMealsResponse {
+  date: string;
+  meals: MealDTO[];
+}
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export async function createMeal(input: CreateMealInput): Promise<MealDTO> {
   const res = await apiFetch<{ meal: MealDTO }>("/meals", {
     method: "POST",
@@ -10,8 +19,10 @@ export async function createMeal(input: CreateMealInput): Promise<MealDTO> {
 }
 
 export function listMeals(date?: string): Promise<MealDTO[]> {
-  const query = date ? `?date=${encodeURIComponent(date)}` : "";
-  return apiFetch<MealDTO[]>(`/meals${query}`);
+  const resolvedDate = date ?? todayISO();
+  return apiFetch<ListMealsResponse>(`/meals?date=${encodeURIComponent(resolvedDate)}`).then(
+    (res) => res.meals,
+  );
 }
 
 export function getDailySummary(date?: string): Promise<DailySummary> {
