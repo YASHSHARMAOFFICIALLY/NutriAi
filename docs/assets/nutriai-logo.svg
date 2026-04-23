@@ -1,0 +1,12 @@
+<svg width="880" height="220" viewBox="0 0 880 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">NutriAI</title>
+  <desc id="desc">NutriAI logo with a nutrition bowl and intelligence spark.</desc>
+  <rect width="880" height="220" rx="42" fill="#101510"/>
+  <circle cx="118" cy="110" r="70" fill="#D7FF68"/>
+  <path d="M71 123c7 25 31 43 60 43s53-18 60-43H71Z" fill="#173C2B"/>
+  <path d="M91 100c6-22 27-38 52-38 7 0 14 1 20 4-8 9-14 20-16 33-16-7-36-6-56 1Z" fill="#0F8B8D"/>
+  <path d="M78 116c24-12 52-14 81-3 12 5 24 6 37 2" stroke="#101510" stroke-width="10" stroke-linecap="round"/>
+  <path d="M145 48l8 18 19 8-19 8-8 19-8-19-18-8 18-8 8-18Z" fill="#FFFFFF"/>
+  <text x="230" y="103" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="800" letter-spacing="0">NutriAI</text>
+  <text x="232" y="147" fill="#D7FF68" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="600" letter-spacing="0">AI-powered nutrition intelligence for consumers, coaches, and APIs</text>
+</svg>
