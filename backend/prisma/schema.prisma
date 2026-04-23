@@ -40,6 +40,9 @@ model User {
   apiKeys                 ApiKey[]
   userChallenges          UserChallenge[]
   weightEntries           WeightEntry[]
+  telegramAccount         TelegramAccount?
+  telegramLinkTokens      TelegramLinkToken[]
+  telegramPendingActions  TelegramPendingAction[]
 
   @@index([email])
 }
@@ -109,9 +112,10 @@ model FoodQuery {
   cached         Boolean       @default(false)
   createdAt      DateTime      @default(now())
 
-  items FoodItem[]
-  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  items                  FoodItem[]
+  user                   User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  asset                  Asset?                  @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  telegramPendingActions TelegramPendingAction[]
 
   @@index([userId, createdAt])
   @@index([inputHash])
@@ -398,4 +402,55 @@ model WeightEntry {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, recordedAt(sort: Desc)])
+}
+
+// ── Telegram bot integration ───────────────────────────────────────────────
+
+model TelegramAccount {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  telegramUserId String    @unique
+  chatId         String
+  username       String?
+  firstName      String?
+  lastName       String?
+  linkedAt       DateTime  @default(now())
+  lastSeenAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([telegramUserId])
+  @@index([chatId])
+}
+
+model TelegramLinkToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model TelegramPendingAction {
+  id             String   @id @default(uuid())
+  telegramUserId String
+  userId         String
+  foodQueryId    String
+  messageId      String?
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodQuery FoodQuery @relation(fields: [foodQueryId], references: [id], onDelete: Cascade)
+
+  @@index([telegramUserId])
+  @@index([userId])
+  @@index([foodQueryId])
+  @@index([expiresAt])
 }
