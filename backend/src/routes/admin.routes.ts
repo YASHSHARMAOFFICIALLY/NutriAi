@@ -3,8 +3,10 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
 import {
   adminActivityHandler,
+  adminAiSettingsHandler,
   adminOverviewHandler,
   adminRuntimeHandler,
+  updateAdminAiSettingsHandler,
   adminUsageHandler,
   adminUsersHandler,
 } from '../controllers/adminController';
@@ -17,3 +19,5 @@ adminRouter.get('/runtime', adminRuntimeHandler);
 adminRouter.get('/users', adminUsersHandler);
 adminRouter.get('/usage', adminUsageHandler);
 adminRouter.get('/activity', adminActivityHandler);
+adminRouter.get('/ai-settings', adminAiSettingsHandler);
+adminRouter.put('/ai-settings', updateAdminAiSettingsHandler);

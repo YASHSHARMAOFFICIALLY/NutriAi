@@ -123,28 +123,97 @@ export interface SendChatResponse {
 }
 
 // ── /analytics ──
-export interface DailyAnalytics {
+export interface DailyAnalyticsPoint {
   date: string;
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
   mealCount: number;
+  calorieTargetPct: number | null;
+}
+
+export interface DailyAnalytics {
+  from: string;
+  to: string;
+  days: DailyAnalyticsPoint[];
+  averages: { calories: number; protein: number; carbs: number; fat: number };
+  targets: {
+    calories: number | null;
+    protein: number | null;
+    carbs: number | null;
+    fat: number | null;
+  };
 }
 
 export interface MacrosSummary {
   from: string;
   to: string;
-  protein: number;
-  carbs: number;
-  fat: number;
-  calories: number;
+  totals: { calories: number; protein: number; carbs: number; fat: number };
+  energyShare: { protein: number; carbs: number; fat: number };
+  targetAdherence: {
+    calories: number | null;
+    protein: number | null;
+    carbs: number | null;
+    fat: number | null;
+  };
 }
 
 export interface StreakInfo {
-  currentStreak: number;
-  longestStreak: number;
+  today: string;
+  loggingStreak: number;
+  calorieTargetStreak: number | null;
   lastLoggedDate: string | null;
+}
+
+// ── /family ──
+export type FamilyRole = "OWNER" | "VIEWER";
+export type FamilyInviteStatus = "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+
+export interface FamilyUser {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+}
+
+export interface FamilyMemberDTO {
+  id: string;
+  familyId: string;
+  role: FamilyRole;
+  analyticsAccess: boolean;
+  joinedAt: string;
+  user: FamilyUser;
+}
+
+export interface FamilyInviteDTO {
+  id: string;
+  familyId: string;
+  email: string;
+  role: FamilyRole;
+  analyticsAccess: boolean;
+  status: FamilyInviteStatus;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface FamilyDTO {
+  id: string;
+  name: string;
+  owner: FamilyUser;
+  myRole: FamilyRole;
+  members: FamilyMemberDTO[];
+  invites: FamilyInviteDTO[];
+}
+
+export interface FamilyOverview {
+  ownedFamily: FamilyDTO | null;
+  families: FamilyDTO[];
+}
+
+export interface FamilyInviteResponse {
+  invite: FamilyInviteDTO;
+  token: string;
 }
 
 // ── /profile ──
@@ -404,6 +473,16 @@ export interface AdminRuntimeResponse {
     cached: boolean;
     createdAt: string;
   }>;
+}
+
+export interface AdminAiSettings {
+  aiDailyBudgetUsd: number;
+  aiChatDailyMessageLimit: number;
+  aiChatMaxWords: number;
+  aiChatHistoryWindow: number;
+  aiChatMaxOutputTokens: number;
+  aiFoodTextMaxWords: number;
+  aiImageDailyLimit: number;
 }
 
 export type AdminActivityType = "meal" | "analysis" | "ai_usage" | "api_usage";

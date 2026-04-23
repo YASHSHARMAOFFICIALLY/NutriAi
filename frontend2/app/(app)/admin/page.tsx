@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, Database, Gauge, Key, Search, Sparkle, Users } from "lucide-react";
-import { getAdminActivity, getAdminOverview, getAdminRuntime, getAdminUsage, listAdminUsers } from "@/lib/api/admin";
-import type { AdminActivityItem, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserRow, UserRole } from "@/lib/api/types";
+import { getAdminActivity, getAdminAiSettings, getAdminOverview, getAdminRuntime, getAdminUsage, listAdminUsers, updateAdminAiSettings } from "@/lib/api/admin";
+import type { AdminActivityItem, AdminAiSettings, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserRow, UserRole } from "@/lib/api/types";
 import { PageHeader, Panel, Stat } from "../_components/ui";
 
 const fallbackUsers = [
@@ -56,6 +56,16 @@ const fallbackRuntime: AdminRuntimeResponse = {
   slowAiCalls: [],
 };
 
+const fallbackAiSettings: AdminAiSettings = {
+  aiDailyBudgetUsd: 2,
+  aiChatDailyMessageLimit: 5,
+  aiChatMaxWords: 100,
+  aiChatHistoryWindow: 8,
+  aiChatMaxOutputTokens: 220,
+  aiFoodTextMaxWords: 40,
+  aiImageDailyLimit: 3,
+};
+
 function timeAgo(value: string | null) {
   if (!value) return "Never";
   const diff = Date.now() - new Date(value).getTime();
@@ -72,6 +82,7 @@ export default function AdminPage() {
   const [usage, setUsage] = useState(fallbackUsage);
   const [runtime, setRuntime] = useState(fallbackRuntime);
   const [activity, setActivity] = useState(fallbackActivity);
+  const [aiSettings, setAiSettings] = useState<AdminAiSettings>(fallbackAiSettings);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<"ALL" | "USER" | "ADMIN">("ALL");
   const [usageFrom, setUsageFrom] = useState("");
@@ -79,6 +90,7 @@ export default function AdminPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [source, setSource] = useState<"live" | "fallback">("fallback");
+  const [savingAiSettings, setSavingAiSettings] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,8 +100,9 @@ export default function AdminPage() {
       getAdminUsage({ from: usageFrom || undefined, to: usageTo || undefined }).catch(() => fallbackUsage),
       getAdminActivity(10).catch(() => ({ items: fallbackActivity })),
       getAdminRuntime().catch(() => fallbackRuntime),
+      getAdminAiSettings().catch(() => fallbackAiSettings),
     ])
-      .then(([apiOverview, apiUsers, apiUsage, apiActivity, apiRuntime]) => {
+      .then(([apiOverview, apiUsers, apiUsage, apiActivity, apiRuntime, apiAiSettings]) => {
         if (cancelled) return;
         setOverview(apiOverview);
         setUsers(apiUsers.items);
@@ -97,6 +110,7 @@ export default function AdminPage() {
         setUsage(apiUsage);
         setActivity(apiActivity.items.length ? apiActivity.items : fallbackActivity);
         setRuntime(apiRuntime);
+        setAiSettings(apiAiSettings);
         setSource("live");
       })
       .catch(() => setSource("fallback"));
@@ -106,6 +120,27 @@ export default function AdminPage() {
   }, [page, role, search, usageFrom, usageTo]);
 
   const filteredUsers = useMemo(() => users, [users]);
+
+  function updateAiField<K extends keyof AdminAiSettings>(key: K, value: string) {
+    const numeric = Number(value);
+    setAiSettings((current) => ({
+      ...current,
+      [key]: Number.isFinite(numeric) ? numeric : current[key],
+    }));
+  }
+
+  async function handleSaveAiSettings() {
+    setSavingAiSettings(true);
+    try {
+      const next = await updateAdminAiSettings(aiSettings);
+      setAiSettings(next);
+      setSource("live");
+    } catch {
+      setSource("fallback");
+    } finally {
+      setSavingAiSettings(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
@@ -272,6 +307,40 @@ export default function AdminPage() {
             <Database size={18} className="mt-0.5 text-[#173c2b]" />
             <p className="text-[13px] leading-6 text-[#5f675f]">Admin reads stay wired to users, activity, AI spend, API usage, and failed calls.</p>
           </div>
+        </Panel>
+        <Panel className="p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <Sparkle size={22} className="text-[#173c2b]" />
+            <h2 className="text-[20px] font-semibold">AI controls</h2>
+          </div>
+          <div className="grid gap-3">
+            {[
+              ["Daily budget USD", "aiDailyBudgetUsd"],
+              ["Chat messages/day", "aiChatDailyMessageLimit"],
+              ["Chat max words", "aiChatMaxWords"],
+              ["Chat history window", "aiChatHistoryWindow"],
+              ["Chat max output tokens", "aiChatMaxOutputTokens"],
+              ["Food text max words", "aiFoodTextMaxWords"],
+              ["Image analyses/day", "aiImageDailyLimit"],
+            ].map(([label, key]) => (
+              <label key={key} className="flex items-center justify-between gap-3 rounded-md bg-[#f8f8f3] p-3">
+                <span className="text-[13px] font-semibold">{label}</span>
+                <input
+                  type="number"
+                  value={String(aiSettings[key as keyof AdminAiSettings])}
+                  onChange={(event) => updateAiField(key as keyof AdminAiSettings, event.target.value)}
+                  className="w-28 rounded-md border border-black/10 bg-white px-3 py-2 text-right text-[13px] font-semibold outline-none"
+                />
+              </label>
+            ))}
+          </div>
+          <button
+            onClick={handleSaveAiSettings}
+            disabled={savingAiSettings}
+            className="mt-4 rounded-md bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white disabled:opacity-50"
+          >
+            {savingAiSettings ? "Saving..." : "Save AI settings"}
+          </button>
         </Panel>
         <Panel className="p-5">
           <div className="mb-4 flex items-center gap-3">

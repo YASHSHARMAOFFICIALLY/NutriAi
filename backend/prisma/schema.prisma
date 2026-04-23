@@ -43,6 +43,9 @@ model User {
   telegramAccount         TelegramAccount?
   telegramLinkTokens      TelegramLinkToken[]
   telegramPendingActions  TelegramPendingAction[]
+  ownedFamilies           Family[]                @relation("OwnedFamilies")
+  familyMemberships       FamilyMember[]          @relation("FamilyMemberships")
+  familyInvitesSent       FamilyInvite[]          @relation("FamilyInvitesSent")
 
   @@index([email])
 }
@@ -260,6 +263,74 @@ model UserProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// ── Family analytics sharing ───────────────────────────────────────────────
+
+enum FamilyRole {
+  OWNER
+  VIEWER
+}
+
+enum FamilyInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+model Family {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User           @relation("OwnedFamilies", fields: [ownerId], references: [id], onDelete: Cascade)
+  members FamilyMember[]
+  invites FamilyInvite[]
+
+  @@index([ownerId])
+}
+
+model FamilyMember {
+  id              String     @id @default(uuid())
+  familyId        String
+  userId          String
+  role            FamilyRole @default(VIEWER)
+  analyticsAccess Boolean    @default(true)
+  joinedAt        DateTime   @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation("FamilyMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@index([userId])
+  @@index([familyId])
+}
+
+model FamilyInvite {
+  id              String             @id @default(uuid())
+  familyId        String
+  inviterId       String
+  email           String
+  tokenHash       String             @unique
+  role            FamilyRole         @default(VIEWER)
+  analyticsAccess Boolean            @default(true)
+  status          FamilyInviteStatus @default(PENDING)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  family  Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  inviter User   @relation("FamilyInvitesSent", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([inviterId])
+  @@index([email])
+  @@index([status, expiresAt])
+}
+
 enum AssetStatus {
   PENDING
   UPLOADED
@@ -331,6 +402,19 @@ model TokenUsage {
 
   @@index([userId, createdAt])
   @@index([endpoint, createdAt])
+}
+
+model AppSettings {
+  id                        String   @id @default("default")
+  aiDailyBudgetUsd          Float?
+  aiChatDailyMessageLimit   Int?
+  aiChatMaxWords            Int?
+  aiChatHistoryWindow       Int?
+  aiChatMaxOutputTokens     Int?
+  aiFoodTextMaxWords        Int?
+  aiImageDailyLimit         Int?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 }
 
 // ── Challenges ──────────────────────────────────────────────────────────────

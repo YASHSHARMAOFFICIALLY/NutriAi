@@ -6,6 +6,8 @@ import { aiCacheKey, getCached, setCached } from '../ai/cache';
 import { recordTokenUsage } from '../ai/usage';
 import { guardedAiCall } from '../ai/guard';
 import type { FoodAnalysisResult } from '../ai/provider';
+import { assertDailyAiBudgetAllowed, assertFoodTextAllowed } from './aiPolicy';
+import { getAiSettings } from './appSettingsService';
 
 interface PublicAnalyzeArgs {
   text?: string;
@@ -24,8 +26,12 @@ const ENDPOINT = 'public.calories';
 // callers get a stateless response; internal usage is metered via ApiUsage
 // (see meterApiUsage middleware).
 export const analyzeFoodPublic = async ({ text, imageUrl }: PublicAnalyzeArgs) => {
+  const aiSettings = await getAiSettings();
   if (!text && !imageUrl) {
     throw new BadRequestError('Provide text or imageUrl');
+  }
+  if (text) {
+    assertFoodTextAllowed(text, aiSettings.aiFoodTextMaxWords);
   }
 
   const provider = getAIProvider();
@@ -36,8 +42,7 @@ export const analyzeFoodPublic = async ({ text, imageUrl }: PublicAnalyzeArgs) =
   const hash = sha256Hex(canonicalize(canonicalInput));
   const started = Date.now();
 
-  const modelHint = imageUrl ? 'vision' : 'text';
-  const cacheKey = aiCacheKey(provider.name, modelHint, hash);
+  const cacheKey = aiCacheKey(provider.name, ENDPOINT, hash);
   const cached = await getCached<CachedEnvelope>(cacheKey);
 
   let data: FoodAnalysisResult;
@@ -50,6 +55,7 @@ export const analyzeFoodPublic = async ({ text, imageUrl }: PublicAnalyzeArgs) =
     model = cached.model;
     cachedFlag = true;
   } else {
+    await assertDailyAiBudgetAllowed(aiSettings.aiDailyBudgetUsd);
     const call = await guardedAiCall(() => provider.analyzeFood({ text, imageUrl }));
     data = call.data;
     model = call.model;

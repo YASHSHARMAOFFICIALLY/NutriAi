@@ -2,6 +2,11 @@ import type { Prisma, Role } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { getAiGuardState } from '../ai/guard';
 import { getRuntimeMetrics } from './runtimeMetrics';
+import {
+  getAiSettings,
+  type UpdateAiSettingsInput,
+  updateAiSettings,
+} from './appSettingsService';
 
 const startOfToday = (): Date => {
   const d = new Date();
@@ -120,6 +125,14 @@ export async function getAdminRuntime() {
       createdAt: row.createdAt,
     })),
   };
+}
+
+export async function getAdminAiSettings() {
+  return getAiSettings();
+}
+
+export async function saveAdminAiSettings(input: UpdateAiSettingsInput) {
+  return updateAiSettings(input);
 }
 
 export async function listAdminUsers(input: AdminListUsersInput) {

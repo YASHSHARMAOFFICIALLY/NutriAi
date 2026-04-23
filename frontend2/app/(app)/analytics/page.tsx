@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getDailyAnalytics, getMacrosSummary, getStreak } from "@/lib/api/analytics";
+import { getFamilyDailyAnalytics, getFamilyMacrosSummary, getFamilyOverview, getFamilyStreak } from "@/lib/api/family";
 import { getProfile } from "@/lib/api/profile";
+import type { FamilyMemberDTO } from "@/lib/api/types";
 import { analytics, profile } from "../_components/mock-data";
 import { PageHeader, Panel, Stat } from "../_components/ui";
 
@@ -22,6 +24,30 @@ export default function AnalyticsPage() {
   const [streak, setStreak] = useState(analytics.streak.loggingStreak);
   const [macroShare, setMacroShare] = useState(analytics.macroShare);
   const [source, setSource] = useState<"live" | "fallback">("fallback");
+  const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState("me");
+  const selectedMember = useMemo(
+    () => familyMembers.find((member) => member.id === selectedMemberId) ?? null,
+    [familyMembers, selectedMemberId],
+  );
+  const viewerLabel = selectedMember ? selectedMember.user.name || selectedMember.user.email : "Me";
+
+  useEffect(() => {
+    let cancelled = false;
+    getFamilyOverview()
+      .then((overview) => {
+        if (cancelled) return;
+        const members = overview.families.flatMap((family) => family.members).filter((member) => member.analyticsAccess);
+        const unique = Array.from(new Map(members.map((member) => [member.id, member])).values());
+        setFamilyMembers(unique);
+      })
+      .catch(() => {
+        if (!cancelled) setFamilyMembers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,23 +55,22 @@ export default function AnalyticsPage() {
     const from = new Date();
     from.setDate(to.getDate() - 6);
     const range = { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+    const dailyRequest = selectedMember ? getFamilyDailyAnalytics(selectedMember.id, range) : getDailyAnalytics(range);
+    const macrosRequest = selectedMember ? getFamilyMacrosSummary(selectedMember.id, range).catch(() => null) : getMacrosSummary(range).catch(() => null);
+    const streakRequest = selectedMember ? getFamilyStreak(selectedMember.id).catch(() => null) : getStreak().catch(() => null);
+    const profileRequest = selectedMember ? Promise.resolve(null) : getProfile().catch(() => null);
 
-    Promise.all([
-      getDailyAnalytics(range),
-      getMacrosSummary(range).catch(() => null),
-      getStreak().catch(() => null),
-      getProfile().catch(() => null),
-    ])
-      .then(([apiDays, macros, apiStreak, apiProfile]) => {
+    Promise.all([dailyRequest, macrosRequest, streakRequest, profileRequest])
+      .then(([daily, macros, apiStreak, apiProfile]) => {
         if (cancelled) return;
         const liveTargets = {
-          calories: apiProfile?.dailyCalorieTarget ?? profile.targets.calories,
-          protein: apiProfile?.proteinTargetG ?? profile.targets.protein,
-          carbs: apiProfile?.carbsTargetG ?? profile.targets.carbs,
-          fat: apiProfile?.fatTargetG ?? profile.targets.fat,
+          calories: daily.targets.calories ?? apiProfile?.dailyCalorieTarget ?? profile.targets.calories,
+          protein: daily.targets.protein ?? apiProfile?.proteinTargetG ?? profile.targets.protein,
+          carbs: daily.targets.carbs ?? apiProfile?.carbsTargetG ?? profile.targets.carbs,
+          fat: daily.targets.fat ?? apiProfile?.fatTargetG ?? profile.targets.fat,
         };
         setTargets(liveTargets);
-        setDays(apiDays.map((day) => ({
+        setDays(daily.days.map((day) => ({
           date: new Date(day.date).toLocaleDateString([], { weekday: "short" }),
           calories: Math.round(day.calories),
           protein: Math.round(day.protein),
@@ -55,21 +80,20 @@ export default function AnalyticsPage() {
           calorieTargetPct: liveTargets.calories ? (day.calories / liveTargets.calories) * 100 : 0,
         })));
         if (macros) {
-          const calories = Math.max(1, macros.calories);
           setMacroShare({
-            protein: Math.round(((macros.protein * 4) / calories) * 100),
-            carbs: Math.round(((macros.carbs * 4) / calories) * 100),
-            fat: Math.round(((macros.fat * 9) / calories) * 100),
+            protein: Math.round(macros.energyShare.protein),
+            carbs: Math.round(macros.energyShare.carbs),
+            fat: Math.round(macros.energyShare.fat),
           });
         }
-        if (apiStreak) setStreak(apiStreak.currentStreak);
+        if (apiStreak) setStreak(apiStreak.loggingStreak);
         setSource("live");
       })
       .catch(() => setSource("fallback"));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedMember]);
 
   const averages = useMemo(() => {
     const count = Math.max(1, days.length);
@@ -113,6 +137,25 @@ export default function AnalyticsPage() {
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Analytics" title="Adherence and streaks" />
+
+      <section className="mb-5 flex flex-col gap-3 rounded-lg border border-black/10 bg-white p-4 shadow-[0_10px_30px_rgba(16,21,16,0.05)] md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-[12px] font-semibold text-[#5f675f]">Viewing</p>
+          <p className="mt-1 text-[20px] font-semibold">{viewerLabel}</p>
+        </div>
+        <select
+          value={selectedMemberId}
+          onChange={(event) => setSelectedMemberId(event.target.value)}
+          className="rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-semibold outline-none"
+        >
+          <option value="me">Me</option>
+          {familyMembers.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.user.name || member.user.email} · {member.role.toLowerCase()}
+            </option>
+          ))}
+        </select>
+      </section>
 
       <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Stat label="Average calories" value={`${Math.round(averages.calories)}`} sub={`${Math.round((averages.calories / targets.calories) * 100)}% of target`} />
