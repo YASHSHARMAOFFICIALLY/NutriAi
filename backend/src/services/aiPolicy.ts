@@ -1,0 +1,62 @@
+import { prisma } from '../config/prisma';
+import { AppError, BadRequestError, RateLimitError } from '../utils/errors';
+import { startOfUtcDay } from './chatPolicy';
+
+export const countWords = (text: string): number => {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+};
+
+export const assertFoodTextAllowed = (text: string, maxWords: number): void => {
+  const words = countWords(text);
+  if (words > maxWords) {
+    throw new BadRequestError(`Food text is limited to ${maxWords} words`, {
+      maxWords,
+      words,
+    });
+  }
+};
+
+export const assertDailyImageAnalysisAllowed = async (
+  userId: string,
+  dailyImageLimit: number,
+  now: Date = new Date(),
+): Promise<void> => {
+  const usedToday = await prisma.foodQuery.count({
+    where: {
+      userId,
+      inputType: 'IMAGE',
+      createdAt: { gte: startOfUtcDay(now) },
+    },
+  });
+
+  if (usedToday >= dailyImageLimit) {
+    throw new RateLimitError(
+      `Daily image analysis limit reached. You can analyze ${dailyImageLimit} photos per day.`,
+    );
+  }
+};
+
+export const assertDailyAiBudgetAllowed = async (
+  dailyBudgetUsd: number,
+  now: Date = new Date(),
+): Promise<void> => {
+  const aggregate = await prisma.tokenUsage.aggregate({
+    _sum: { costUsd: true },
+    where: {
+      createdAt: { gte: startOfUtcDay(now) },
+      costUsd: { gt: 0 },
+    },
+  });
+
+  const spentToday = aggregate._sum.costUsd ?? 0;
+  if (spentToday >= dailyBudgetUsd) {
+    throw new AppError(
+      503,
+      'AI_BUDGET_EXHAUSTED',
+      `AI is temporarily unavailable because today's budget of $${dailyBudgetUsd.toFixed(2)} has been used.`,
+      { dailyBudgetUsd, spentToday: Number(spentToday.toFixed(4)) },
+    );
+  }
+};

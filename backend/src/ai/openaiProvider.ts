@@ -6,6 +6,7 @@ import { computeCostUsd } from './pricing';
 import { FOOD_ANALYSIS_SYSTEM, foodAnalysisUserPrompt } from './prompts/foodAnalysis';
 import { CHAT_SYSTEM } from './prompts/chat';
 import type { AIProvider, ChatInput, FoodAnalysisInput, FoodAnalysisResult } from './provider';
+import { getAiSettings } from '../services/appSettingsService';
 
 const FoodItemSchema = z.object({
   name: z.string(),
@@ -92,6 +93,7 @@ export const openaiProvider: AIProvider = {
   async chat(input: ChatInput) {
     const openai = getClient();
     const model = env.AI_MODEL_CHAT;
+    const aiSettings = await getAiSettings();
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: CHAT_SYSTEM },
@@ -101,6 +103,7 @@ export const openaiProvider: AIProvider = {
     const completion = await openai.chat.completions.create({
       model,
       temperature: 0.5,
+      max_tokens: aiSettings.aiChatMaxOutputTokens,
       messages,
     }, { timeout: env.AI_REQUEST_TIMEOUT_MS });
 

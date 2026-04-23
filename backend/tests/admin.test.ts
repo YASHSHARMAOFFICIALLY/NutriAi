@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   adminActivityQuerySchema,
+  adminAiSettingsSchema,
   adminUsageQuerySchema,
   adminUsersQuerySchema,
 } from '../src/controllers/adminController';
@@ -32,5 +33,19 @@ describe('admin query schemas', () => {
   it('bounds activity limit', () => {
     expect(adminActivityQuerySchema.parse({ limit: '30' }).limit).toBe(30);
     expect(() => adminActivityQuerySchema.parse({ limit: '100' })).toThrow();
+  });
+
+  it('accepts bounded ai settings payloads', () => {
+    const parsed = adminAiSettingsSchema.parse({
+      aiDailyBudgetUsd: '2',
+      aiChatDailyMessageLimit: '5',
+      aiChatMaxWords: '100',
+      aiChatHistoryWindow: '8',
+      aiChatMaxOutputTokens: '220',
+      aiFoodTextMaxWords: '40',
+      aiImageDailyLimit: '3',
+    });
+    expect(parsed.aiDailyBudgetUsd).toBe(2);
+    expect(parsed.aiChatMaxOutputTokens).toBe(220);
   });
 });

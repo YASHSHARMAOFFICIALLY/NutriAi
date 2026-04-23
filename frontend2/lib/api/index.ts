@@ -10,6 +10,7 @@ export * as history from "./history";
 export * as meals from "./meals";
 export * as chat from "./chat";
 export * as analytics from "./analytics";
+export * as family from "./family";
 export * as profile from "./profile";
 export * as recommendations from "./recommendations";
 export * as uploads from "./uploads";
