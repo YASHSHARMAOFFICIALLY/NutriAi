@@ -11,6 +11,12 @@ import { lookupUsda } from '../ai/usdaLookup';
 import { guardedAiCall } from '../ai/guard';
 import type { AICallResult, FoodAnalysisInput, FoodAnalysisResult } from '../ai/provider';
 import type { FoodInputType } from '@prisma/client';
+import {
+  assertDailyAiBudgetAllowed,
+  assertDailyImageAnalysisAllowed,
+  assertFoodTextAllowed,
+} from './aiPolicy';
+import { getAiSettings } from './appSettingsService';
 
 interface AnalyzeArgs {
   userId: string | null;
@@ -28,8 +34,12 @@ export const analyzeFood = async ({
   userId,
   input,
 }: AnalyzeArgs): Promise<AICallResult<FoodAnalysisResult> & { queryId: string }> => {
+  const aiSettings = await getAiSettings();
   if (!input.text && !input.imageUrl && !input.assetId) {
     throw new BadRequestError('Provide text, imageUrl, or assetId');
+  }
+  if (input.text) {
+    assertFoodTextAllowed(input.text, aiSettings.aiFoodTextMaxWords);
   }
 
   // Resolve asset → signed URL + stable hash part.
@@ -52,11 +62,13 @@ export const analyzeFood = async ({
   const hash = sha256Hex(canonicalize(canonicalInput));
   const isImageQuery = !!resolvedImageUrl;
   const inputType: FoodInputType = isImageQuery ? 'IMAGE' : 'TEXT';
+  if (isImageQuery && userId) {
+    await assertDailyImageAnalysisAllowed(userId, aiSettings.aiImageDailyLimit);
+  }
 
   // ── Tier 0: Redis cache (identical query, any source) ──────────────────────
   const provider = getAIProvider();
-  const expectedModelHint = isImageQuery ? 'vision' : 'text';
-  const cacheKey = aiCacheKey(provider.name, expectedModelHint, hash);
+  const cacheKey = aiCacheKey(provider.name, ENDPOINT, hash);
   const cached = await getCached<CachedEnvelope>(cacheKey);
 
   if (cached) {
@@ -131,6 +143,7 @@ export const analyzeFood = async ({
 
   // ── Tier 3: AI provider (OpenAI / Gemini / stub) ───────────────────────────
   if (!result) {
+    await assertDailyAiBudgetAllowed(aiSettings.aiDailyBudgetUsd);
     const call = await guardedAiCall(() => provider.analyzeFood({
       text: input.text,
       imageUrl: resolvedImageUrl,
@@ -143,8 +156,7 @@ export const analyzeFood = async ({
 
   // Cache the result (keyed to the AI provider so USDA/DB results don't
   // pollute AI-specific cache slots).
-  const finalCacheKey = aiCacheKey(resultProvider, resultModel, hash);
-  await setCached(finalCacheKey, { data: result, model: resultModel });
+  await setCached(cacheKey, { data: result, model: resultModel });
 
   const latencyMs = Date.now() - started;
 

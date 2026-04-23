@@ -26,6 +26,8 @@ import { publicRouter } from './routes/public.routes';
 import { challengeRouter } from './routes/challenge.routes';
 import { weightRouter } from './routes/weight.routes';
 import { adminRouter } from './routes/admin.routes';
+import { telegramRouter, telegramWebhookRouter } from './routes/telegram.routes';
+import { familyRouter } from './routes/family.routes';
 
 export const createApp = () => {
   const app = express();
@@ -81,6 +83,7 @@ export const createApp = () => {
   app.get('/health', healthHandler);
   app.get('/ready', readinessHandler);
   app.get('/metrics', metricsHandler);
+  app.use(telegramWebhookRouter);
 
   app.use(rateLimit());
 
@@ -97,6 +100,8 @@ export const createApp = () => {
   app.use(publicRouter);
   app.use('/challenges', challengeRouter);
   app.use(weightRouter);
+  app.use(telegramRouter);
+  app.use(familyRouter);
   app.use('/admin', adminRouter);
 
   app.use(notFoundHandler);

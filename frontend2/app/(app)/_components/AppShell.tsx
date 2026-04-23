@@ -13,6 +13,7 @@ import {
   Sparkle,
   Star,
   Trophy,
+  UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
 import { logout } from "@/lib/api/account";
 import { getDailySummary } from "@/lib/api/meals";
@@ -25,6 +26,7 @@ const nav = [
   { href: "/recommendations", label: "Recs", icon: Star },
   { href: "/meals", label: "Meals", icon: ForkKnife },
   { href: "/analytics", label: "Analytics", icon: ChartBar },
+  { href: "/family", label: "Family", icon: UsersThree },
   { href: "/challenges", label: "Challenges", icon: Trophy },
   { href: "/weight", label: "Weight", icon: Barbell },
   { href: "/settings", label: "Settings", icon: Gear },
@@ -37,7 +39,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [totals, setTotals] = useState({ calories: 0, protein: 0 });
   const [targets, setTargets] = useState({ calories: 2150, protein: 150 });
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
 
   useEffect(() => {
     let cancelled = false;
@@ -57,9 +58,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             protein: profile.proteinTargetG ?? 150,
           });
         }
-        setSource("live");
       })
-      .catch(() => setSource("fallback"));
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -70,31 +70,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     protein: Math.max(0, targets.protein - totals.protein),
   }), [targets, totals]);
 
-  async function handleLogout() {
-    await logout();
-    router.push("/login");
-  }
-
   return (
-    <div className="min-h-screen bg-[#f8f8f3] text-[#101510]">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[264px] border-r border-black/10 bg-[#f8f8f3]/88 backdrop-blur-xl lg:flex lg:flex-col">
-        <div className="flex h-18 items-center border-b border-black/10 px-6">
-          <Link href="/dashboard" className="flex items-center gap-3 font-semibold">
-            <span className="grid h-9 w-9 place-items-center rounded-md bg-[#173c2b] text-white">
-              <ForkKnife size={18} weight="bold" />
+    <div className="min-h-screen bg-[#f1f4f1] text-foreground selection:bg-teal/10">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[300px] border-r border-border bg-surface lg:flex lg:flex-col shadow-sm">
+        <div className="flex h-24 items-center px-10">
+          <Link href="/dashboard" className="flex items-center gap-4 group">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-forest text-white shadow-premium transition-transform group-hover:scale-110">
+              <ForkKnife size={22} weight="bold" />
             </span>
             <span>
-              <span className="block text-[17px] leading-none">NutriAI</span>
-              <span className="mt-1 block text-[11px] font-medium text-[#5f675f]">Meals · targets · coach</span>
+              <span className="block text-[20px] font-bold tracking-tight text-forest">NutriAI</span>
+              <span className="block text-[11px] font-bold uppercase tracking-[0.15em] text-teal/80">Premium Elite</span>
             </span>
           </Link>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-5">
-          <div className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f675f]">
-            Today
+        <nav className="flex-1 overflow-y-auto px-6 py-10 custom-scrollbar">
+          <div className="mb-6 px-4 text-[11px] font-bold uppercase tracking-[0.25em] text-muted opacity-50">
+            Navigation
           </div>
-          <ul className="space-y-1">
+          <ul className="space-y-2.5">
             {nav.map(({ href, label, icon: Icon }) => {
               const active = pathname === href;
               return (
@@ -102,13 +97,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <Link
                     href={href}
                     className={[
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-semibold transition",
+                      "flex items-center gap-4 rounded-2xl px-5 py-4 text-[15px] font-bold transition-all duration-300",
                       active
-                        ? "bg-[#173c2b] text-white shadow-[0_10px_30px_rgba(23,60,43,0.18)]"
-                        : "text-[#5f675f] hover:bg-white hover:text-[#101510]",
+                        ? "bg-forest text-white shadow-premium translate-x-1"
+                        : "text-muted hover:bg-surface-alt hover:text-forest hover:translate-x-1",
                     ].join(" ")}
                   >
-                    <Icon size={18} weight={active ? "fill" : "regular"} />
+                    <Icon size={22} weight={active ? "fill" : "bold"} />
                     {label}
                   </Link>
                 </li>
@@ -117,41 +112,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </ul>
         </nav>
 
-        <div className="border-t border-black/10 p-4">
-          <div className="rounded-xl bg-white p-4 shadow-[0_14px_40px_rgba(16,21,16,0.08)]">
-            <p className="text-[12px] font-semibold text-[#5f675f]">Today · {source}</p>
-            <p className="mt-2 text-[15px] font-semibold leading-5">{remaining.calories} kcal left · {remaining.protein}g protein gap.</p>
-            <Link href="/recommendations" className="mt-4 inline-flex text-[12px] font-bold text-[#0f8b8d]">
-              See meals
-            </Link>
-            <button onClick={handleLogout} className="mt-3 block text-[12px] font-bold text-[#b7791f]">
-              Logout
-            </button>
+        <div className="p-6">
+          <div className="rounded-[24px] bg-white p-6 border border-border shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Daily Target</p>
+              <span className="h-2 w-2 rounded-full bg-teal animate-pulse" />
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[22px] font-bold text-forest">{remaining.calories}</span>
+              <span className="text-[13px] font-bold text-muted uppercase">kcal left</span>
+            </div>
+            <div className="mt-6 flex flex-col gap-3">
+              <Link href="/recommendations" className="rounded-xl bg-surface-alt py-3 text-center text-[13px] font-bold text-forest transition-colors hover:bg-forest hover:text-white">
+                View Recommendations
+              </Link>
+            </div>
           </div>
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-[#f8f8f3]/86 px-5 py-3 backdrop-blur-xl lg:hidden">
-        <div className="flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <span className="grid h-8 w-8 place-items-center rounded-md bg-[#173c2b] text-white">
-              <ForkKnife size={16} weight="bold" />
-            </span>
-            NutriAI
-          </Link>
-          <Link href="/snap" className="rounded-md bg-[#d7ff68] px-4 py-2 text-[13px] font-bold text-[#101510]">
-            Log meal
-          </Link>
-          <button onClick={handleLogout} className="rounded-md border border-black/10 px-3 py-2 text-[12px] font-bold text-[#5f675f]">
-            Logout
-          </button>
+      <main className="pb-24 lg:ml-[300px] lg:pb-0 min-h-screen">
+        <div className="mx-auto max-w-[1600px] w-full">
+          {children}
         </div>
-      </header>
+      </main>
 
-      <main className="pb-24 lg:ml-[264px] lg:pb-0">{children}</main>
-
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-black/10 bg-[#f8f8f3]/92 px-2 py-2 backdrop-blur-xl lg:hidden">
-        <div className="grid grid-cols-5 gap-1">
+      <nav className="fixed inset-x-0 bottom-0 z-50 glass border-t border-border px-3 py-3 lg:hidden">
+        <div className="grid grid-cols-5 gap-2">
           {mobileNav.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
@@ -159,12 +146,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={href}
                 href={href}
                 className={[
-                  "flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[10px] font-semibold",
-                  active ? "bg-[#173c2b] text-white" : "text-[#5f675f]",
+                  "flex h-12 flex-col items-center justify-center gap-1 rounded-xl transition-all",
+                  active ? "bg-forest text-white shadow-premium" : "text-muted",
                 ].join(" ")}
               >
-                <Icon size={18} weight={active ? "fill" : "regular"} />
-                {label}
+                <Icon size={20} weight={active ? "fill" : "bold"} />
+                <span className="text-[10px] font-bold">{label}</span>
               </Link>
             );
           })}
