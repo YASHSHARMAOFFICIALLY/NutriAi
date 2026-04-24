@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Lora } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -10,13 +10,6 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
-});
-
-const lora = Lora({
-  variable: "--font-serif",
-  subsets: ["latin"],
-  style: ["italic"],
-  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -30,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${lora.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>{children}</body>
     </html>
   );
