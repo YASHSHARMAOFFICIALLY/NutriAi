@@ -22,3 +22,11 @@ coverage/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Local AI/editor agent state
+.agents/
+.claude/
+**/.claude/
+
+# Framework generated type files
+next-env.d.ts
