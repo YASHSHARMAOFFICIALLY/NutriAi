@@ -123,12 +123,16 @@ export default function DashboardPage() {
     fat: Math.max(0, safeNumber(targets.fat) - safeNumber(totals.fat)),
   }), [targets, totals]);
 
+  const hasTargets = safeNumber(targets.calories) > 0;
+  const hasMeals = meals.length > 0;
   const greeting = useMemo(() => getGreeting(), []);
   const recommendationTitle =
-    liveRec?.items.map((item) => item.name).join(", ") || "No recommendation yet";
+    liveRec?.items.map((item) => item.name).join(", ") || (hasMeals ? "Build your next plate" : "Log your first meal");
   const recommendationReason = liveRec
     ? `Score ${Math.round(liveRec.score * 100)}. ${liveRec.reasons.join(", ")}.`
-    : "Save a few meals to unlock ranked recommendations from your own history.";
+    : hasMeals
+      ? "Save a few more meals to unlock ranked suggestions from your own history."
+      : "Start with a quick scan or manual log, then this area will turn into a personalized next step.";
   const challengeTitle = activeChallenge?.title ?? "No active challenge";
   const challengeDays = activeChallenge?.daysCheckedIn ?? 0;
   const challengeDuration = activeChallenge?.durationDays ?? 0;
@@ -177,17 +181,17 @@ export default function DashboardPage() {
       className="mx-auto max-w-7xl px-6 py-10 lg:px-10"
     >
       <PageHeader 
-        eyebrow={`${greeting}, ready to hit your targets?`} 
-        title="Intelligence Dashboard" 
-        action={{ label: "Analyze Meal", href: "/snap" }} 
+        eyebrow={`${greeting} · ${hasMeals ? "Today is in progress" : "Start today's log"}`}
+        title="Today's nutrition"
+        action={{ label: "Scan meal", href: "/snap" }}
       />
 
       <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Calories left", value: `${remaining.calories}`, sub: `${totals.calories}/${targets.calories} kcal` },
-          { label: "Protein gap", value: `${remaining.protein}g`, sub: `${totals.protein}/${targets.protein}g logged` },
-          { label: "Logging streak", value: `${streak}d`, sub: "Keep it up!" },
-          { label: "Goal Progress", value: `${goalProgress}%`, sub: "Daily target" },
+          { label: "Calories left", value: hasTargets ? `${remaining.calories}` : "Set target", sub: hasTargets ? `${totals.calories}/${targets.calories} kcal` : "Add targets in settings" },
+          { label: "Protein gap", value: targets.protein > 0 ? `${remaining.protein}g` : "Set target", sub: targets.protein > 0 ? `${totals.protein}/${targets.protein}g logged` : "Add protein target" },
+          { label: "Logging streak", value: `${streak}d`, sub: streak > 0 ? "Keep the chain going" : "Log today to start" },
+          { label: "Goal progress", value: hasTargets ? `${goalProgress}%` : "Pending", sub: hasTargets ? "Daily target" : "Waiting for targets" },
         ].map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
             <Stat {...stat} />
@@ -206,17 +210,14 @@ export default function DashboardPage() {
                     <h2 className="mt-4 text-[32px] font-bold leading-tight tracking-tight">{recommendationTitle}</h2>
                     <p className="mt-4 text-[15px] leading-relaxed text-white/80">{recommendationReason}</p>
                     <div className="mt-8 flex flex-wrap gap-3">
-                      <Link href="/recommendations" className="rounded-xl bg-lime px-6 py-3 text-[14px] font-bold text-forest shadow-lg transition-transform hover:scale-105 active:scale-95">
-                        Accept Recommendation
+                      <Link href={liveRec ? "/recommendations" : "/snap"} className="rounded-xl bg-lime px-6 py-3 text-[14px] font-bold text-forest shadow-lg transition-transform hover:scale-105 active:scale-95">
+                        {liveRec ? "Open suggestion" : "Scan meal"}
                       </Link>
-                      <Link href="/coach" className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-[14px] font-bold backdrop-blur-sm transition-colors hover:bg-white/10">
-                        Ask Ria
+                      <Link href={hasMeals ? "/coach" : "/meals"} className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-[14px] font-bold backdrop-blur-sm transition-colors hover:bg-white/10">
+                        {hasMeals ? "Ask Ria" : "Open diary"}
                       </Link>
                     </div>
                   </div>
-                  {/* Decorative element */}
-                  <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-lime/10 blur-3xl" />
-                  <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-teal/20 blur-3xl" />
                 </div>
                 <div className="bg-surface p-8">
                   <div className="mb-8 flex items-center justify-between">
@@ -237,7 +238,7 @@ export default function DashboardPage() {
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-[24px] font-bold text-forest tracking-tight">Recent Logs</h2>
               <Link href="/meals" className="text-[14px] font-bold text-teal hover:underline underline-offset-4 decoration-2">
-                Open Full Diary →
+                Open full diary
               </Link>
             </div>
             <div className="space-y-4">
@@ -250,7 +251,11 @@ export default function DashboardPage() {
               ) : (
                 <div className="rounded-2xl border-2 border-dashed border-border bg-surface-alt p-8 text-center">
                   <p className="text-[15px] font-bold text-forest">No meals logged today</p>
-                  <p className="mt-2 text-[13px] text-muted">Ready to track your first meal?</p>
+                  <p className="mt-2 text-[13px] text-muted">Use a photo scan or add a meal manually to fill this timeline.</p>
+                  <div className="mt-5 flex flex-wrap justify-center gap-3">
+                    <Link href="/snap" className="rounded-xl bg-forest px-4 py-3 text-[13px] font-bold text-white">Scan meal</Link>
+                    <Link href="/meals" className="rounded-xl border border-border bg-white px-4 py-3 text-[13px] font-bold text-forest">Open diary</Link>
+                  </div>
                 </div>
               )}
             </div>
@@ -301,8 +306,8 @@ export default function DashboardPage() {
                   />
                 )) : <p className="col-span-7 text-[13px] font-semibold text-muted">Start a challenge to track progress.</p>}
               </div>
-              <Link href="/challenges" className="mt-6 block rounded-xl bg-forest py-3.5 text-center text-[14px] font-bold text-white shadow-premium transition-transform hover:scale-[1.02] active:scale-98">
-                Check In Now
+              <Link href="/challenges" className="mt-6 block rounded-xl bg-forest py-3.5 text-center text-[14px] font-bold text-white shadow-premium transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                {activeChallenge ? "Check in now" : "Start challenge"}
               </Link>
             </div>
           </Panel>
