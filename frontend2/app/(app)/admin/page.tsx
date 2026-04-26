@@ -61,12 +61,34 @@ function timeAgo(value: string | null) {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+function formatDateTime(value: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString();
+}
+
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-md bg-[#f8f8f3] p-3">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5f675f]">{label}</p>
       <div className="mt-1 break-words text-[13px] font-semibold">{value ?? "-"}</div>
     </div>
+  );
+}
+
+function DetailList({
+  title,
+  empty,
+  children,
+}: {
+  title: string;
+  empty: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <h3 className="mb-3 text-[18px] font-semibold">{title}</h3>
+      {empty ? <p className="rounded-md bg-[#f8f8f3] p-3 text-[13px] font-semibold text-[#5f675f]">No records yet.</p> : children}
+    </section>
   );
 }
 
@@ -333,15 +355,24 @@ export default function AdminPage() {
 
           <div className="grid gap-5 p-5 xl:grid-cols-[1fr_420px]">
             <div className="space-y-5">
+              <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Field label="Sessions" value={selectedUser._count.sessions} />
+                <Field label="Meals" value={selectedUser._count.meals} />
+                <Field label="Weight logs" value={selectedUser._count.weightEntries} />
+                <Field label="Developer keys" value={selectedUser._count.apiKeys} />
+              </section>
+
               <section>
                 <h3 className="mb-3 text-[18px] font-semibold">Identity and permission</h3>
                 <div className="grid gap-3 md:grid-cols-3">
                   <Field label="Name" value={selectedUser.name || "-"} />
                   <Field label="Role" value={selectedUser.role} />
                   <Field label="Verified" value={selectedUser.emailVerified ? "Yes" : "No"} />
+                  <Field label="Verified at" value={formatDateTime(selectedUser.emailVerifiedAt)} />
                   <Field label="Google ID" value={selectedUser.googleId || "-"} />
-                  <Field label="Created" value={new Date(selectedUser.createdAt).toLocaleString()} />
-                  <Field label="Updated" value={new Date(selectedUser.updatedAt).toLocaleString()} />
+                  <Field label="Avatar" value={selectedUser.avatarUrl ? "Available" : "-"} />
+                  <Field label="Created" value={formatDateTime(selectedUser.createdAt)} />
+                  <Field label="Updated" value={formatDateTime(selectedUser.updatedAt)} />
                 </div>
               </section>
 
@@ -357,8 +388,9 @@ export default function AdminPage() {
                         <Field label="Device type" value={session.deviceType || "-"} />
                         <Field label="OS" value={session.os || "-"} />
                         <Field label="Browser" value={session.browser || "-"} />
-                        <Field label="First seen" value={new Date(session.createdAt).toLocaleString()} />
-                        <Field label="Last seen" value={new Date(session.lastSeenAt).toLocaleString()} />
+                        <Field label="First seen" value={formatDateTime(session.createdAt)} />
+                        <Field label="Last seen" value={formatDateTime(session.lastSeenAt)} />
+                        <Field label="Access expires" value={formatDateTime(session.refreshToken.expiresAt)} />
                         <Field label="Session" value={session.revokedAt ? "Revoked" : "Active"} />
                       </div>
                       <details className="mt-3">
@@ -378,6 +410,7 @@ export default function AdminPage() {
                   <Field label="Birth year" value={selectedUser.profile?.birthYear || "-"} />
                   <Field label="Height" value={selectedUser.profile?.heightCm ? `${selectedUser.profile.heightCm} cm` : "-"} />
                   <Field label="Weight" value={selectedUser.profile?.weightKg ? `${selectedUser.profile.weightKg} kg` : "-"} />
+                  <Field label="Target weight" value={selectedUser.profile?.targetWeightKg ? `${selectedUser.profile.targetWeightKg} kg` : "-"} />
                   <Field label="Goal" value={selectedUser.profile?.goal || "-"} />
                   <Field label="Activity" value={selectedUser.profile?.activityLevel || "-"} />
                   <Field label="Timezone" value={selectedUser.profile?.timezone || "-"} />
@@ -386,20 +419,48 @@ export default function AdminPage() {
                   <Field label="Protein" value={selectedUser.profile?.proteinTargetG ?? "-"} />
                   <Field label="Carbs" value={selectedUser.profile?.carbsTargetG ?? "-"} />
                   <Field label="Fat" value={selectedUser.profile?.fatTargetG ?? "-"} />
+                  <Field label="Diet prefs" value={selectedUser.profile?.dietaryPrefs.length ? selectedUser.profile.dietaryPrefs.join(", ") : "-"} />
+                  <Field label="Allergies" value={selectedUser.profile?.allergies.length ? selectedUser.profile.allergies.join(", ") : "-"} />
+                  <Field label="Streak risk alert" value={selectedUser.profile?.notifyStreakRisk ? "On" : "Off"} />
+                  <Field label="Weekly digest" value={selectedUser.profile?.notifyWeeklyDigest ? "On" : "Off"} />
                 </div>
               </section>
 
-              <section>
-                <h3 className="mb-3 text-[18px] font-semibold">Recent data</h3>
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <Field label="Meals" value={`${selectedUser._count.meals} total · showing ${selectedUser.meals.length}`} />
-                  <Field label="Analyses" value={`${selectedUser._count.foodQueries} total · showing ${selectedUser.foodQueries.length}`} />
-                  <Field label="Weight entries" value={`${selectedUser._count.weightEntries} total · showing ${selectedUser.weightEntries.length}`} />
-                  <Field label="Chats" value={`${selectedUser._count.conversations} total · showing ${selectedUser.conversations.length}`} />
-                  <Field label="Uploads" value={`${selectedUser._count.assets} total · showing ${selectedUser.assets.length}`} />
-                  <Field label="API keys" value={`${selectedUser._count.apiKeys} total · showing ${selectedUser.apiKeys.length}`} />
+              <DetailList title="Recent meals" empty={!selectedUser.meals.length}>
+                <div className="space-y-3">
+                  {selectedUser.meals.map((meal) => (
+                    <div key={meal.id} className="rounded-md border border-black/8 bg-white p-4">
+                      <div className="grid gap-3 md:grid-cols-4">
+                        <Field label="Meal" value={meal.mealType} />
+                        <Field label="Logged" value={formatDateTime(meal.loggedAt)} />
+                        <Field label="Calories" value={Math.round(meal.totalCalories)} />
+                        <Field label="Macros" value={`${Math.round(meal.totalProtein)}P · ${Math.round(meal.totalCarbs)}C · ${Math.round(meal.totalFat)}F`} />
+                      </div>
+                      <p className="mt-3 text-[12px] leading-5 text-[#5f675f]">{meal.items.map((item) => item.name).join(", ") || "No items recorded."}</p>
+                    </div>
+                  ))}
                 </div>
-              </section>
+              </DetailList>
+
+              <DetailList title="Weight history" empty={!selectedUser.weightEntries.length}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {selectedUser.weightEntries.map((entry) => (
+                    <Field key={entry.id} label={`${entry.weightKg} kg`} value={`${formatDateTime(entry.recordedAt)}${entry.note ? ` · ${entry.note}` : ""}`} />
+                  ))}
+                </div>
+              </DetailList>
+
+              <DetailList title="Food scan history" empty={!selectedUser.foodQueries.length}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {selectedUser.foodQueries.map((query) => (
+                    <Field
+                      key={query.id}
+                      label={`${query.inputType} · ${formatDateTime(query.createdAt)}`}
+                      value={`${Math.round(query.totals.calories)} cal · ${query.items.map((item) => item.name).join(", ") || query.inputText || "No item names"}`}
+                    />
+                  ))}
+                </div>
+              </DetailList>
             </div>
 
             <aside className="space-y-5">
@@ -411,6 +472,15 @@ export default function AdminPage() {
                 </div>
               </Panel>
               <Panel className="p-5">
+                <h3 className="mb-3 text-[18px] font-semibold">Account data</h3>
+                <div className="grid gap-3">
+                  <Field label="Saved chats" value={selectedUser._count.conversations} />
+                  <Field label="Uploaded files" value={selectedUser._count.assets} />
+                  <Field label="Challenges" value={selectedUser._count.userChallenges} />
+                  <Field label="Analysis records" value={selectedUser._count.foodQueries} />
+                </div>
+              </Panel>
+              <Panel className="p-5">
                 <h3 className="mb-3 text-[18px] font-semibold">Integrations</h3>
                 <div className="grid gap-3">
                   <Field label="Telegram" value={selectedUser.telegramAccount ? "Linked" : "Not linked"} />
@@ -418,6 +488,56 @@ export default function AdminPage() {
                   <Field label="Family memberships" value={selectedUser.familyMemberships.length} />
                   <Field label="Invites sent" value={selectedUser.familyInvitesSent.length} />
                 </div>
+              </Panel>
+              <Panel className="p-5">
+                <DetailList title="Developer keys" empty={!selectedUser.apiKeys.length}>
+                  <div className="space-y-3">
+                    {selectedUser.apiKeys.map((key) => (
+                      <div key={key.id} className="rounded-md bg-[#f8f8f3] p-3">
+                        <p className="text-[13px] font-semibold">{key.name}</p>
+                        <p className="mt-1 text-[12px] text-[#5f675f]">{key.prefix} · {key.revokedAt ? "Revoked" : "Active"} · {key._count.usage} calls</p>
+                        <p className="mt-1 text-[11px] text-[#5f675f]">Last used {timeAgo(key.lastUsedAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </DetailList>
+              </Panel>
+              <Panel className="p-5">
+                <DetailList title="Recent chats" empty={!selectedUser.conversations.length}>
+                  <div className="space-y-3">
+                    {selectedUser.conversations.map((conversation) => (
+                      <div key={conversation.id} className="rounded-md bg-[#f8f8f3] p-3">
+                        <p className="text-[13px] font-semibold">{conversation.title || "Untitled chat"}</p>
+                        <p className="mt-1 text-[12px] text-[#5f675f]">{conversation.messages.length} messages · updated {timeAgo(conversation.updatedAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </DetailList>
+              </Panel>
+              <Panel className="p-5">
+                <DetailList title="Files" empty={!selectedUser.assets.length}>
+                  <div className="space-y-3">
+                    {selectedUser.assets.map((asset) => (
+                      <div key={asset.id} className="rounded-md bg-[#f8f8f3] p-3">
+                        <p className="text-[13px] font-semibold">{asset.contentType}</p>
+                        <p className="mt-1 text-[12px] text-[#5f675f]">{asset.status} · {asset.size ? `${Math.round(asset.size / 1024)} KB` : "size unknown"}</p>
+                        <p className="mt-1 text-[11px] text-[#5f675f]">Uploaded {formatDateTime(asset.uploadedAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </DetailList>
+              </Panel>
+              <Panel className="p-5">
+                <DetailList title="Challenges" empty={!selectedUser.userChallenges.length}>
+                  <div className="space-y-3">
+                    {selectedUser.userChallenges.map((challenge) => (
+                      <div key={challenge.id} className="rounded-md bg-[#f8f8f3] p-3">
+                        <p className="text-[13px] font-semibold">{challenge.title}</p>
+                        <p className="mt-1 text-[12px] text-[#5f675f]">{challenge.status} · {challenge.daysCheckedIn}/{challenge.durationDays} days</p>
+                      </div>
+                    ))}
+                  </div>
+                </DetailList>
               </Panel>
             </aside>
           </div>
@@ -484,7 +604,7 @@ export default function AdminPage() {
         <Panel className="p-5">
           <div className="mb-4 flex items-center gap-3">
             <Sparkle size={22} className="text-[#173c2b]" />
-            <h2 className="text-[20px] font-semibold">AI controls</h2>
+            <h2 className="text-[20px] font-semibold">Smart scan controls</h2>
           </div>
           <div className="grid gap-3">
             {[
@@ -512,7 +632,7 @@ export default function AdminPage() {
             disabled={savingAiSettings}
             className="mt-4 rounded-md bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white disabled:opacity-50"
           >
-            {savingAiSettings ? "Saving..." : "Save AI settings"}
+            {savingAiSettings ? "Saving..." : "Save scan settings"}
           </button>
         </Panel>
         <Panel className="p-5">
