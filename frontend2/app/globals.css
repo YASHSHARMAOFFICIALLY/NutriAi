@@ -97,6 +97,31 @@ body::-webkit-scrollbar-thumb {
   border-radius: 999px;
 }
 
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(95, 143, 114, 0.42) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(95, 143, 114, 0.36);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(23, 60, 43, 0.42);
+  background-clip: padding-box;
+}
+
 button,
 input,
 select,
