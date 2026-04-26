@@ -5,7 +5,7 @@ import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api/apiKeys";
 import { getApiUrl } from "@/lib/api/auth";
 import { deleteProfile, getProfile, updateProfile } from "@/lib/api/profile";
 import type { ActivityLevel, ApiKeyRow, Goal, IssuedApiKey, Sex, UserProfile } from "@/lib/api/types";
-import { CheckRow, PageHeader, Panel, Stat } from "../_components/ui";
+import { CheckRow, PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
 type ProfileForm = {
   sex: Sex | "";
@@ -66,6 +66,8 @@ export default function SettingsPage() {
   const [apiToken, setApiToken] = useState("");
   const [apiText, setApiText] = useState("2 roti and dal");
   const [apiResult, setApiResult] = useState<string | null>(null);
+  const [toast, setToast] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [source, setSource] = useState<"loading" | "live" | "error">("loading");
   const [saving, setSaving] = useState(false);
 
@@ -79,6 +81,7 @@ export default function SettingsPage() {
         if (cancelled) return;
         setForm(formFromProfile(apiProfile));
         setApiKeys(keys);
+        setToast("");
         setSource("live");
       })
       .catch(() => setSource("error"));
@@ -126,8 +129,10 @@ export default function SettingsPage() {
         notifyWeeklyDigest: form.notifyWeeklyDigest,
       });
       setForm(formFromProfile(updated));
+      setToast("Profile saved.");
       setSource("live");
     } catch {
+      setToast("");
       setSource("error");
     } finally {
       setSaving(false);
@@ -146,6 +151,7 @@ export default function SettingsPage() {
       setIssuedKey(key);
       setApiToken(key.token);
       setApiKeys((current) => [key, ...current]);
+      setToast("Developer key created.");
       setSource("live");
     } catch {
       setSource("error");
@@ -167,7 +173,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ text: apiText.trim() }),
       });
       const data = await res.json();
-      setApiResult(JSON.stringify(data, null, 2));
+      setApiResult(res.ok ? `Lookup ready: ${data?.totals?.calories ? `${Math.round(data.totals.calories)} calories estimated` : "request completed"}` : "Lookup failed. Check the key and try again.");
       setSource(res.ok ? "live" : "error");
     } catch {
       setApiResult("Public API call failed. Check the key and try again.");
@@ -178,10 +184,16 @@ export default function SettingsPage() {
   }
 
   async function handleDeleteProfile() {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
     setSaving(true);
     try {
       await deleteProfile();
       setForm(formFromProfile(null));
+      setConfirmDelete(false);
+      setToast("Nutrition profile deleted.");
       setSource("live");
     } catch {
       setSource("error");
@@ -195,6 +207,7 @@ export default function SettingsPage() {
     try {
       const revoked = await revokeApiKey(id);
       setApiKeys((current) => current.map((key) => key.id === id ? { ...key, revokedAt: revoked.revokedAt } : key));
+      setToast("Developer key revoked.");
       setSource("live");
     } catch {
       setSource("error");
@@ -223,12 +236,25 @@ export default function SettingsPage() {
           <p className="text-[13px] font-semibold text-[#b7791f]">Could not load or save settings. Sign in and try again.</p>
         </Panel>
       ) : null}
+      {toast ? (
+        <Panel className="mb-5 border-[#173c2b]/20 bg-[#eef5f2] p-4">
+          <p className="text-[13px] font-semibold text-[#173c2b]">{toast}</p>
+        </Panel>
+      ) : null}
 
-      <section className="mb-6 grid gap-4 md:grid-cols-3">
-        <Stat label="BMR" value={`${derived.bmr}`} sub="Mifflin-St Jeor" />
-        <Stat label="TDEE" value={`${derived.tdee}`} sub="Activity-adjusted" />
-        <Stat label="Calorie target" value={form.dailyCalorieTarget || "-"} sub={source === "live" ? "Current profile" : "Waiting for profile data"} />
-      </section>
+      {source === "loading" ? (
+        <section className="mb-6 grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </section>
+      ) : (
+        <section className="mb-6 grid gap-4 md:grid-cols-3">
+          <Stat label="BMR" value={derived.bmr ? `${derived.bmr}` : "-"} sub="Mifflin-St Jeor" />
+          <Stat label="TDEE" value={derived.tdee ? `${derived.tdee}` : "-"} sub="Activity-adjusted" />
+          <Stat label="Calorie target" value={form.dailyCalorieTarget || "-"} sub="Current profile" />
+        </section>
+      )}
 
       <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Panel className="p-6">
@@ -302,7 +328,7 @@ export default function SettingsPage() {
               <input className="mt-3 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-[12px] outline-none" placeholder="nk_..." value={apiToken} onChange={(event) => setApiToken(event.target.value)} />
               <input className="mt-2 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-[12px] outline-none" value={apiText} onChange={(event) => setApiText(event.target.value)} />
               <button onClick={handlePublicApiTest} disabled={saving || !apiToken.trim()} className="mt-3 rounded-md bg-[#173c2b] px-3 py-2 text-[12px] font-bold text-white disabled:opacity-60">Run test</button>
-              {apiResult ? <pre className="mt-3 max-h-52 overflow-auto rounded-md bg-white p-3 text-[11px] text-[#5f675f]">{apiResult}</pre> : null}
+              {apiResult ? <p className="mt-3 rounded-md bg-white p-3 text-[12px] font-semibold text-[#5f675f]">{apiResult}</p> : null}
             </div>
             <div className="mt-4 space-y-2">
               {apiKeys.map((key) => (
@@ -325,8 +351,9 @@ export default function SettingsPage() {
             <h2 className="mb-2 text-[22px] font-bold text-amber-700 tracking-tight">Danger zone</h2>
             <p className="text-[13px] leading-6 text-muted">Delete the saved nutrition profile. This does not delete the login account, meals, or history.</p>
             <button onClick={handleDeleteProfile} disabled={saving} className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[12px] font-bold text-amber-700 transition-all hover:bg-amber-100 hover:border-amber-300 disabled:opacity-60">
-              Delete profile
+              {confirmDelete ? "Confirm delete profile" : "Delete profile"}
             </button>
+            {confirmDelete ? <p className="mt-2 text-[12px] font-semibold text-amber-700">Click again to confirm.</p> : null}
           </Panel>
         </div>
       </section>
