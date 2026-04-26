@@ -10,7 +10,7 @@ import { getDailySummary, listMeals } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import { getMealRecommendations } from "@/lib/api/recommendations";
 import type { ConversationSummary, MealDTO, UserChallengeDTO } from "@/lib/api/types";
-import { BudgetBar, MealLine, PageHeader, Panel } from "../_components/ui";
+import { BudgetBar, MealLine, PageHeader, Panel, Skeleton } from "../_components/ui";
 import type { Meal } from "../_components/ui";
 
 function todayISO() {
@@ -57,6 +57,8 @@ export default function CoachPage() {
   const [activeChallenge, setActiveChallenge] = useState<UserChallengeDTO | null>(null);
   const [allergies, setAllergies] = useState<string[]>([]);
   const [loadError, setLoadError] = useState(false);
+  const [contextStatus, setContextStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [conversationStatus, setConversationStatus] = useState<"idle" | "loading">("idle");
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -94,8 +96,12 @@ export default function CoachPage() {
         if (apiRecs.recommendations[0]) setTopMeal(apiRecs.recommendations[0].items.map((item) => item.name).join(", "));
         setActiveChallenge(apiChallenges[0] ?? null);
         setLoadError(false);
+        setContextStatus("ready");
       })
-      .catch(() => setLoadError(true));
+      .catch(() => {
+        setLoadError(true);
+        setContextStatus("error");
+      });
     return () => {
       cancelled = true;
     };
@@ -105,6 +111,13 @@ export default function CoachPage() {
     calories: Math.max(0, targets.calories - totals.calories),
     protein: Math.max(0, targets.protein - totals.protein),
   }), [targets, totals]);
+  const hasTargets = targets.calories > 0 || targets.protein > 0;
+  const chatTitle = hasTargets ? `Today with ${liveRemaining.calories} kcal left` : "Today's nutrition coach";
+  const quickPrompts = [
+    hasTargets ? `What fits ${liveRemaining.calories} kcal?` : "Plan my next balanced meal",
+    targets.protein > 0 ? `Close ${liveRemaining.protein}g protein` : "How can I add more protein?",
+    allergies[0] ? `Avoid ${allergies[0]}` : "Use my saved preferences",
+  ];
 
   async function handleSend(prompt = input) {
     const message = prompt.trim();
@@ -132,6 +145,7 @@ export default function CoachPage() {
   }
 
   async function handleSelectConversation(id: string) {
+    setConversationStatus("loading");
     try {
       const conversation = await getConversation(id);
       setConversationId(conversation.id);
@@ -139,7 +153,11 @@ export default function CoachPage() {
         role: item.role === "USER" ? "user" : "assistant",
         text: item.content,
       })));
-    } catch {}
+    } catch {
+      setLoadError(true);
+    } finally {
+      setConversationStatus("idle");
+    }
   }
 
   async function handleDeleteConversation(id: string) {
@@ -186,13 +204,32 @@ export default function CoachPage() {
               <Sparkle size={20} weight="fill" />
             </span>
             <div>
-              <h2 className="text-[20px] font-semibold">Dinner with {liveRemaining.calories} kcal left</h2>
-              <p className="text-[12px] text-[#5f675f]">Uses your meals, targets, preferences, and active challenge.</p>
+              <h2 className="text-[20px] font-semibold">{chatTitle}</h2>
+              <p className="text-[12px] text-[#5f675f]">{hasTargets ? "Uses your meals, targets, preferences, and active challenge." : "Add targets in settings for sharper meal guidance."}</p>
             </div>
           </div>
 
+          {conversations.length ? (
+            <select
+              value={conversationId ?? ""}
+              onChange={(event) => event.target.value ? handleSelectConversation(event.target.value) : undefined}
+              className="mb-4 rounded-xl border border-border bg-surface-alt px-4 py-3 text-[13px] font-bold outline-none xl:hidden"
+            >
+              <option value="">New conversation</option>
+              {conversations.map((item) => (
+                <option key={item.id} value={item.id}>{item.title || "Untitled chat"}</option>
+              ))}
+            </select>
+          ) : null}
+
           <div className="flex flex-1 flex-col gap-4">
-            {messages.map((message, index) => {
+            {conversationStatus === "loading" || contextStatus === "loading" ? (
+              <div className="space-y-3">
+                <Skeleton className="h-14 w-2/3" />
+                <Skeleton className="ml-auto h-14 w-1/2" />
+                <Skeleton className="h-20 w-3/4" />
+              </div>
+            ) : messages.map((message, index) => {
               const user = message.role === "user";
               return (
                 <div key={index} className={`flex ${user ? "justify-end" : "justify-start"}`}>
@@ -202,20 +239,23 @@ export default function CoachPage() {
                 </div>
               );
             })}
-            {!messages.length ? (
+            {sending ? (
+              <div className="flex justify-start">
+                <p className="max-w-[78%] rounded-2xl border border-border bg-surface-alt px-5 py-3.5 text-[14px] font-semibold leading-6 text-muted">
+                  Preparing reply...
+                </p>
+              </div>
+            ) : null}
+            {contextStatus !== "loading" && !messages.length ? (
               <div className="rounded-2xl border border-dashed border-border bg-surface-alt p-6 text-center">
-                <p className="text-[14px] font-semibold text-forest">Ask your first live nutrition question.</p>
-                <p className="mt-2 text-[12px] text-muted">Ask about meals, targets, preferences, or today&apos;s plan.</p>
+                <p className="text-[14px] font-semibold text-forest">Start with today&apos;s plan.</p>
+                <p className="mt-2 text-[12px] text-muted">Ask about meals, targets, preferences, or what to eat next.</p>
               </div>
             ) : null}
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {[
-              `What fits ${liveRemaining.calories} kcal?`,
-              `Close ${liveRemaining.protein}g protein`,
-              allergies[0] ? `Avoid ${allergies[0]}` : "Use my saved preferences",
-            ].map((prompt) => (
-              <button key={prompt} onClick={() => handleSend(prompt)} className="rounded-full border border-border bg-surface-alt px-3 py-1.5 text-[12px] font-bold text-muted transition-all hover:border-teal/30 hover:bg-white hover:text-forest">
+            {quickPrompts.map((prompt) => (
+              <button key={prompt} onClick={() => handleSend(prompt)} disabled={sending || contextStatus === "loading"} className="rounded-full border border-border bg-surface-alt px-3 py-1.5 text-[12px] font-bold text-muted transition-all hover:border-teal/30 hover:bg-white hover:text-forest disabled:opacity-50">
                 {prompt}
               </button>
             ))}
@@ -229,7 +269,7 @@ export default function CoachPage() {
             className="mt-4 flex items-end gap-3 rounded-2xl border border-border bg-surface-alt p-3 transition-all focus-within:border-teal/30 focus-within:ring-2 focus-within:ring-teal/10"
           >
             <textarea className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1 text-[14px] outline-none" rows={1} placeholder="Ask Ria..." value={input} onChange={(event) => setInput(event.target.value)} />
-            <button disabled={sending || !input.trim()} className="grid h-9 w-9 place-items-center rounded-xl bg-forest text-white transition-all hover:bg-forest-soft active:scale-95 disabled:opacity-60">
+            <button disabled={sending || contextStatus === "loading" || !input.trim()} className="grid h-9 w-9 place-items-center rounded-xl bg-forest text-white transition-all hover:bg-forest-soft active:scale-95 disabled:opacity-60">
               <PaperPlaneTilt size={16} weight="fill" />
             </button>
           </form>
