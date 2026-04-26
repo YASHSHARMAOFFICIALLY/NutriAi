@@ -53,22 +53,22 @@ const proof = [
 const productMoments = [
   {
     kicker: "Food analysis",
-    title: "A photo becomes a meal you can trust.",
-    copy: "NutriAI should feel useful the second the camera opens: itemized food, confidence, editable portions, and a clear save action.",
+    title: "Turn a photo into an editable meal.",
+    copy: "Open Snap, upload a plate, review the detected items, adjust portions, and save the nutrition to your day.",
     image: heroImage,
     icon: Camera,
   },
   {
     kicker: "Daily intelligence",
-    title: "The dashboard tells users what is still missing.",
-    copy: "The customer does not only need today's calories. They need the gap: protein short, carbs high, dinner should be lighter.",
+    title: "See what is left before dinner.",
+    copy: "The dashboard shows calories, protein, macro gaps, recent meals, recommendations, and the next useful action.",
     image: phoneImage,
     icon: Target,
   },
   {
     kicker: "Long-term progress",
-    title: "Meals, weight, challenges, and digests become one loop.",
-    copy: "Analytics, history, weight tracking, challenges, and emails make the product feel like a system instead of a one-time scanner.",
+    title: "Build a routine beyond one scan.",
+    copy: "Meals, weight logs, challenges, analytics, family sharing, and weekly digests work together as one habit loop.",
     image: mealImage,
     icon: BellRinging,
   },
@@ -92,7 +92,7 @@ const faqs = [
   {
     question: "What happens if the food analysis is wrong?",
     answer:
-      "Users can adjust food items, serving size, and macros before confirming. The product experience should make correction feel quick instead of punishing.",
+      "Users can adjust food items, serving size, and macros before confirming, so correction stays quick and low-friction.",
   },
   {
     question: "Does the coach use my daily targets?",
@@ -213,7 +213,7 @@ function Nav() {
           href="/signup"
           className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-[14px] font-semibold text-[#101510] transition hover:bg-[#d7ff68]"
         >
-          Log meal
+          Get started
           <ArrowRight size={14} weight="bold" />
         </Link>
       </div>
@@ -238,19 +238,19 @@ function Hero() {
             <Sparkle size={14} weight="fill" className="text-[#d7ff68]" />
             Meal scanner, coach, tracker, and habit system
           </div>
-          <h1 className="hero-reveal hero-delay-1 display-heading text-[46px] font-semibold leading-[0.98] md:text-[58px] xl:text-[72px]">
-            Know what to eat next, not just what you ate.
+          <h1 className="hero-reveal hero-delay-1 display-heading text-[42px] font-semibold leading-[1.02] md:text-[58px] xl:text-[72px]">
+            Scan food. Fix portions. Hit today&apos;s targets.
           </h1>
           <p className="hero-reveal hero-delay-2 mt-6 max-w-2xl text-[17px] leading-7 text-white/78 xl:mt-7 xl:text-[19px] xl:leading-8">
-            Snap a meal, verify the macros, save it to your day, then let NutriAI guide dinner, weight progress, streaks, and weekly habits.
+            NutriAI turns meals into editable nutrition, then uses your saved targets, history, preferences, and progress to guide the next decision.
           </p>
           <div className="hero-reveal hero-delay-3 mt-9 flex flex-col gap-3 sm:flex-row">
             <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-md bg-[#d7ff68] px-6 py-3 text-[15px] font-semibold text-[#101510] transition hover:bg-white">
-              Log your first meal
+              Get started
               <ArrowRight size={16} weight="bold" />
             </Link>
             <a href="#product" className="inline-flex items-center justify-center gap-2 rounded-md border border-white/24 bg-white/10 px-6 py-3 text-[15px] font-semibold text-white backdrop-blur-md transition hover:bg-white/16">
-              See the product loop
+              See how it works
             </a>
           </div>
           <div className="hero-reveal hero-delay-3 mt-10 grid max-w-xl grid-cols-3 gap-3 text-center">
@@ -277,7 +277,7 @@ function Hero() {
       </div>
 
       <div className="absolute bottom-4 left-1/2 z-20 hidden -translate-x-1/2 text-[12px] font-semibold uppercase tracking-[0.2em] text-white/55 md:block">
-        Scroll for product proof
+        Scroll for product flow
       </div>
     </section>
   );
@@ -449,7 +449,7 @@ function ProductMoments() {
   return (
     <section id="product" className="px-5 py-24 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <Header eyebrow="Product proof" title="The landing page should feel like using the app." />
+        <Header eyebrow="Product flow" title="From scan to daily guidance in minutes." />
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {productMoments.map(({ kicker, title, copy, image, icon: Icon }) => (
             <article key={title} className="story-tile group relative min-h-[400px] overflow-hidden rounded-xl border border-white/10 bg-[#101510] p-7 text-white">
@@ -483,10 +483,10 @@ function ImmersiveProduct() {
           <div>
             <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#d7ff68]">Command center</p>
             <h2 className="display-heading mt-4 text-[48px] font-semibold leading-[0.98] md:text-[64px]">
-              One screen should explain the whole day.
+              One screen explains the whole day.
             </h2>
             <p className="mt-6 text-[17px] leading-8 text-white/70">
-              A customer wants a clear answer: what happened, what is left, and what should I eat next? This visual ties the product experience into one daily workflow.
+              See what you ate, what is left, and what meal would fit next without jumping between disconnected tools.
             </p>
             <div className="mt-8 grid gap-2 sm:grid-cols-2">
               {["Meal verification", "Daily macro dashboard", "Coach context", "Weight trends", "Challenges", "Weekly digest"].map((item) => (
@@ -513,7 +513,7 @@ function ImmersiveProduct() {
             </div>
             <div className="absolute bottom-16 right-0 w-[430px] rotate-[3deg] rounded-xl border border-white/16 bg-[#d7ff68] p-5 text-[#101510] shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
               <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Next action</p>
-              <h3 className="mt-2 text-[26px] font-semibold">Dinner should be protein-led.</h3>
+              <h3 className="mt-2 text-[26px] font-semibold">Make dinner protein-led.</h3>
               <p className="mt-4 text-[14px] leading-6 opacity-76">You have enough carbs today. Add lean protein and vegetables, keep oils light.</p>
             </div>
             <div className="absolute right-24 top-0 h-[220px] w-[220px] overflow-hidden rounded-full border-[10px] border-white/10 shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
@@ -539,7 +539,7 @@ function DailyLoop() {
           <div>
             <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#0f8b8d]">Daily routine</p>
             <h2 className="display-heading mt-4 max-w-xl text-[48px] font-semibold leading-[0.98] md:text-[52px]">
-              The best feature is the loop that brings people back.
+              A simple loop that brings people back.
             </h2>
             <p className="mt-6 max-w-xl text-[17px] leading-8 text-[#5f675f]">
               NutriAI becomes more valuable after every saved meal because the coach, analytics, recommendations, challenges, and digests get more context.
@@ -583,7 +583,7 @@ function Personalization() {
           <div className="relative z-10 flex min-h-[560px] flex-col justify-end p-8">
             <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#d7ff68]">Personal profile</p>
             <h2 className="display-heading mt-4 text-[48px] font-semibold leading-[0.98]">
-              Recommendations should feel made for one person.
+              Recommendations match the person eating.
             </h2>
             <p className="mt-5 max-w-xl text-[16px] leading-7 text-white/72">
               NutriAI uses goals, body profile, allergies, preferences, budget, activity, timezone, and weight history to make personalization visible.
@@ -591,7 +591,7 @@ function Personalization() {
           </div>
         </div>
         <div>
-          <Header eyebrow="Why it feels premium" title="Specific advice beats generic diet content." />
+          <Header eyebrow="Personal context" title="Specific advice beats generic diet content." />
           <div className="mt-10 grid gap-3 sm:grid-cols-2">
             {personalization.map((item) => (
               <div key={item} className="group/item flex items-center gap-3 rounded-xl border border-black/8 bg-white p-4 transition-all hover:border-[#173c2b]/20 hover:shadow-[0_8px_24px_rgba(16,21,16,0.06)]">
@@ -650,7 +650,7 @@ function PlatformProof() {
         <div>
           <Header eyebrow="Platform depth" title="The app goes beyond the meal scanner." />
           <p className="mt-6 max-w-xl text-[17px] leading-8 text-[#5f675f]">
-            The paid-product signal is the operational layer: private uploads, API keys, public calorie tools, role-based admin, and usage visibility.
+            Private uploads, developer keys, public calorie lookup, role-based admin, and usage visibility make NutriAI ready for a real SaaS launch.
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {["Private image uploads", "API key management", "Public calorie tools", "Usage tracking", "Admin user operations", "Reliability overview"].map((item) => (
@@ -678,7 +678,7 @@ function PlatformProof() {
           <div className="mt-4 rounded-xl bg-[#d7ff68] p-5 text-[#101510]">
             <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Admin activity</p>
             <p className="mt-2 text-[18px] font-semibold">Meal analysis completed · 640 kcal saved to today</p>
-            <p className="mt-1 text-[13px] opacity-70">The operating layer should feel reliable without exposing internal system details.</p>
+            <p className="mt-1 text-[13px] opacity-70">Admin views keep user, usage, and activity signals visible without exposing system details.</p>
           </div>
         </div>
       </div>
@@ -693,7 +693,7 @@ function FAQ() {
         <div>
           <Header eyebrow="FAQ" title="Questions users ask before trusting a nutrition app." />
           <p className="mt-6 max-w-xl text-[17px] leading-8 text-[#5f675f]">
-            These answers make the landing page feel closer to the actual product: editable scans, personal context, privacy, and day-by-day habit building.
+            Clear answers for editable scans, personal context, privacy, and day-by-day habit building.
           </p>
         </div>
         <div className="space-y-3">
