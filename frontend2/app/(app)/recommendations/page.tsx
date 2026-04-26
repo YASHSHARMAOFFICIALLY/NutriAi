@@ -87,7 +87,7 @@ export default function RecommendationsPage() {
       <PageHeader eyebrow="Recommendations" title="Ranked from your meal history" action={{ label: "Ask Ria", href: "/coach" }} />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live recommendations. Backend data is required.</p>
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load recommendations. Sign in and try again.</p>
         </Panel>
       ) : null}
 

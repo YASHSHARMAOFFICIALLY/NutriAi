@@ -124,7 +124,7 @@ export default function CoachPage() {
       const errorMessage =
         error instanceof ApiError
           ? error.message
-          : "I could not reach the coach API. The live chat will work once the backend session is available.";
+          : "I could not send that message right now. Sign in and try again.";
       setMessages((current) => [...current, { role: "assistant", text: errorMessage }]);
     } finally {
       setSending(false);
@@ -158,7 +158,7 @@ export default function CoachPage() {
       <PageHeader eyebrow="Coach Ria" title="Chat with nutrition context" />
       {loadError ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live coach context. Chat still requires the backend session.</p>
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load coach context. Sign in and try again.</p>
         </Panel>
       ) : null}
 
@@ -205,7 +205,7 @@ export default function CoachPage() {
             {!messages.length ? (
               <div className="rounded-2xl border border-dashed border-border bg-surface-alt p-6 text-center">
                 <p className="text-[14px] font-semibold text-forest">Ask your first live nutrition question.</p>
-                <p className="mt-2 text-[12px] text-muted">Coach replies come from the backend chat endpoint.</p>
+                <p className="mt-2 text-[12px] text-muted">Ask about meals, targets, preferences, or today&apos;s plan.</p>
               </div>
             ) : null}
           </div>
@@ -246,7 +246,7 @@ export default function CoachPage() {
           <Panel className="p-5">
             <h2 className="mb-3 text-[20px] font-semibold">Top repeat meal</h2>
             <p className="text-[15px] font-semibold">{topMeal || "No repeat meal yet"}</p>
-            <p className="mt-2 text-[13px] leading-6 text-[#5f675f]">Recommendation endpoint feeds this panel when authenticated.</p>
+            <p className="mt-2 text-[13px] leading-6 text-[#5f675f]">Your saved meals help this panel suggest familiar options.</p>
           </Panel>
           <Panel className="p-5">
             <h2 className="mb-3 text-[20px] font-semibold">Recent meals</h2>
