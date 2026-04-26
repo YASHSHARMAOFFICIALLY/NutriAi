@@ -161,10 +161,10 @@ export default function DashboardPage() {
   if (status === "error") {
     return (
       <div className="mx-auto max-w-7xl px-6 py-10 lg:px-10">
-        <PageHeader eyebrow="Dashboard" title="Backend connection required" action={{ label: "Log in", href: "/login" }} />
+        <PageHeader eyebrow="Dashboard" title="Sign in required" action={{ label: "Log in", href: "/login" }} />
         <Panel className="p-8">
           <p className="text-[15px] font-semibold text-forest">Could not load live dashboard data.</p>
-          <p className="mt-2 text-[13px] text-muted">Start the backend and sign in again. This screen no longer shows demo fallback data.</p>
+          <p className="mt-2 text-[13px] text-muted">Sign in again to load your meals, targets, and recommendations.</p>
         </Panel>
       </div>
     );

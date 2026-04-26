@@ -170,7 +170,7 @@ export default function SettingsPage() {
       setApiResult(JSON.stringify(data, null, 2));
       setSource(res.ok ? "live" : "error");
     } catch {
-      setApiResult("Public API call failed. Check the key, backend, and CORS.");
+      setApiResult("Public API call failed. Check the key and try again.");
       setSource("error");
     } finally {
       setSaving(false);
@@ -220,14 +220,14 @@ export default function SettingsPage() {
       <PageHeader eyebrow="Settings" title="Profile, targets, preferences" />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load or save live settings. Backend data is required.</p>
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load or save settings. Sign in and try again.</p>
         </Panel>
       ) : null}
 
       <section className="mb-6 grid gap-4 md:grid-cols-3">
         <Stat label="BMR" value={`${derived.bmr}`} sub="Mifflin-St Jeor" />
         <Stat label="TDEE" value={`${derived.tdee}`} sub="Activity-adjusted" />
-        <Stat label="Calorie target" value={form.dailyCalorieTarget || "-"} sub={source === "live" ? "Live profile" : "Waiting for backend data"} />
+        <Stat label="Calorie target" value={form.dailyCalorieTarget || "-"} sub={source === "live" ? "Current profile" : "Waiting for profile data"} />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -282,18 +282,14 @@ export default function SettingsPage() {
             </div>
           </Panel>
           <Panel className="p-5">
-            <h2 className="mb-4 text-[22px] font-bold text-forest tracking-tight">API keys</h2>
+            <h2 className="mb-4 text-[22px] font-bold text-forest tracking-tight">Developer keys</h2>
             <div className="rounded-xl bg-surface-alt p-4 border border-border">
-              <p className="text-[12px] font-bold text-forest">Public endpoint</p>
-              <p className="mt-1 break-all text-[13px] text-muted">POST /v1/public/calories · scope calories:read</p>
-              <pre className="mt-3 overflow-x-auto rounded-md bg-white p-3 text-[11px] text-[#5f675f]">{`curl -X POST ${getApiUrl()}/v1/public/calories \\
-  -H "x-api-key: nk_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{"text":"2 roti and dal"}'`}</pre>
+              <p className="text-[12px] font-bold text-forest">Calorie lookup access</p>
+              <p className="mt-1 text-[13px] leading-5 text-muted">Create a scoped key for approved integrations. Keep the key private and revoke it if it is no longer needed.</p>
             </div>
             {issuedKey ? (
               <div className="mt-3 rounded-md border border-[#d7ff68] bg-[#f8f8f3] p-3">
-                <p className="text-[12px] font-bold text-[#173c2b]">Copy now. This token is shown once.</p>
+                <p className="text-[12px] font-bold text-[#173c2b]">Copy now. This key is shown once.</p>
                 <p className="mt-2 break-all font-mono text-[12px]">{issuedKey.token}</p>
               </div>
             ) : null}
@@ -302,7 +298,7 @@ export default function SettingsPage() {
               <button onClick={handleCreateApiKey} disabled={saving} className="rounded-md bg-[#173c2b] px-3 py-2 text-[12px] font-bold text-white disabled:opacity-60">Create</button>
             </div>
             <div className="mt-4 rounded-md border border-black/8 bg-[#f8f8f3] p-3">
-              <p className="text-[13px] font-semibold">Try public calories API</p>
+              <p className="text-[13px] font-semibold">Test calorie lookup</p>
               <input className="mt-3 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-[12px] outline-none" placeholder="nk_..." value={apiToken} onChange={(event) => setApiToken(event.target.value)} />
               <input className="mt-2 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-[12px] outline-none" value={apiText} onChange={(event) => setApiText(event.target.value)} />
               <button onClick={handlePublicApiTest} disabled={saving || !apiToken.trim()} className="mt-3 rounded-md bg-[#173c2b] px-3 py-2 text-[12px] font-bold text-white disabled:opacity-60">Run test</button>
@@ -322,7 +318,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
               ))}
-              {!apiKeys.length ? <p className="text-[12px] font-semibold text-[#5f675f]">No API keys yet.</p> : null}
+              {!apiKeys.length ? <p className="text-[12px] font-semibold text-[#5f675f]">No developer keys yet.</p> : null}
             </div>
           </Panel>
           <Panel className="border-amber-200 p-5">

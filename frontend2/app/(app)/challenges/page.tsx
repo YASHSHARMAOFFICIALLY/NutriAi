@@ -118,7 +118,7 @@ export default function ChallengesPage() {
       <PageHeader eyebrow="Challenges" title="Active habit check-in" />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live challenge data. Backend data is required.</p>
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load challenge data. Sign in and try again.</p>
         </Panel>
       ) : null}
 
@@ -210,7 +210,7 @@ export default function ChallengesPage() {
               <button onClick={() => handleStart(preset)} disabled={busy} className="mt-4 rounded-xl border border-border bg-white px-4 py-2.5 text-[12px] font-bold text-forest transition-all hover:bg-forest hover:text-white hover:shadow-sm disabled:opacity-60">Start</button>
             </div>
           ))}
-          {!presets.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No challenge presets are available from the backend.</p> : null}
+          {!presets.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No challenge presets are available yet.</p> : null}
         </div>
       </Panel>
     </div>

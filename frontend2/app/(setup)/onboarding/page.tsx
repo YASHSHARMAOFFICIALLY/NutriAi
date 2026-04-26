@@ -123,7 +123,7 @@ export default function OnboardingPage() {
             <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#d7ff68]">Profile calibration</p>
             <h1 className="mt-4 text-[56px] font-semibold leading-[0.94]">Targets should come from real inputs.</h1>
             <p className="mt-5 text-[15px] leading-7 text-white/72">
-              This setup mirrors the backend profile model: body data, goal, activity, preferences, allergies, budget, timezone, and notification choices.
+              This setup uses your body data, goal, activity, preferences, allergies, budget, timezone, and notification choices to personalize your plan.
             </p>
             <div className="mt-8 rounded-lg border border-white/14 bg-white/10 p-5">
               <div className="mb-4 flex items-center gap-3">
@@ -197,7 +197,7 @@ export default function OnboardingPage() {
                     </div>
                   ))}
                 </div>
-                {status === "error" ? <p className="mt-4 text-[12px] font-semibold text-[#b7791f]">Could not save profile. Sign in and check backend availability.</p> : null}
+                {status === "error" ? <p className="mt-4 text-[12px] font-semibold text-[#b7791f]">Could not save profile. Sign in and try again.</p> : null}
                 <button onClick={handleSave} disabled={status === "saving"} className="mt-6 flex w-full items-center justify-center gap-2 rounded-md bg-[#173c2b] py-3 text-[14px] font-bold text-white disabled:opacity-60">
                   {status === "saving" ? "Saving..." : "Save profile"}
                   <ArrowRight size={15} weight="bold" />
