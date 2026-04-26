@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle, Flag, XCircle } from "@phosphor-icons/react/dist/ssr";
 import { abandonChallenge, checkInToday, listMyChallenge, listPresets, startChallenge } from "@/lib/api/challenges";
 import type { ChallengePreset, UserChallengeDTO } from "@/lib/api/types";
-import { PageHeader, Panel, SourceBadge } from "../_components/ui";
+import { PageHeader, Panel, Skeleton, SourceBadge } from "../_components/ui";
 
 type ActiveChallenge = {
   id: string;
@@ -130,18 +130,26 @@ export default function ChallengesPage() {
                 <div className="mb-3 flex flex-wrap gap-2">
                   <SourceBadge label={(active?.category ?? "none").toLowerCase()} />
                   <SourceBadge label={(active?.status ?? "inactive").toLowerCase()} />
-                  <SourceBadge label={source} />
                 </div>
-                <h2 className="text-[36px] font-semibold leading-tight">{active?.title ?? "No active challenge"}</h2>
-                <p className="mt-3 max-w-xl text-[14px] leading-6 text-white/72">{active?.description || "Start a preset below to begin a new habit loop."}</p>
+                {source === "loading" ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-10 w-72 bg-white/10" />
+                    <Skeleton className="h-4 w-96 bg-white/10" />
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-[36px] font-semibold leading-tight">{active?.title ?? "No active challenge"}</h2>
+                    <p className="mt-3 max-w-xl text-[14px] leading-6 text-white/72">{active?.description || "Choose a preset below to start a focused habit."}</p>
+                  </>
+                )}
               </div>
               <button
                 onClick={handleCheckIn}
-                disabled={!canCheckIn || busy}
-                className={`flex items-center justify-center gap-2 rounded-md px-5 py-3 text-[14px] font-bold ${canCheckIn ? "bg-[#d7ff68] text-[#101510]" : "bg-white/12 text-white/60"} disabled:cursor-not-allowed disabled:opacity-70`}
+                disabled={!active || !canCheckIn || busy || source === "loading"}
+                className={`flex items-center justify-center gap-2 rounded-md px-5 py-3 text-[14px] font-bold ${active && canCheckIn ? "bg-[#d7ff68] text-[#101510]" : "bg-white/12 text-white/60"} disabled:cursor-not-allowed disabled:opacity-70`}
               >
                 <CheckCircle size={17} weight="fill" />
-                {canCheckIn ? "Check in today" : "Checked in"}
+                {!active ? "Start first" : canCheckIn ? "Check in today" : "Checked in"}
               </button>
               <button
                 onClick={handleAbandon}
@@ -161,9 +169,9 @@ export default function ChallengesPage() {
               <div className="h-3 rounded-full bg-[#173c2b]" style={{ width: `${progressPct}%` }} />
             </div>
             <div className="mt-4 rounded-md bg-[#eef5f2] p-3">
-              <p className="text-[13px] font-semibold">Retention signal</p>
+              <p className="text-[13px] font-semibold">Today</p>
               <p className="mt-1 text-[12px] leading-5 text-[#5f675f]">
-                {!active ? "No active challenge is running." : canCheckIn ? "Today is not checked in yet. This is the highest-friction habit moment." : "Today is complete. The next product job is keeping tomorrow visible."}
+                {!active ? "Pick a preset to begin tracking a habit." : canCheckIn ? "You have not checked in today yet." : "Today is complete. Come back tomorrow to keep the streak moving."}
               </p>
             </div>
             <div className="mt-5 grid grid-cols-7 gap-2">
@@ -199,7 +207,14 @@ export default function ChallengesPage() {
       <Panel className="mt-5 p-5">
         <h2 className="mb-4 text-[22px] font-semibold">Presets</h2>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {presets.map((preset) => (
+          {source === "loading" ? (
+            <>
+              <Skeleton className="h-44" />
+              <Skeleton className="h-44" />
+              <Skeleton className="h-44" />
+              <Skeleton className="h-44" />
+            </>
+          ) : presets.map((preset) => (
             <div key={preset.id} className="group/preset rounded-xl border border-border bg-surface-alt p-5 transition-all hover:border-teal/20 hover:bg-white hover:shadow-md">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-forest shadow-sm transition-colors group-hover/preset:bg-forest group-hover/preset:text-white">
                 <Flag size={20} weight="duotone" />
@@ -207,10 +222,10 @@ export default function ChallengesPage() {
               <p className="mt-4 text-[15px] font-bold text-forest">{preset.title}</p>
               <p className="mt-1 text-[12px] leading-5 text-muted">{preset.category} · {preset.durationDays} days</p>
               <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-muted">{preset.description}</p>
-              <button onClick={() => handleStart(preset)} disabled={busy} className="mt-4 rounded-xl border border-border bg-white px-4 py-2.5 text-[12px] font-bold text-forest transition-all hover:bg-forest hover:text-white hover:shadow-sm disabled:opacity-60">Start</button>
+              <button onClick={() => handleStart(preset)} disabled={busy || Boolean(active)} className="mt-4 rounded-xl border border-border bg-white px-4 py-2.5 text-[12px] font-bold text-forest transition-all hover:bg-forest hover:text-white hover:shadow-sm disabled:opacity-60">{active ? "Finish current first" : "Start"}</button>
             </div>
           ))}
-          {!presets.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No challenge presets are available yet.</p> : null}
+          {source !== "loading" && !presets.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No challenge presets are available yet.</p> : null}
         </div>
       </Panel>
     </div>
