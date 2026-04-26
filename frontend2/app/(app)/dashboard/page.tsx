@@ -3,16 +3,15 @@
 import Link from "next/link";
 import type { ElementType } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, ChatCircleText, Clock, Star, Trophy } from "@phosphor-icons/react/dist/ssr";
+import { Camera, ChatCircleText, Star, Trophy } from "@phosphor-icons/react/dist/ssr";
 import { getStreak } from "@/lib/api/analytics";
 import { listMyChallenge } from "@/lib/api/challenges";
 import { getDailySummary, listMeals } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import { getMealRecommendations } from "@/lib/api/recommendations";
 import type { MealDTO, MealRecommendation, UserChallengeDTO } from "@/lib/api/types";
-import { analytics, challenge, profile, recommendations, summary, todayMeals } from "../_components/mock-data";
-import type { Meal } from "../_components/mock-data";
 import { BudgetBar, MealLine, PageHeader, Panel, Stat } from "../_components/ui";
+import type { Meal } from "../_components/ui";
 
 function safeNumber(value: number, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -64,13 +63,13 @@ function getGreeting() {
 }
 
 export default function DashboardPage() {
-  const [meals, setMeals] = useState<Meal[]>(todayMeals);
-  const [totals, setTotals] = useState(summary.totals);
-  const [targets, setTargets] = useState(profile.targets);
-  const [streak, setStreak] = useState(analytics.streak.loggingStreak);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [targets, setTargets] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [streak, setStreak] = useState(0);
   const [activeChallenge, setActiveChallenge] = useState<UserChallengeDTO | null>(null);
   const [liveRec, setLiveRec] = useState<MealRecommendation | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "fallback">("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
   const actions: Array<{ href: string; label: string; icon: ElementType }> = [
     { href: "/snap", label: "Analyze food", icon: Camera },
@@ -100,10 +99,10 @@ export default function DashboardPage() {
         setMeals(apiMeals.map(mealFromApi));
         if (apiProfile) {
           setTargets({
-            calories: apiProfile.dailyCalorieTarget ?? profile.targets.calories,
-            protein: apiProfile.proteinTargetG ?? profile.targets.protein,
-            carbs: apiProfile.carbsTargetG ?? profile.targets.carbs,
-            fat: apiProfile.fatTargetG ?? profile.targets.fat,
+            calories: apiProfile.dailyCalorieTarget ?? 0,
+            protein: apiProfile.proteinTargetG ?? 0,
+            carbs: apiProfile.carbsTargetG ?? 0,
+            fat: apiProfile.fatTargetG ?? 0,
           });
         }
         setLiveRec(apiRecs.recommendations[0] ?? null);
@@ -111,7 +110,7 @@ export default function DashboardPage() {
         if (apiStreak) setStreak(apiStreak.loggingStreak);
         setStatus("ready");
       })
-      .catch(() => setStatus("fallback"));
+      .catch(() => setStatus("error"));
     return () => {
       cancelled = true;
     };
@@ -125,15 +124,14 @@ export default function DashboardPage() {
   }), [targets, totals]);
 
   const greeting = useMemo(() => getGreeting(), []);
-  const fallbackRec = recommendations[0];
   const recommendationTitle =
-    liveRec?.items.map((item) => item.name).join(", ") || fallbackRec.title;
+    liveRec?.items.map((item) => item.name).join(", ") || "No recommendation yet";
   const recommendationReason = liveRec
     ? `Score ${Math.round(liveRec.score * 100)}. ${liveRec.reasons.join(", ")}.`
-    : `Score ${Math.round(fallbackRec.score * 100)}. ${fallbackRec.reasons.join(", ")}.`;
-  const challengeTitle = activeChallenge?.title ?? challenge.title;
-  const challengeDays = activeChallenge?.daysCheckedIn ?? challenge.daysCheckedIn;
-  const challengeDuration = activeChallenge?.durationDays ?? challenge.durationDays;
+    : "Save a few meals to unlock ranked recommendations from your own history.";
+  const challengeTitle = activeChallenge?.title ?? "No active challenge";
+  const challengeDays = activeChallenge?.daysCheckedIn ?? 0;
+  const challengeDuration = activeChallenge?.durationDays ?? 0;
   const goalProgress =
     safeNumber(targets.calories) > 0
       ? Math.round((safeNumber(totals.calories) / safeNumber(targets.calories)) * 100)
@@ -156,6 +154,18 @@ export default function DashboardPage() {
           <Skeleton className="h-[400px] w-full rounded-2xl" />
           <Skeleton className="h-[400px] w-full rounded-2xl" />
         </div>
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="mx-auto max-w-7xl px-6 py-10 lg:px-10">
+        <PageHeader eyebrow="Dashboard" title="Backend connection required" action={{ label: "Log in", href: "/login" }} />
+        <Panel className="p-8">
+          <p className="text-[15px] font-semibold text-forest">Could not load live dashboard data.</p>
+          <p className="mt-2 text-[13px] text-muted">Start the backend and sign in again. This screen no longer shows demo fallback data.</p>
+        </Panel>
       </div>
     );
   }
@@ -280,7 +290,7 @@ export default function DashboardPage() {
                 <span className="text-forest">{challengeDays} / {challengeDuration} days</span>
               </div>
               <div className="grid grid-cols-7 gap-2">
-                {Array.from({ length: challengeDuration }, (_, index) => (
+                {challengeDuration > 0 ? Array.from({ length: challengeDuration }, (_, index) => (
                   <div 
                     key={index} 
                     className={`h-10 rounded-lg transition-all ${
@@ -289,7 +299,7 @@ export default function DashboardPage() {
                         : "bg-surface-alt border border-border"
                     }`} 
                   />
-                ))}
+                )) : <p className="col-span-7 text-[13px] font-semibold text-muted">Start a challenge to track progress.</p>}
               </div>
               <Link href="/challenges" className="mt-6 block rounded-xl bg-forest py-3.5 text-center text-[14px] font-bold text-white shadow-premium transition-transform hover:scale-[1.02] active:scale-98">
                 Check In Now

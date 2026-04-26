@@ -4,6 +4,7 @@ import { env } from '../config/env';
 import { signAccessToken } from '../utils/jwt';
 import { randomTokenUrlSafe, sha256Hex } from '../utils/hash';
 import { UnauthorizedError } from '../utils/errors';
+import type { SessionMetadataInput } from '../utils/sessionMetadata';
 
 interface GoogleProfileInput {
   googleId: string;
@@ -52,12 +53,15 @@ export const findOrCreateFromGoogle = async (input: GoogleProfileInput): Promise
   });
 };
 
-export const issueTokens = async (user: Pick<User, 'id' | 'email' | 'role'>): Promise<IssuedTokens> => {
+export const issueTokens = async (
+  user: Pick<User, 'id' | 'email' | 'role'>,
+  session?: SessionMetadataInput,
+): Promise<IssuedTokens> => {
   const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
   const refreshToken = randomTokenUrlSafe(48);
   const refreshExpiresAt = refreshExpiry();
 
-  await prisma.refreshToken.create({
+  const refresh = await prisma.refreshToken.create({
     data: {
       userId: user.id,
       tokenHash: sha256Hex(refreshToken),
@@ -65,10 +69,29 @@ export const issueTokens = async (user: Pick<User, 'id' | 'email' | 'role'>): Pr
     },
   });
 
+  if (session) {
+    await prisma.userSession.create({
+      data: {
+        userId: user.id,
+        refreshTokenId: refresh.id,
+        ipAddress: session.ipAddress ?? null,
+        userAgent: session.userAgent ?? null,
+        deviceType: session.deviceType ?? null,
+        deviceModel: session.deviceModel ?? null,
+        os: session.os ?? null,
+        browser: session.browser ?? null,
+        location: session.location ?? null,
+      },
+    });
+  }
+
   return { accessToken, refreshToken, refreshExpiresAt };
 };
 
-export const rotateRefresh = async (presented: string): Promise<IssuedTokens & { user: User }> => {
+export const rotateRefresh = async (
+  presented: string,
+  session?: SessionMetadataInput,
+): Promise<IssuedTokens & { user: User }> => {
   const tokenHash = sha256Hex(presented);
   const record = await prisma.refreshToken.findUnique({
     where: { tokenHash },
@@ -82,23 +105,54 @@ export const rotateRefresh = async (presented: string): Promise<IssuedTokens & {
         where: { userId: record.userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      await prisma.userSession.updateMany({
+        where: { userId: record.userId, revokedAt: null },
+        data: { revokedAt: new Date(), lastSeenAt: new Date() },
+      });
     }
     throw new UnauthorizedError('Invalid refresh token');
   }
 
-  await prisma.refreshToken.update({
-    where: { id: record.id },
-    data: { revokedAt: new Date() },
-  });
+  await prisma.$transaction([
+    prisma.refreshToken.update({
+      where: { id: record.id },
+      data: { revokedAt: new Date() },
+    }),
+    prisma.userSession.updateMany({
+      where: { refreshTokenId: record.id, revokedAt: null },
+      data: { revokedAt: new Date(), lastSeenAt: new Date() },
+    }),
+  ]);
 
-  const issued = await issueTokens(record.user);
+  const issued = await issueTokens(record.user, session);
   return { ...issued, user: record.user };
+};
+
+export const markSessionSeen = async (presented: string): Promise<void> => {
+  const tokenHash = sha256Hex(presented);
+  const record = await prisma.refreshToken.findUnique({ where: { tokenHash }, select: { id: true } });
+  if (!record) return;
+  await prisma.userSession.updateMany({
+    where: { refreshTokenId: record.id, revokedAt: null },
+    data: { lastSeenAt: new Date() },
+  });
 };
 
 export const revokeRefresh = async (presented: string): Promise<void> => {
   const tokenHash = sha256Hex(presented);
-  await prisma.refreshToken.updateMany({
+  const revokedAt = new Date();
+  const rows = await prisma.refreshToken.findMany({
     where: { tokenHash, revokedAt: null },
-    data: { revokedAt: new Date() },
+    select: { id: true },
   });
+  await prisma.$transaction([
+    prisma.refreshToken.updateMany({
+      where: { tokenHash, revokedAt: null },
+      data: { revokedAt },
+    }),
+    prisma.userSession.updateMany({
+      where: { refreshTokenId: { in: rows.map((row) => row.id) }, revokedAt: null },
+      data: { revokedAt, lastSeenAt: revokedAt },
+    }),
+  ]);
 };

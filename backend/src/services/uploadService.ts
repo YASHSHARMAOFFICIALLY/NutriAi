@@ -34,7 +34,7 @@ const extensionFor = (contentType: string): string => {
 interface PresignArgs {
   userId: string;
   contentType: string;
-  size?: number | null;
+  size: number;
 }
 
 export const presignUpload = async ({ userId, contentType, size }: PresignArgs) => {
@@ -54,6 +54,7 @@ export const presignUpload = async ({ userId, contentType, size }: PresignArgs) 
     Bucket: bucket,
     Key: key,
     ContentType: contentType,
+    ContentLength: size,
   });
   const uploadUrl = await getSignedUrl(s3, cmd, {
     expiresIn: env.UPLOAD_PRESIGN_TTL_SECONDS,
@@ -65,7 +66,7 @@ export const presignUpload = async ({ userId, contentType, size }: PresignArgs) 
       bucket,
       key,
       contentType,
-      size: size ?? null,
+      size,
       status: 'PENDING',
     },
   });

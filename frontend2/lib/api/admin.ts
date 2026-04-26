@@ -5,6 +5,7 @@ import type {
   AdminOverview,
   AdminRuntimeResponse,
   AdminUsageResponse,
+  AdminUserDetail,
   AdminUsersResponse,
   UserRole,
 } from "./types";
@@ -33,6 +34,10 @@ export function listAdminUsers(params: {
   limit?: number;
 } = {}): Promise<AdminUsersResponse> {
   return apiFetch<AdminUsersResponse>(`/admin/users${query(params)}`);
+}
+
+export function getAdminUserDetail(id: string): Promise<AdminUserDetail> {
+  return apiFetch<AdminUserDetail>(`/admin/users/${encodeURIComponent(id)}`);
 }
 
 export function getAdminUsage(params: {

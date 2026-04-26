@@ -43,6 +43,7 @@ model User {
   telegramAccount         TelegramAccount?
   telegramLinkTokens      TelegramLinkToken[]
   telegramPendingActions  TelegramPendingAction[]
+  sessions                UserSession[]
   ownedFamilies           Family[]                @relation("OwnedFamilies")
   familyMemberships       FamilyMember[]          @relation("FamilyMemberships")
   familyInvitesSent       FamilyInvite[]          @relation("FamilyInvitesSent")
@@ -87,9 +88,32 @@ model RefreshToken {
   createdAt  DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session UserSession?
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model UserSession {
+  id             String    @id @default(uuid())
+  userId         String
+  refreshTokenId String    @unique
+  ipAddress      String?
+  userAgent      String?
+  deviceType     String?
+  deviceModel    String?
+  os             String?
+  browser        String?
+  location       String?
+  createdAt      DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  revokedAt      DateTime?
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken RefreshToken @relation(fields: [refreshTokenId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lastSeenAt])
+  @@index([ipAddress])
 }
 
 enum FoodInputType {

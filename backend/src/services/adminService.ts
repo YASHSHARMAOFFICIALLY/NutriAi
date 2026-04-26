@@ -225,6 +225,204 @@ export async function listAdminUsers(input: AdminListUsersInput) {
   };
 }
 
+export async function getAdminUserDetail(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      googleId: true,
+      email: true,
+      name: true,
+      avatarUrl: true,
+      emailVerified: true,
+      emailVerifiedAt: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+      profile: true,
+      sessions: {
+        orderBy: { lastSeenAt: 'desc' },
+        take: 25,
+        select: {
+          id: true,
+          ipAddress: true,
+          userAgent: true,
+          deviceType: true,
+          deviceModel: true,
+          os: true,
+          browser: true,
+          location: true,
+          createdAt: true,
+          lastSeenAt: true,
+          revokedAt: true,
+          refreshToken: { select: { expiresAt: true, revokedAt: true, createdAt: true } },
+        },
+      },
+      refreshTokens: {
+        orderBy: { createdAt: 'desc' },
+        take: 25,
+        select: { id: true, expiresAt: true, revokedAt: true, createdAt: true },
+      },
+      meals: {
+        orderBy: { loggedAt: 'desc' },
+        take: 50,
+        include: { items: true },
+      },
+      foodQueries: {
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        include: { items: true, asset: true },
+      },
+      weightEntries: {
+        orderBy: { recordedAt: 'desc' },
+        take: 50,
+      },
+      conversations: {
+        orderBy: { updatedAt: 'desc' },
+        take: 25,
+        include: {
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+          },
+        },
+      },
+      assets: {
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      },
+      apiKeys: {
+        orderBy: { createdAt: 'desc' },
+        take: 25,
+        select: {
+          id: true,
+          name: true,
+          prefix: true,
+          scopes: true,
+          rateLimitPerMin: true,
+          lastUsedAt: true,
+          revokedAt: true,
+          createdAt: true,
+          _count: { select: { usage: true } },
+          usage: {
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            select: {
+              id: true,
+              endpoint: true,
+              statusCode: true,
+              latencyMs: true,
+              createdAt: true,
+            },
+          },
+        },
+      },
+      tokenUsage: {
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      },
+      userChallenges: {
+        orderBy: { createdAt: 'desc' },
+        take: 25,
+        include: { challenge: true },
+      },
+      telegramAccount: true,
+      ownedFamilies: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          members: { include: { user: { select: { id: true, email: true, name: true } } } },
+          invites: true,
+        },
+      },
+      familyMemberships: {
+        orderBy: { joinedAt: 'desc' },
+        include: {
+          family: { select: { id: true, name: true, ownerId: true } },
+        },
+      },
+      familyInvitesSent: {
+        orderBy: { createdAt: 'desc' },
+        take: 25,
+      },
+      emailVerificationTokens: {
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { id: true, expiresAt: true, usedAt: true, createdAt: true },
+      },
+      passwordResetTokens: {
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { id: true, expiresAt: true, usedAt: true, createdAt: true },
+      },
+      telegramLinkTokens: {
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { id: true, expiresAt: true, usedAt: true, createdAt: true },
+      },
+      telegramPendingActions: {
+        orderBy: { createdAt: 'desc' },
+        take: 25,
+      },
+      _count: {
+        select: {
+          meals: true,
+          foodQueries: true,
+          conversations: true,
+          assets: true,
+          apiKeys: true,
+          tokenUsage: true,
+          userChallenges: true,
+          weightEntries: true,
+          refreshTokens: true,
+          sessions: true,
+        },
+      },
+    },
+  });
+
+  if (!user) return null;
+
+  const aiAggregate = await prisma.tokenUsage.aggregate({
+    where: { userId },
+    _count: { _all: true },
+    _sum: { promptTokens: true, completionTokens: true, totalTokens: true, costUsd: true },
+    _avg: { latencyMs: true },
+  });
+
+  return {
+    ...user,
+    goal: user.profile?.goal ?? null,
+    notifications: {
+      streakRisk: user.profile?.notifyStreakRisk ?? false,
+      weeklyDigest: user.profile?.notifyWeeklyDigest ?? false,
+    },
+    counts: {
+      meals: user._count.meals,
+      apiKeys: user._count.apiKeys,
+      weightEntries: user._count.weightEntries,
+      challenges: user._count.userChallenges,
+    },
+    lastMealAt: user.meals[0]?.loggedAt ?? null,
+    ai: {
+      requests: aiAggregate._count._all,
+      totalTokens: aiAggregate._sum.totalTokens ?? 0,
+      costUsd: roundMoney(aiAggregate._sum.costUsd ?? 0),
+    },
+    aiSummary: {
+      requests: aiAggregate._count._all,
+      promptTokens: aiAggregate._sum.promptTokens ?? 0,
+      completionTokens: aiAggregate._sum.completionTokens ?? 0,
+      totalTokens: aiAggregate._sum.totalTokens ?? 0,
+      costUsd: roundMoney(aiAggregate._sum.costUsd ?? 0),
+      avgLatencyMs: Math.round(aiAggregate._avg.latencyMs ?? 0),
+    },
+    weightEntries: user.weightEntries.map((entry) => ({
+      ...entry,
+      weightKg: Number(entry.weightKg),
+    })),
+  };
+}
+
 export async function getAdminUsage(input: AdminUsageInput) {
   const createdAt = dateWhere(input);
   const where = createdAt ? { createdAt } : {};

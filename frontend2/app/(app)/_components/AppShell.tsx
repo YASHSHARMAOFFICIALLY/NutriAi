@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   Barbell,
@@ -15,7 +15,6 @@ import {
   Trophy,
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
-import { logout } from "@/lib/api/account";
 import { getDailySummary } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 
@@ -36,9 +35,8 @@ const mobileNav = nav.slice(0, 5);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [totals, setTotals] = useState({ calories: 0, protein: 0 });
-  const [targets, setTargets] = useState({ calories: 2150, protein: 150 });
+  const [targets, setTargets] = useState({ calories: 0, protein: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -54,8 +52,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         });
         if (profile) {
           setTargets({
-            calories: profile.dailyCalorieTarget ?? 2150,
-            protein: profile.proteinTargetG ?? 150,
+            calories: profile.dailyCalorieTarget ?? 0,
+            protein: profile.proteinTargetG ?? 0,
           });
         }
       })
