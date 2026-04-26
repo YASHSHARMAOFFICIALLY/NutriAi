@@ -5,7 +5,7 @@ import { getDailyAnalytics, getMacrosSummary, getStreak } from "@/lib/api/analyt
 import { getFamilyDailyAnalytics, getFamilyMacrosSummary, getFamilyOverview, getFamilyStreak } from "@/lib/api/family";
 import { getProfile } from "@/lib/api/profile";
 import type { FamilyMemberDTO } from "@/lib/api/types";
-import { PageHeader, Panel, Stat } from "../_components/ui";
+import { PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
 type DayRow = {
   date: string;
@@ -30,6 +30,11 @@ export default function AnalyticsPage() {
     [familyMembers, selectedMemberId],
   );
   const viewerLabel = selectedMember ? selectedMember.user.name || selectedMember.user.email : "Me";
+
+  function handleViewerChange(value: string) {
+    setSource("loading");
+    setSelectedMemberId(value);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -149,7 +154,7 @@ export default function AnalyticsPage() {
         </div>
         <select
           value={selectedMemberId}
-          onChange={(event) => setSelectedMemberId(event.target.value)}
+          onChange={(event) => handleViewerChange(event.target.value)}
           className="rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-semibold outline-none"
         >
           <option value="me">Me</option>
@@ -161,12 +166,21 @@ export default function AnalyticsPage() {
         </select>
       </section>
 
-      <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Average calories" value={`${Math.round(averages.calories)}`} sub={`${calorieAdherence}% of target`} />
-        <Stat label="Average protein" value={`${Math.round(averages.protein)}g`} sub={`${Math.max(0, targets.protein - Math.round(averages.protein))}g daily gap`} />
-        <Stat label="Logging streak" value={`${streak}d`} sub={source === "live" ? "Current profile data" : "Waiting for profile data"} />
-        <Stat label="Macro share" value={`${macroShare.protein}%`} sub="Protein energy share" />
-      </section>
+      {source === "loading" ? (
+        <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </div>
+      ) : (
+        <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Stat label="Average calories" value={`${Math.round(averages.calories)}`} sub={targets.calories ? `${calorieAdherence}% of target` : "Set a calorie target"} />
+          <Stat label="Average protein" value={`${Math.round(averages.protein)}g`} sub={targets.protein ? `${Math.max(0, targets.protein - Math.round(averages.protein))}g daily gap` : "Set a protein target"} />
+          <Stat label="Logging streak" value={`${streak}d`} sub={streak > 0 ? "Current streak" : "Log a meal to start"} />
+          <Stat label="Macro share" value={`${macroShare.protein}%`} sub="Protein energy share" />
+        </section>
+      )}
 
       <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {insights.map((item) => (
@@ -182,10 +196,16 @@ export default function AnalyticsPage() {
         <Panel className="p-5">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-[22px] font-semibold">Daily target adherence</h2>
-            <span className="text-[12px] font-bold text-[#5f675f]">7 day range · {source}</span>
+            <span className="text-[12px] font-bold text-[#5f675f]">Last 7 days</span>
           </div>
           <div className="flex h-[320px] items-end gap-3 rounded-lg bg-[#f8f8f3] p-4">
-            {days.map((day) => (
+            {source === "loading" ? (
+              <div className="grid w-full gap-3">
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+              </div>
+            ) : days.map((day) => (
               <div key={day.date} className="flex flex-1 flex-col items-center gap-2">
                 <div className="flex w-full flex-col justify-end rounded-md bg-white" style={{ height: "260px" }}>
                   <div
@@ -196,7 +216,7 @@ export default function AnalyticsPage() {
                 <span className="text-[11px] font-bold text-[#5f675f]">{day.date}</span>
               </div>
             ))}
-            {!days.length ? <p className="self-center text-[13px] font-semibold text-[#5f675f]">No analytics data in this range.</p> : null}
+            {source !== "loading" && !days.length ? <p className="self-center text-[13px] font-semibold text-[#5f675f]">No analytics data in this range.</p> : null}
           </div>
         </Panel>
 
