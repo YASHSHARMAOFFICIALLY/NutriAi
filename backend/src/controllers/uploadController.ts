@@ -5,7 +5,7 @@ import { confirmUpload, presignUpload } from '../services/uploadService';
 
 export const presignSchema = z.object({
   contentType: z.string().min(1).max(100),
-  size: z.number().int().positive().optional(),
+  size: z.number().int().positive(),
 });
 
 export const confirmSchema = z.object({
@@ -21,7 +21,7 @@ export const presignHandler: RequestHandler = async (req, res) => {
   const result = await presignUpload({
     userId: req.user.id,
     contentType: body.contentType,
-    size: body.size ?? null,
+    size: body.size,
   });
   res.status(201).json(result);
 };

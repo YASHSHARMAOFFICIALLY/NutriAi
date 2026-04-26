@@ -4,15 +4,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle, Flag, XCircle } from "@phosphor-icons/react/dist/ssr";
 import { abandonChallenge, checkInToday, listMyChallenge, listPresets, startChallenge } from "@/lib/api/challenges";
 import type { ChallengePreset, UserChallengeDTO } from "@/lib/api/types";
-import { challenge } from "../_components/mock-data";
 import { PageHeader, Panel, SourceBadge } from "../_components/ui";
-
-const fallbackPresets = [
-  { id: "protein", title: "Protein floor", category: "PROTEIN", durationDays: 7, description: "Hit a minimum protein target.", slug: "protein-floor", icon: "protein", createdAt: "" },
-  { id: "sugar", title: "No late sugar", category: "SUGAR", durationDays: 14, description: "Avoid late sugar snacks.", slug: "no-late-sugar", icon: "sugar", createdAt: "" },
-  { id: "hydration", title: "Hydration baseline", category: "HYDRATION", durationDays: 7, description: "Keep hydration consistent.", slug: "hydration", icon: "water", createdAt: "" },
-  { id: "habit", title: "Log every dinner", category: "HABIT", durationDays: 30, description: "Log dinner every day.", slug: "log-dinner", icon: "habit", createdAt: "" },
-] satisfies ChallengePreset[];
 
 type ActiveChallenge = {
   id: string;
@@ -39,19 +31,10 @@ function fromUserChallenge(item: UserChallengeDTO): ActiveChallenge {
 }
 
 export default function ChallengesPage() {
-  const [active, setActive] = useState<ActiveChallenge>({
-    id: challenge.id,
-    title: challenge.title,
-    description: challenge.description,
-    durationDays: challenge.durationDays,
-    daysCheckedIn: challenge.daysCheckedIn,
-    lastCheckInDate: challenge.lastCheckInDate,
-    status: challenge.status,
-    category: challenge.category,
-  });
-  const [presets, setPresets] = useState<ChallengePreset[]>(fallbackPresets);
+  const [active, setActive] = useState<ActiveChallenge | null>(null);
+  const [presets, setPresets] = useState<ChallengePreset[]>([]);
   const [past, setPast] = useState<UserChallengeDTO[]>([]);
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
+  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -59,41 +42,39 @@ export default function ChallengesPage() {
     Promise.all([
       listMyChallenge("ACTIVE").catch(() => []),
       listMyChallenge().catch(() => []),
-      listPresets().catch(() => fallbackPresets),
+      listPresets(),
     ])
       .then(([activeRows, allRows, presetRows]) => {
         if (cancelled) return;
-        if (activeRows[0]) setActive(fromUserChallenge(activeRows[0]));
+        setActive(activeRows[0] ? fromUserChallenge(activeRows[0]) : null);
         setPast(allRows.filter((row) => row.status !== "ACTIVE"));
-        setPresets(presetRows.length ? presetRows : fallbackPresets);
+        setPresets(presetRows);
         setSource("live");
       })
-      .catch(() => setSource("fallback"));
+      .catch(() => setSource("error"));
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const canCheckIn = active.lastCheckInDate !== new Date().toISOString().slice(0, 10);
-  const pastRows = past.length ? past.map((row) => ({
+  const canCheckIn = Boolean(active && active.lastCheckInDate !== new Date().toISOString().slice(0, 10));
+  const pastRows = past.map((row) => ({
     title: row.title,
     status: row.status,
     progress: `${row.daysCheckedIn}/${row.durationDays}`,
     updated: new Date(row.updatedAt).toLocaleDateString(),
-  })) : [
-    { title: "Log every lunch", status: "COMPLETED", progress: "7/7", updated: "demo" },
-    { title: "No late sugar", status: "ABANDONED", progress: "4/14", updated: "demo" },
-  ];
-  const progressPct = Math.min(100, Math.round((active.daysCheckedIn / active.durationDays) * 100));
+  }));
+  const progressPct = active ? Math.min(100, Math.round((active.daysCheckedIn / active.durationDays) * 100)) : 0;
 
   async function handleCheckIn() {
     setBusy(true);
     try {
+      if (!active) return;
       const updated = await checkInToday(active.id);
       setActive(fromUserChallenge(updated));
       setSource("live");
     } catch {
-      setSource("fallback");
+      setSource("error");
     } finally {
       setBusy(false);
     }
@@ -111,30 +92,22 @@ export default function ChallengesPage() {
       setActive(fromUserChallenge(created));
       setSource("live");
     } catch {
-      setSource("fallback");
+      setSource("error");
     } finally {
       setBusy(false);
     }
   }
 
   async function handleAbandon() {
+    if (!active) return;
     setBusy(true);
     try {
       const abandoned = await abandonChallenge(active.id);
       setPast((current) => [abandoned, ...current]);
-      setActive({
-        id: challenge.id,
-        title: "No active challenge",
-        description: "Start a preset below to begin a new habit loop.",
-        durationDays: 7,
-        daysCheckedIn: 0,
-        lastCheckInDate: "",
-        status: "ACTIVE",
-        category: "HABIT",
-      });
+      setActive(null);
       setSource("live");
     } catch {
-      setSource("fallback");
+      setSource("error");
     } finally {
       setBusy(false);
     }
@@ -143,6 +116,11 @@ export default function ChallengesPage() {
   return (
     <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Challenges" title="Active habit check-in" />
+      {source === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live challenge data. Backend data is required.</p>
+        </Panel>
+      ) : null}
 
       <section className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <Panel className="overflow-hidden">
@@ -150,12 +128,12 @@ export default function ChallengesPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <div className="mb-3 flex flex-wrap gap-2">
-                  <SourceBadge label={active.category.toLowerCase()} />
-                  <SourceBadge label={active.status.toLowerCase()} />
+                  <SourceBadge label={(active?.category ?? "none").toLowerCase()} />
+                  <SourceBadge label={(active?.status ?? "inactive").toLowerCase()} />
                   <SourceBadge label={source} />
                 </div>
-                <h2 className="text-[36px] font-semibold leading-tight">{active.title}</h2>
-                <p className="mt-3 max-w-xl text-[14px] leading-6 text-white/72">{active.description}</p>
+                <h2 className="text-[36px] font-semibold leading-tight">{active?.title ?? "No active challenge"}</h2>
+                <p className="mt-3 max-w-xl text-[14px] leading-6 text-white/72">{active?.description || "Start a preset below to begin a new habit loop."}</p>
               </div>
               <button
                 onClick={handleCheckIn}
@@ -167,7 +145,7 @@ export default function ChallengesPage() {
               </button>
               <button
                 onClick={handleAbandon}
-                disabled={busy || active.id === challenge.id}
+                disabled={busy || !active}
                 className="rounded-md border border-white/20 px-5 py-3 text-[14px] font-bold text-white/78 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Abandon
@@ -176,8 +154,8 @@ export default function ChallengesPage() {
           </div>
           <div className="p-5">
             <div className="mb-2 flex justify-between text-[13px]">
-              <span className="text-[#5f675f]">{active.daysCheckedIn} of {active.durationDays} days</span>
-              <span className="font-bold">{progressPct}% complete · {Math.max(0, active.durationDays - active.daysCheckedIn)} days left</span>
+              <span className="text-[#5f675f]">{active?.daysCheckedIn ?? 0} of {active?.durationDays ?? 0} days</span>
+              <span className="font-bold">{progressPct}% complete · {active ? Math.max(0, active.durationDays - active.daysCheckedIn) : 0} days left</span>
             </div>
             <div className="h-3 rounded-full bg-black/8">
               <div className="h-3 rounded-full bg-[#173c2b]" style={{ width: `${progressPct}%` }} />
@@ -185,15 +163,15 @@ export default function ChallengesPage() {
             <div className="mt-4 rounded-md bg-[#eef5f2] p-3">
               <p className="text-[13px] font-semibold">Retention signal</p>
               <p className="mt-1 text-[12px] leading-5 text-[#5f675f]">
-                {canCheckIn ? "Today is not checked in yet. This is the highest-friction habit moment." : "Today is complete. The next product job is keeping tomorrow visible."}
+                {!active ? "No active challenge is running." : canCheckIn ? "Today is not checked in yet. This is the highest-friction habit moment." : "Today is complete. The next product job is keeping tomorrow visible."}
               </p>
             </div>
             <div className="mt-5 grid grid-cols-7 gap-2">
-              {Array.from({ length: active.durationDays }, (_, index) => (
+              {active ? Array.from({ length: active.durationDays }, (_, index) => (
                 <div key={index} className={`grid h-12 place-items-center rounded-md text-[12px] font-bold ${index < active.daysCheckedIn ? "bg-[#173c2b] text-white" : "bg-[#eef5f2] text-[#5f675f]"}`}>
                   {index + 1}
                 </div>
-              ))}
+              )) : <p className="col-span-7 text-[13px] font-semibold text-[#5f675f]">Start a preset to create a live challenge.</p>}
             </div>
           </div>
         </Panel>
@@ -213,6 +191,7 @@ export default function ChallengesPage() {
                 </div>
               );
             })}
+            {!pastRows.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No past challenges yet.</p> : null}
           </div>
         </Panel>
       </section>
@@ -221,14 +200,17 @@ export default function ChallengesPage() {
         <h2 className="mb-4 text-[22px] font-semibold">Presets</h2>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {presets.map((preset) => (
-            <div key={preset.id} className="rounded-md border border-black/8 bg-[#f8f8f3] p-4">
-              <Flag size={20} weight="duotone" className="text-[#173c2b]" />
-              <p className="mt-4 text-[15px] font-semibold">{preset.title}</p>
-              <p className="mt-1 text-[12px] leading-5 text-[#5f675f]">{preset.category} · {preset.durationDays} days</p>
-              <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-[#5f675f]">{preset.description}</p>
-              <button onClick={() => handleStart(preset)} disabled={busy} className="mt-4 rounded-md border border-black/10 bg-white px-3 py-2 text-[12px] font-bold disabled:opacity-60">Start</button>
+            <div key={preset.id} className="group/preset rounded-xl border border-border bg-surface-alt p-5 transition-all hover:border-teal/20 hover:bg-white hover:shadow-md">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-forest shadow-sm transition-colors group-hover/preset:bg-forest group-hover/preset:text-white">
+                <Flag size={20} weight="duotone" />
+              </span>
+              <p className="mt-4 text-[15px] font-bold text-forest">{preset.title}</p>
+              <p className="mt-1 text-[12px] leading-5 text-muted">{preset.category} · {preset.durationDays} days</p>
+              <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-muted">{preset.description}</p>
+              <button onClick={() => handleStart(preset)} disabled={busy} className="mt-4 rounded-xl border border-border bg-white px-4 py-2.5 text-[12px] font-bold text-forest transition-all hover:bg-forest hover:text-white hover:shadow-sm disabled:opacity-60">Start</button>
             </div>
           ))}
+          {!presets.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No challenge presets are available from the backend.</p> : null}
         </div>
       </Panel>
     </div>

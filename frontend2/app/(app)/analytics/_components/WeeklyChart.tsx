@@ -1,12 +1,11 @@
-import { analytics } from "../../_components/mock-data";
 import { motion } from "framer-motion";
 
-export function WeeklyChart() {
-  const max = Math.max(...analytics.days.map((day) => day.calories));
+export function WeeklyChart({ days = [] }: { days?: Array<{ date: string; calories: number }> }) {
+  const max = Math.max(1, ...days.map((day) => day.calories));
   
   return (
     <div className="flex h-64 items-end gap-3 rounded-2xl bg-surface-alt p-6 border border-border">
-      {analytics.days.map((day, i) => (
+      {days.map((day, i) => (
         <div key={day.date} className="group relative flex flex-1 flex-col items-center gap-3">
           <motion.div 
             initial={{ height: 0 }}
@@ -20,6 +19,7 @@ export function WeeklyChart() {
           <span className="text-[11px] font-bold text-muted uppercase tracking-tighter">{day.date}</span>
         </div>
       ))}
+      {!days.length ? <p className="self-center text-[13px] font-semibold text-muted">No live weekly data.</p> : null}
     </div>
   );
 }

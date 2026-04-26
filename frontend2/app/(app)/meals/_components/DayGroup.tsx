@@ -1,4 +1,4 @@
-import type { Meal } from "../../_components/mock-data";
+import type { Meal } from "../../_components/ui";
 import { MealCard } from "./MealCard";
 
 export function DayGroup({ date, meals }: { date: string; meals: Meal[] }) {

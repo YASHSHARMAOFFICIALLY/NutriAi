@@ -5,7 +5,6 @@ import { getDailyAnalytics, getMacrosSummary, getStreak } from "@/lib/api/analyt
 import { getFamilyDailyAnalytics, getFamilyMacrosSummary, getFamilyOverview, getFamilyStreak } from "@/lib/api/family";
 import { getProfile } from "@/lib/api/profile";
 import type { FamilyMemberDTO } from "@/lib/api/types";
-import { analytics, profile } from "../_components/mock-data";
 import { PageHeader, Panel, Stat } from "../_components/ui";
 
 type DayRow = {
@@ -19,11 +18,11 @@ type DayRow = {
 };
 
 export default function AnalyticsPage() {
-  const [days, setDays] = useState<DayRow[]>(analytics.days.map((day) => ({ ...day, carbs: 0, fat: 0 })));
-  const [targets, setTargets] = useState(analytics.targets);
-  const [streak, setStreak] = useState(analytics.streak.loggingStreak);
-  const [macroShare, setMacroShare] = useState(analytics.macroShare);
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
+  const [days, setDays] = useState<DayRow[]>([]);
+  const [targets, setTargets] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [streak, setStreak] = useState(0);
+  const [macroShare, setMacroShare] = useState({ protein: 0, carbs: 0, fat: 0 });
+  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState("me");
   const selectedMember = useMemo(
@@ -64,10 +63,10 @@ export default function AnalyticsPage() {
       .then(([daily, macros, apiStreak, apiProfile]) => {
         if (cancelled) return;
         const liveTargets = {
-          calories: daily.targets.calories ?? apiProfile?.dailyCalorieTarget ?? profile.targets.calories,
-          protein: daily.targets.protein ?? apiProfile?.proteinTargetG ?? profile.targets.protein,
-          carbs: daily.targets.carbs ?? apiProfile?.carbsTargetG ?? profile.targets.carbs,
-          fat: daily.targets.fat ?? apiProfile?.fatTargetG ?? profile.targets.fat,
+          calories: daily.targets.calories ?? apiProfile?.dailyCalorieTarget ?? 0,
+          protein: daily.targets.protein ?? apiProfile?.proteinTargetG ?? 0,
+          carbs: daily.targets.carbs ?? apiProfile?.carbsTargetG ?? 0,
+          fat: daily.targets.fat ?? apiProfile?.fatTargetG ?? 0,
         };
         setTargets(liveTargets);
         setDays(daily.days.map((day) => ({
@@ -89,7 +88,7 @@ export default function AnalyticsPage() {
         if (apiStreak) setStreak(apiStreak.loggingStreak);
         setSource("live");
       })
-      .catch(() => setSource("fallback"));
+      .catch(() => setSource("error"));
     return () => {
       cancelled = true;
     };
@@ -107,7 +106,7 @@ export default function AnalyticsPage() {
   }, [days]);
 
   const max = Math.max(1, ...days.map((day) => day.calories));
-  const calorieAdherence = Math.round((averages.calories / targets.calories) * 100);
+  const calorieAdherence = targets.calories > 0 ? Math.round((averages.calories / targets.calories) * 100) : 0;
   const proteinGap = Math.max(0, targets.protein - Math.round(averages.protein));
   const loggedDays = days.filter((day) => day.mealCount > 0).length;
   const macroDrift = Math.abs(macroShare.protein - 25) + Math.abs(macroShare.carbs - 45) + Math.abs(macroShare.fat - 30);
@@ -137,6 +136,11 @@ export default function AnalyticsPage() {
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Analytics" title="Adherence and streaks" />
+      {source === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live analytics. Backend data is required.</p>
+        </Panel>
+      ) : null}
 
       <section className="mb-5 flex flex-col gap-3 rounded-lg border border-black/10 bg-white p-4 shadow-[0_10px_30px_rgba(16,21,16,0.05)] md:flex-row md:items-center md:justify-between">
         <div>
@@ -158,9 +162,9 @@ export default function AnalyticsPage() {
       </section>
 
       <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Average calories" value={`${Math.round(averages.calories)}`} sub={`${Math.round((averages.calories / targets.calories) * 100)}% of target`} />
+        <Stat label="Average calories" value={`${Math.round(averages.calories)}`} sub={`${calorieAdherence}% of target`} />
         <Stat label="Average protein" value={`${Math.round(averages.protein)}g`} sub={`${Math.max(0, targets.protein - Math.round(averages.protein))}g daily gap`} />
-        <Stat label="Logging streak" value={`${streak}d`} sub={source === "live" ? "Live backend data" : "Demo fallback"} />
+        <Stat label="Logging streak" value={`${streak}d`} sub={source === "live" ? "Live backend data" : "Waiting for backend data"} />
         <Stat label="Macro share" value={`${macroShare.protein}%`} sub="Protein energy share" />
       </section>
 
@@ -192,6 +196,7 @@ export default function AnalyticsPage() {
                 <span className="text-[11px] font-bold text-[#5f675f]">{day.date}</span>
               </div>
             ))}
+            {!days.length ? <p className="self-center text-[13px] font-semibold text-[#5f675f]">No analytics data in this range.</p> : null}
           </div>
         </Panel>
 

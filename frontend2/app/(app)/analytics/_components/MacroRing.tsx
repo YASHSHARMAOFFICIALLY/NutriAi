@@ -1,7 +1,6 @@
-import { analytics } from "../../_components/mock-data";
 import { motion } from "framer-motion";
 
-export function MacroRing() {
+export function MacroRing({ macroShare = { protein: 0, carbs: 0, fat: 0 } }: { macroShare?: Record<string, number> }) {
   const colors: Record<string, string> = {
     protein: "bg-teal",
     carbs: "bg-sage",
@@ -10,7 +9,7 @@ export function MacroRing() {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {Object.entries(analytics.macroShare).map(([label, value], i) => (
+      {Object.entries(macroShare).map(([label, value], i) => (
         <motion.div 
           key={label}
           initial={{ opacity: 0, y: 10 }}

@@ -1,6 +1,26 @@
 import Link from "next/link";
 import { ArrowRight, Check, ForkKnife } from "@phosphor-icons/react/dist/ssr";
-import type { Meal } from "./mock-data";
+
+export type Meal = {
+  id: string;
+  mealType: string;
+  title: string;
+  loggedAt: string;
+  source: "TEXT" | "IMAGE";
+  provider: string;
+  cached: boolean;
+  confidence: number;
+  totals: { calories: number; protein: number; carbs: number; fat: number };
+  items: Array<{
+    name: string;
+    quantity: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    confidence: number;
+  }>;
+};
 
 function safeNumber(value: number, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -106,15 +126,15 @@ export function BudgetBar({
 
 export function MealLine({ meal, expanded = false, action }: { meal: Meal; expanded?: boolean; action?: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-black/8 bg-[#f8f8f3]">
+    <div className="group/meal rounded-xl border border-border bg-surface-alt transition-all hover:border-teal/20 hover:shadow-md">
       <div className="flex items-center justify-between gap-4 p-4">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white text-[#173c2b]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-forest shadow-sm transition-colors group-hover/meal:bg-forest group-hover/meal:text-white">
             <ForkKnife size={17} weight="bold" />
           </span>
           <div className="min-w-0">
             <p className="truncate text-[14px] font-semibold">{meal.title}</p>
-            <p className="mt-1 text-[12px] text-[#5f675f]">
+            <p className="mt-1 text-[12px] text-muted">
               {meal.loggedAt} · {meal.mealType.toLowerCase()}
             </p>
           </div>
@@ -130,10 +150,10 @@ export function MealLine({ meal, expanded = false, action }: { meal: Meal; expan
         </div>
       </div>
       {expanded ? (
-        <div className="border-t border-black/8 px-4 pb-4">
-          <div className="mt-3 overflow-hidden rounded-md border border-black/8 bg-white">
+        <div className="border-t border-border px-4 pb-4">
+          <div className="mt-3 overflow-hidden rounded-xl border border-border bg-white">
             <table className="w-full text-left text-[12px]">
-              <thead className="bg-[#eef5f2] text-[#5f675f]">
+              <thead className="bg-surface-alt text-muted">
                 <tr>
                   <th className="px-3 py-2 font-semibold">Item</th>
                   <th className="px-3 py-2 font-semibold">Qty</th>
@@ -143,7 +163,7 @@ export function MealLine({ meal, expanded = false, action }: { meal: Meal; expan
               </thead>
               <tbody>
                 {meal.items.map((item) => (
-                  <tr key={item.name} className="border-t border-black/6">
+                  <tr key={item.name} className="border-t border-border">
                     <td className="px-3 py-2 font-semibold">{item.name}</td>
                     <td className="px-3 py-2 text-[#5f675f]">{item.quantity}</td>
                     <td className="px-3 py-2 text-right">{item.calories}</td>
@@ -161,7 +181,7 @@ export function MealLine({ meal, expanded = false, action }: { meal: Meal; expan
 
 export function SourceBadge({ label }: { label: string }) {
   return (
-    <span className="rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f675f]">
+    <span className="rounded-full border border-border bg-white px-2.5 py-1 text-[11px] font-bold text-muted">
       {label}
     </span>
   );
@@ -169,8 +189,8 @@ export function SourceBadge({ label }: { label: string }) {
 
 export function CheckRow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-md border border-black/8 bg-[#f8f8f3] p-3">
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#d7ff68]">
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-alt p-3.5 transition-all hover:border-teal/20 hover:shadow-sm">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-lime shadow-sm">
         <Check size={14} weight="bold" />
       </span>
       <p className="text-[13px] font-semibold">{children}</p>

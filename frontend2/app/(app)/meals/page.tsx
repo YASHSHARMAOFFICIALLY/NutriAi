@@ -5,7 +5,7 @@ import { listHistory } from "@/lib/api/history";
 import { deleteMeal, listMeals } from "@/lib/api/meals";
 import type { HistoryEntry, MealDTO } from "@/lib/api/types";
 import { PageHeader, MealLine, Panel, SourceBadge } from "../_components/ui";
-import { todayMeals, type Meal } from "../_components/mock-data";
+import type { Meal } from "../_components/ui";
 
 type DiaryMeal = Meal & { loggedDate: string };
 
@@ -40,14 +40,14 @@ function mealFromApi(meal: MealDTO): DiaryMeal {
 }
 
 export default function MealsPage() {
-  const [meals, setMeals] = useState<DiaryMeal[]>(todayMeals.map((meal) => ({ ...meal, loggedDate: new Date().toISOString().slice(0, 10) })));
+  const [meals, setMeals] = useState<DiaryMeal[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [activeFilter, setActiveFilter] = useState("Today");
   const [historyFrom, setHistoryFrom] = useState("");
   const [historyTo, setHistoryTo] = useState("");
   const [minCalories, setMinCalories] = useState("");
   const [maxCalories, setMaxCalories] = useState("");
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
+  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
 
   useEffect(() => {
     let cancelled = false;
@@ -63,11 +63,11 @@ export default function MealsPage() {
     ])
       .then(([apiMeals, apiHistory]) => {
         if (cancelled) return;
-        if (apiMeals.length) setMeals(apiMeals.map(mealFromApi));
+        setMeals(apiMeals.map(mealFromApi));
         setHistory(apiHistory.data);
         setSource("live");
       })
-      .catch(() => setSource("fallback"));
+      .catch(() => setSource("error"));
     return () => {
       cancelled = true;
     };
@@ -94,13 +94,18 @@ export default function MealsPage() {
       setSource("live");
     } catch {
       setMeals(previous);
-      setSource("fallback");
+      setSource("error");
     }
   }
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Meals" title="Food diary" action={{ label: "Log meal", href: "/snap" }} />
+      {source === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live meal data. Backend data is required.</p>
+        </Panel>
+      ) : null}
 
       <div className="mb-5 flex flex-wrap gap-2">
         {["Today", "7 days", "30 days", "Breakfast", "Lunch", "Dinner", "Photo source"].map((filter) => (
@@ -148,6 +153,7 @@ export default function MealsPage() {
             </Panel>
           );
         })}
+        {!days.length ? <Panel className="p-8 text-center"><p className="text-[15px] font-semibold text-[#5f675f]">No meals found for the current filters.</p></Panel> : null}
       </section>
 
       <Panel className="mt-5 overflow-hidden">
