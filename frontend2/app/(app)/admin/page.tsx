@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Activity, AlertTriangle, Database, Gauge, Key, Search, Sparkle, Users } from "lucide-react";
+import { Activity, AlertTriangle, Gauge, Key, Search, Sparkle, Users } from "lucide-react";
 import { getAdminActivity, getAdminAiSettings, getAdminOverview, getAdminRuntime, getAdminUsage, getAdminUserDetail, listAdminUsers, updateAdminAiSettings } from "@/lib/api/admin";
 import type { AdminActivityItem, AdminAiSettings, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserDetail, AdminUserRow, UserRole } from "@/lib/api/types";
 import { PageHeader, Panel, Stat } from "../_components/ui";
@@ -70,12 +70,11 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function JsonBlock({ value }: { value: unknown }) {
-  return (
-    <pre className="max-h-[420px] overflow-auto rounded-md bg-[#101510] p-4 text-[11px] leading-5 text-white">
-      {JSON.stringify(value, null, 2)}
-    </pre>
-  );
+function formatFeatureName(value: string) {
+  return value
+    .replace(/^\/v\d+\//, "")
+    .replace(/[._/-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export default function AdminPage() {
@@ -185,14 +184,14 @@ export default function AdminPage() {
       <PageHeader eyebrow={`Admin · ${source}`} title="Operations, users, usage" />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live admin data. Check backend availability and ADMIN permissions.</p>
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load admin data. Sign in with an admin account and try again.</p>
         </Panel>
       ) : null}
 
       <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Stat label="Users" value={`${overview.users.total}`} sub={`+${overview.users.newThisWeek} this week`} />
         <Stat label="Meals today" value={`${overview.meals.today}`} sub={`${overview.meals.thisWeek} this week`} />
-        <Stat label="AI spend today" value={`$${overview.ai.costTodayUsd.toFixed(2)}`} sub={`${overview.ai.requestsToday} requests`} />
+        <Stat label="Usage today" value={`$${overview.ai.costTodayUsd.toFixed(2)}`} sub={`${overview.ai.requestsToday} requests`} />
         <Stat label="API keys" value={`${overview.api.activeKeys}`} sub={`${overview.api.failedCallsToday} failed calls today`} />
       </section>
 
@@ -230,7 +229,7 @@ export default function AdminPage() {
                   <th className="px-5 py-3 text-right font-semibold">Weight</th>
                   <th className="px-5 py-3 text-right font-semibold">Challenges</th>
                   <th className="px-5 py-3 font-semibold">Last meal</th>
-                  <th className="px-5 py-3 text-right font-semibold">AI spend</th>
+                  <th className="px-5 py-3 text-right font-semibold">Usage</th>
                   <th className="px-5 py-3 text-right font-semibold">Details</th>
                 </tr>
               </thead>
@@ -288,7 +287,7 @@ export default function AdminPage() {
               {[
                 ["API failures", `${overview.api.failedCallsToday} failed public calls today`],
                 ["Unverified users", `${users.filter((user) => !user.emailVerified).length} accounts need email verification`],
-                ["AI cost", `$${overview.ai.costThisWeekUsd.toFixed(2)} weekly spend`],
+                ["Usage", `$${overview.ai.costThisWeekUsd.toFixed(2)} weekly total`],
               ].map(([title, sub]) => (
                 <div key={title} className="rounded-md bg-[#f8f8f3] p-3">
                   <p className="text-[13px] font-semibold">{title}</p>
@@ -405,12 +404,10 @@ export default function AdminPage() {
 
             <aside className="space-y-5">
               <Panel className="p-5">
-                <h3 className="mb-3 text-[18px] font-semibold">AI summary</h3>
+                <h3 className="mb-3 text-[18px] font-semibold">Usage summary</h3>
                 <div className="grid gap-3">
                   <Field label="Requests" value={selectedUser.aiSummary.requests} />
-                  <Field label="Tokens" value={selectedUser.aiSummary.totalTokens} />
                   <Field label="Cost" value={`$${selectedUser.aiSummary.costUsd.toFixed(4)}`} />
-                  <Field label="Avg latency" value={`${selectedUser.aiSummary.avgLatencyMs}ms`} />
                 </div>
               </Panel>
               <Panel className="p-5">
@@ -425,10 +422,6 @@ export default function AdminPage() {
             </aside>
           </div>
 
-          <div className="border-t border-black/10 p-5">
-            <h3 className="mb-3 text-[18px] font-semibold">Complete admin JSON</h3>
-            <JsonBlock value={selectedUser} />
-          </div>
         </Panel>
       ) : null}
 
@@ -437,7 +430,7 @@ export default function AdminPage() {
           <div className="flex flex-col gap-3 border-b border-black/10 p-5 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
               <Sparkle size={22} className="text-[#0f8b8d]" />
-              <h2 className="text-[22px] font-semibold">AI usage by endpoint</h2>
+              <h2 className="text-[22px] font-semibold">Feature usage</h2>
             </div>
             <div className="flex flex-wrap gap-2">
               <input type="date" value={usageFrom} onChange={(event) => setUsageFrom(event.target.value)} className="rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[12px] font-bold outline-none" />
@@ -448,18 +441,16 @@ export default function AdminPage() {
             <table className="w-full min-w-[680px] text-left text-[13px]">
               <thead className="bg-[#eef5f2] text-[#5f675f]">
                 <tr>
-                  <th className="px-5 py-3 font-semibold">Endpoint</th>
+                  <th className="px-5 py-3 font-semibold">Feature</th>
                   <th className="px-5 py-3 text-right font-semibold">Requests</th>
-                  <th className="px-5 py-3 text-right font-semibold">Tokens</th>
                   <th className="px-5 py-3 text-right font-semibold">Cost</th>
                 </tr>
               </thead>
               <tbody>
                 {usage.byEndpoint.map((row) => (
                   <tr key={row.endpoint} className="border-t border-black/8">
-                    <td className="px-5 py-4 font-semibold">{row.endpoint}</td>
+                    <td className="px-5 py-4 font-semibold">{formatFeatureName(row.endpoint)}</td>
                     <td className="px-5 py-4 text-right">{row.requests}</td>
-                    <td className="px-5 py-4 text-right">{row.totalTokens}</td>
                     <td className="px-5 py-4 text-right">${row.costUsd.toFixed(2)}</td>
                   </tr>
                 ))}
@@ -478,9 +469,9 @@ export default function AdminPage() {
             {[
               ["Active keys", String(overview.api.activeKeys)],
               ["Rate limit", "enabled"],
-              ["Public endpoint", "/v1/public/calories"],
-              ["Cache hit rate", `${usage.summary.cacheHitRate}%`],
-              ["Avg latency", `${usage.summary.avgLatencyMs}ms`],
+              ["Public tool", "calorie lookup"],
+              ["Repeat savings", `${usage.summary.cacheHitRate}%`],
+              ["Average response", usage.summary.avgLatencyMs > 0 ? "tracked" : "not tracked"],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between rounded-md bg-[#f8f8f3] p-3">
                 <span className="text-[13px] font-semibold">{label}</span>
@@ -488,10 +479,7 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
-          <div className="mt-5 flex items-start gap-3 rounded-md bg-[#eef5f2] p-3">
-            <Database size={18} className="mt-0.5 text-[#173c2b]" />
-            <p className="text-[13px] leading-6 text-[#5f675f]">Admin reads stay wired to users, activity, AI spend, API usage, and failed calls.</p>
-          </div>
+          <p className="mt-5 rounded-md bg-[#eef5f2] p-3 text-[13px] leading-6 text-[#5f675f]">Admin views show users, activity, usage, and failed calls.</p>
         </Panel>
         <Panel className="p-5">
           <div className="mb-4 flex items-center gap-3">
@@ -504,7 +492,7 @@ export default function AdminPage() {
               ["Chat messages/day", "aiChatDailyMessageLimit"],
               ["Chat max words", "aiChatMaxWords"],
               ["Chat history window", "aiChatHistoryWindow"],
-              ["Chat max output tokens", "aiChatMaxOutputTokens"],
+              ["Chat response size", "aiChatMaxOutputTokens"],
               ["Food text max words", "aiFoodTextMaxWords"],
               ["Image analyses/day", "aiImageDailyLimit"],
             ].map(([label, key]) => (
@@ -535,10 +523,10 @@ export default function AdminPage() {
           <div className="space-y-3">
             {[
               ["Requests/min", `${runtime.runtime.http.requestsLastMinute}`],
-              ["HTTP latency", `${runtime.runtime.http.avgLatencyMsLastMinute}ms`],
-              ["AI active", `${runtime.aiGuard.active}/${runtime.aiGuard.maxConcurrent}`],
-              ["AI waiting", `${runtime.aiGuard.waiting}`],
-              ["AI timeouts", `${runtime.runtime.ai.timeouts}`],
+              ["Response status", runtime.runtime.http.avgLatencyMsLastMinute > 0 ? "tracked" : "quiet"],
+              ["Active work", `${runtime.aiGuard.active}/${runtime.aiGuard.maxConcurrent}`],
+              ["Waiting work", `${runtime.aiGuard.waiting}`],
+              ["Timeouts", `${runtime.runtime.ai.timeouts}`],
               ["Rate limit bypass", `${runtime.runtime.resilience.rateLimitBypass}`],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between rounded-md bg-[#f8f8f3] p-3">
@@ -547,22 +535,20 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
-          <p className="mt-4 text-[12px] leading-5 text-[#5f675f]">
-            AI guard: {runtime.aiGuard.requestTimeoutMs}ms timeout · {runtime.aiGuard.queueTimeoutMs}ms queue wait.
-          </p>
+          <p className="mt-4 text-[12px] leading-5 text-[#5f675f]">Operational limits are active.</p>
         </Panel>
         <Panel className="p-5">
-          <h2 className="mb-4 text-[20px] font-semibold">Provider mix</h2>
+          <h2 className="mb-4 text-[20px] font-semibold">Usage mix</h2>
           <div className="space-y-2">
-            {usage.byProvider.length ? usage.byProvider.map((row) => (
-              <div key={row.provider} className="rounded-md bg-[#f8f8f3] p-3">
+            {usage.byEndpoint.length ? usage.byEndpoint.map((row) => (
+              <div key={row.endpoint} className="rounded-md bg-[#f8f8f3] p-3">
                 <div className="flex justify-between text-[13px]">
-                  <span className="font-semibold">{row.provider}</span>
+                  <span className="font-semibold">{formatFeatureName(row.endpoint)}</span>
                   <span className="text-[#5f675f]">${row.costUsd.toFixed(2)}</span>
                 </div>
-                <p className="mt-1 text-[11px] text-[#5f675f]">{row.requests} requests · {row.totalTokens} tokens</p>
+                <p className="mt-1 text-[11px] text-[#5f675f]">{row.requests} requests</p>
               </div>
-            )) : <p className="text-[13px] font-semibold text-[#5f675f]">No provider usage in this range.</p>}
+            )) : <p className="text-[13px] font-semibold text-[#5f675f]">No usage in this range.</p>}
           </div>
         </Panel>
         </div>

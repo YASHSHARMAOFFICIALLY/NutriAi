@@ -65,7 +65,7 @@ function NutritionCard() {
       </div>
       <div className="mt-3 flex items-center gap-1.5 text-[10px] text-sage">
         <span className="h-1.5 w-1.5 rounded-full bg-sage" />
-        AI analysis complete
+        Nutrition scan complete
       </div>
     </div>
   );
@@ -184,7 +184,7 @@ export default function LoginPage() {
 
           <div className="mb-10">
             <h2 className="font-display text-4xl font-bold tracking-[-0.02em] text-ink">Get started.</h2>
-            <p className="mt-2 text-[15px] leading-[1.5] text-ink-muted">Log your first meal in under 10 seconds.</p>
+            <p className="mt-2 text-[15px] leading-[1.5] text-ink-muted">Log your first meal and keep your day on track.</p>
           </div>
 
           <motion.a

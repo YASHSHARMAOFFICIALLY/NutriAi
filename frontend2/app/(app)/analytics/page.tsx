@@ -138,7 +138,7 @@ export default function AnalyticsPage() {
       <PageHeader eyebrow="Analytics" title="Adherence and streaks" />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live analytics. Backend data is required.</p>
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load analytics. Sign in and try again.</p>
         </Panel>
       ) : null}
 
@@ -164,7 +164,7 @@ export default function AnalyticsPage() {
       <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Stat label="Average calories" value={`${Math.round(averages.calories)}`} sub={`${calorieAdherence}% of target`} />
         <Stat label="Average protein" value={`${Math.round(averages.protein)}g`} sub={`${Math.max(0, targets.protein - Math.round(averages.protein))}g daily gap`} />
-        <Stat label="Logging streak" value={`${streak}d`} sub={source === "live" ? "Live backend data" : "Waiting for backend data"} />
+        <Stat label="Logging streak" value={`${streak}d`} sub={source === "live" ? "Current profile data" : "Waiting for profile data"} />
         <Stat label="Macro share" value={`${macroShare.protein}%`} sub="Protein energy share" />
       </section>
 

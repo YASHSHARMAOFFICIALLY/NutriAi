@@ -188,7 +188,7 @@ export default function FamilyPage() {
             </div>
             {latestInvite ? (
               <div className="mt-4 rounded-md border border-[#d7ff68] bg-[#f8f8f3] p-3">
-                <p className="text-[12px] font-bold text-[#173c2b]">Invite token</p>
+                <p className="text-[12px] font-bold text-[#173c2b]">Invite code</p>
                 <p className="mt-2 break-all font-mono text-[12px]">{latestInvite.token}</p>
               </div>
             ) : null}
@@ -200,7 +200,7 @@ export default function FamilyPage() {
               <input
                 value={acceptToken}
                 onChange={(event) => setAcceptToken(event.target.value)}
-                placeholder="Paste invite token"
+                placeholder="Paste invite code"
                 className="min-w-0 flex-1 rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[13px] font-semibold outline-none"
               />
               <button

@@ -103,7 +103,7 @@ export default function MealsPage() {
       <PageHeader eyebrow="Meals" title="Food diary" action={{ label: "Log meal", href: "/snap" }} />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live meal data. Backend data is required.</p>
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load meal data. Sign in and try again.</p>
         </Panel>
       ) : null}
 
@@ -160,7 +160,7 @@ export default function MealsPage() {
         <div className="flex flex-col gap-3 border-b border-black/10 p-5">
           <div>
             <h2 className="text-[22px] font-semibold">Analysis history</h2>
-            <p className="mt-1 text-[13px] text-[#5f675f]">Food queries from the existing backend history endpoint.</p>
+            <p className="mt-1 text-[13px] text-[#5f675f]">Recent food checks and saved nutrition estimates.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <input type="date" value={historyFrom} onChange={(event) => setHistoryFrom(event.target.value)} className="rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[12px] font-bold outline-none" />

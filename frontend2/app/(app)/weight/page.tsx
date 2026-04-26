@@ -86,7 +86,7 @@ export default function WeightPage() {
       <PageHeader eyebrow="Weight" title="Trend and entries" />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live weight data. Backend data is required.</p>
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load weight data. Sign in and try again.</p>
         </Panel>
       ) : null}
 
