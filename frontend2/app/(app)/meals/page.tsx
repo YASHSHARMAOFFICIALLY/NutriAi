@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { listHistory } from "@/lib/api/history";
 import { deleteMeal, listMeals } from "@/lib/api/meals";
 import type { HistoryEntry, MealDTO } from "@/lib/api/types";
-import { PageHeader, MealLine, Panel, SourceBadge } from "../_components/ui";
+import { PageHeader, MealLine, Panel, Skeleton, SourceBadge, Stat } from "../_components/ui";
 import type { Meal } from "../_components/ui";
 
 type DiaryMeal = Meal & { loggedDate: string };
@@ -37,6 +38,17 @@ function mealFromApi(meal: MealDTO): DiaryMeal {
       confidence: 1,
     })),
   };
+}
+
+function todayStart() {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function formatDiaryDate(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+  return date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 }
 
 export default function MealsPage() {
@@ -75,7 +87,16 @@ export default function MealsPage() {
 
   const days = useMemo(() => {
     const groups = new Map<string, Meal[]>();
+    const today = todayStart();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 6);
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 29);
     const filtered = meals.filter((meal) => {
+      const loggedDay = new Date(`${meal.loggedDate}T00:00:00`);
+      if (activeFilter === "Today") return loggedDay.getTime() === today.getTime();
+      if (activeFilter === "7 days") return loggedDay >= sevenDaysAgo;
+      if (activeFilter === "30 days") return loggedDay >= thirtyDaysAgo;
       if (activeFilter === "Breakfast" || activeFilter === "Lunch" || activeFilter === "Dinner") {
         return meal.mealType === activeFilter.toUpperCase();
       }
@@ -83,8 +104,22 @@ export default function MealsPage() {
       return true;
     });
     filtered.forEach((meal) => groups.set(meal.loggedDate, [...(groups.get(meal.loggedDate) ?? []), meal]));
-    return Array.from(groups.entries()).map(([date, groupedMeals]) => ({ date, meals: groupedMeals }));
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([date, groupedMeals]) => ({ date, meals: groupedMeals }));
   }, [activeFilter, meals]);
+
+  const visibleTotals = useMemo(() => days.reduce(
+    (acc, day) => {
+      day.meals.forEach((meal) => {
+        acc.meals += 1;
+        acc.calories += meal.totals.calories;
+        acc.protein += meal.totals.protein;
+      });
+      return acc;
+    },
+    { meals: 0, calories: 0, protein: 0 },
+  ), [days]);
 
   async function handleDeleteMeal(id: string) {
     const previous = meals;
@@ -115,8 +150,31 @@ export default function MealsPage() {
         ))}
       </div>
 
+      {source === "loading" ? (
+        <div className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-3">
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+          </div>
+          <Panel className="p-5">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="mt-5 h-20" />
+            <Skeleton className="mt-3 h-20" />
+          </Panel>
+        </div>
+      ) : null}
+
+      {source !== "loading" ? (
+        <section className="mb-5 grid gap-3 md:grid-cols-3">
+          <Stat label="Visible meals" value={`${visibleTotals.meals}`} sub={`${activeFilter} filter`} />
+          <Stat label="Calories" value={`${visibleTotals.calories}`} sub="In current view" />
+          <Stat label="Protein" value={`${visibleTotals.protein}g`} sub="In current view" />
+        </section>
+      ) : null}
+
       <section className="space-y-6">
-        {days.map((day) => {
+        {source !== "loading" && days.map((day) => {
           const totals = day.meals.reduce(
             (acc, meal) => ({
               calories: acc.calories + meal.totals.calories,
@@ -129,7 +187,7 @@ export default function MealsPage() {
             <Panel key={day.date} className="overflow-hidden">
               <div className="flex flex-col gap-3 border-b border-black/10 p-5 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-[22px] font-semibold">{day.date}</h2>
+                  <h2 className="text-[22px] font-semibold">{formatDiaryDate(day.date)}</h2>
                   <p className="mt-1 text-[13px] text-[#5f675f]">{day.meals.length} meals · {totals.calories} kcal · {totals.protein}g protein</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -153,7 +211,22 @@ export default function MealsPage() {
             </Panel>
           );
         })}
-        {!days.length ? <Panel className="p-8 text-center"><p className="text-[15px] font-semibold text-[#5f675f]">No meals found for the current filters.</p></Panel> : null}
+        {source !== "loading" && !days.length ? (
+          <Panel className="p-8 text-center">
+            <p className="text-[16px] font-bold text-[#173c2b]">{meals.length ? "No meals match this filter" : "No meals logged yet"}</p>
+            <p className="mx-auto mt-2 max-w-md text-[13px] leading-6 text-[#5f675f]">
+              {meals.length ? "Try a wider date range or clear the meal type filter." : "Start with a photo scan or add a meal from the diary flow to build your history."}
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <button onClick={() => setActiveFilter("Today")} className="rounded-xl border border-black/10 bg-white px-4 py-3 text-[13px] font-bold text-[#173c2b]">
+                Show today
+              </button>
+              <Link href="/snap" className="rounded-xl bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white">
+                Scan meal
+              </Link>
+            </div>
+          </Panel>
+        ) : null}
       </section>
 
       <Panel className="mt-5 overflow-hidden">
