@@ -486,7 +486,7 @@ function ImmersiveProduct() {
               One screen should explain the whole day.
             </h2>
             <p className="mt-6 text-[17px] leading-8 text-white/70">
-              A customer wants an answer fast: what happened, what is left, and what should I eat next? This visual ties the backend features into one paid-product experience.
+              A customer wants a clear answer: what happened, what is left, and what should I eat next? This visual ties the product experience into one daily workflow.
             </p>
             <div className="mt-8 grid gap-2 sm:grid-cols-2">
               {["Meal verification", "Daily macro dashboard", "Coach context", "Weight trends", "Challenges", "Weekly digest"].map((item) => (
@@ -586,7 +586,7 @@ function Personalization() {
               Recommendations should feel made for one person.
             </h2>
             <p className="mt-5 max-w-xl text-[16px] leading-7 text-white/72">
-              The backend already captures goals, body profile, allergies, preferences, budget, activity, timezone, and weight history. The page should make that personalization visible.
+              NutriAI uses goals, body profile, allergies, preferences, budget, activity, timezone, and weight history to make personalization visible.
             </p>
           </div>
         </div>
@@ -648,12 +648,12 @@ function PlatformProof() {
     <section className="border-y border-black/10 bg-white px-5 py-24 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <div>
-          <Header eyebrow="Platform depth" title="The app has product infrastructure behind the meal scanner." />
+          <Header eyebrow="Platform depth" title="The app goes beyond the meal scanner." />
           <p className="mt-6 max-w-xl text-[17px] leading-8 text-[#5f675f]">
-            The paid-product signal is not another feature card. It is the operational layer: private uploads, API keys, metered public calls, role-based admin, usage cost, and cache visibility.
+            The paid-product signal is the operational layer: private uploads, API keys, public calorie tools, role-based admin, and usage visibility.
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {["Private image uploads", "API key management", "Public calories endpoint", "AI cost tracking", "Admin user operations", "Provider/cache telemetry"].map((item) => (
+            {["Private image uploads", "API key management", "Public calorie tools", "Usage tracking", "Admin user operations", "Reliability overview"].map((item) => (
               <div key={item} className="rounded-xl border border-black/8 bg-[#f8f8f3] p-4 transition-all hover:border-black/16 hover:shadow-[0_6px_20px_rgba(16,21,16,0.06)]">
                 <p className="text-[14px] font-semibold">{item}</p>
               </div>
@@ -663,8 +663,8 @@ function PlatformProof() {
         <div className="rounded-xl bg-[#101510] p-6 text-white shadow-[0_28px_90px_rgba(16,21,16,0.22)]">
           <div className="grid gap-3 md:grid-cols-2">
             {[
-              ["AI spend today", "$2.18", "1,105 requests"],
-              ["Cache hit rate", "18%", "lower cost repeats"],
+              ["Usage today", "$2.18", "1,105 requests"],
+              ["Repeat savings", "18%", "lower cost repeats"],
               ["Active API keys", "9", "scoped and revocable"],
               ["Failed calls", "2", "watchlist signal"],
             ].map(([label, value, sub]) => (

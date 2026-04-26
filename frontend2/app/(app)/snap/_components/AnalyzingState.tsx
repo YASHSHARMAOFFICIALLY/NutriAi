@@ -1,11 +1,11 @@
 import { motion } from "framer-motion";
-import { Sparkle, Database, ShieldCheck, Cpu } from "@phosphor-icons/react/dist/ssr";
+import { Sparkle, ShieldCheck, ForkKnife, ListChecks } from "@phosphor-icons/react/dist/ssr";
 
 export function AnalyzingState() {
   const steps = [
-    { icon: Cpu, label: "Initializing Vision Engine", color: "text-teal" },
-    { icon: Database, label: "Querying Food Database", color: "text-forest" },
-    { icon: ShieldCheck, label: "Verifying Nutritional Data", color: "text-lime" },
+    { icon: ForkKnife, label: "Reading meal details", color: "text-teal" },
+    { icon: ListChecks, label: "Estimating nutrition", color: "text-forest" },
+    { icon: ShieldCheck, label: "Preparing editable results", color: "text-lime" },
   ];
 
   return (
@@ -40,7 +40,7 @@ export function AnalyzingState() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-[24px] font-bold text-forest tracking-tight">Intelligence at work...</h2>
+        <h2 className="text-[24px] font-bold text-forest tracking-tight">Preparing your results...</h2>
         <div className="flex flex-col gap-3">
           {steps.map((step, i) => (
             <motion.div

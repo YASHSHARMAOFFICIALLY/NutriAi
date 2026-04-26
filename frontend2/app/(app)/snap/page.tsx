@@ -99,7 +99,7 @@ export default function SnapPage() {
       setErrorMessage(
         error instanceof ApiError
           ? error.message
-          : "Network error. Backend analysis is required.",
+          : "Could not analyze this meal. Check your connection and try again.",
       );
       setStatus("error");
     }
@@ -209,7 +209,7 @@ export default function SnapPage() {
                     {selectedFile ? "Change photo" : "Drop food photo"}
                   </p>
                   <p className="mt-2 text-[13px] leading-relaxed text-muted">
-                    {selectedFile ? `${selectedFile.name} ready` : "Upload a photo for instant AI analysis"}
+                    {selectedFile ? `${selectedFile.name} ready` : "Upload a photo for instant nutrition analysis"}
                   </p>
                   <input
                     type="file"
@@ -256,7 +256,7 @@ export default function SnapPage() {
             
             {status === "error" && (
               <p className="mt-4 rounded-lg bg-amber-50 p-3 text-center text-[12px] font-bold text-amber-700 border border-amber-100">
-                {errorMessage || "Network error. Backend analysis is required."}
+                {errorMessage || "Could not analyze this meal. Check your connection and try again."}
               </p>
             )}
           </Panel>
@@ -265,7 +265,7 @@ export default function SnapPage() {
              <div className="relative z-10">
                <h3 className="text-[13px] font-bold uppercase tracking-[0.2em] text-lime mb-2">Pro Tip</h3>
                <p className="text-[14px] leading-relaxed text-white/80">
-                 Multiple items? Just list them all or snap a single photo. Our AI decomposes complex meals automatically.
+                 Multiple items? List them all or snap a single photo. NutriAI separates complex meals into editable items.
                </p>
              </div>
              <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-lime/10 blur-2xl" />
@@ -423,7 +423,7 @@ export default function SnapPage() {
               <Panel className="flex min-h-[500px] items-center justify-center p-12 text-center">
                 <div>
                   <p className="text-[22px] font-bold text-forest">No analysis yet</p>
-                  <p className="mt-2 text-[13px] text-muted">Enter a meal description or upload a photo to fetch live backend analysis.</p>
+                  <p className="mt-2 text-[13px] text-muted">Enter a meal description or upload a photo to estimate nutrition.</p>
                 </div>
               </Panel>
             )}
