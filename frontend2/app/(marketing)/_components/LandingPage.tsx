@@ -223,52 +223,84 @@ function Nav() {
 
 function Hero() {
   return (
-    <section className="relative min-h-[92vh] overflow-hidden bg-[#101510] text-white">
+    <section className="relative min-h-[100svh] overflow-hidden bg-[#101510] text-white">
       <img
         src={heroImage}
         alt="Colorful nutrition bowl with grains and vegetables"
         className="absolute inset-0 h-full w-full object-cover"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,16,0.94)_0%,rgba(16,21,16,0.76)_42%,rgba(16,21,16,0.22)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,16,0.96)_0%,rgba(16,21,16,0.82)_46%,rgba(16,21,16,0.28)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#101510] to-transparent" />
 
-      <div className="relative z-10 mx-auto grid min-h-[92vh] max-w-7xl items-center gap-8 px-5 pb-28 pt-28 lg:grid-cols-[0.86fr_1fr] lg:px-8 xl:grid-cols-[0.72fr_1.28fr]">
+      <div className="relative z-10 mx-auto grid min-h-[100svh] max-w-7xl items-center gap-8 px-5 pb-20 pt-24 sm:pb-24 sm:pt-28 lg:grid-cols-[0.82fr_1fr] lg:px-8 xl:grid-cols-[0.72fr_1.28fr]">
         <div className="max-w-3xl">
-          <div className="hero-reveal mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] font-semibold backdrop-blur-md">
+          <div className="hero-reveal mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-bold uppercase tracking-[0.12em] backdrop-blur-md">
             <Sparkle size={14} weight="fill" className="text-[#d7ff68]" />
-            Meal scanner, coach, tracker, and habit system
+            NutriAI meal scanner
           </div>
-          <h1 className="hero-reveal hero-delay-1 display-heading text-[42px] font-semibold leading-[1.02] md:text-[58px] xl:text-[72px]">
-            Scan food. Fix portions. Hit today&apos;s targets.
+          <h1 className="hero-reveal hero-delay-1 display-heading max-w-4xl text-[44px] font-semibold leading-[0.98] md:text-[64px] xl:text-[80px]">
+            Snap a meal. See your macros. Know dinner.
           </h1>
-          <p className="hero-reveal hero-delay-2 mt-6 max-w-2xl text-[17px] leading-7 text-white/78 xl:mt-7 xl:text-[19px] xl:leading-8">
-            NutriAI turns meals into editable nutrition, then uses your saved targets, history, preferences, and progress to guide the next decision.
+          <p className="hero-reveal hero-delay-2 mt-6 max-w-2xl text-[16px] leading-7 text-white/78 md:text-[18px] xl:mt-7 xl:text-[20px] xl:leading-8">
+            Take a photo, review editable food items, save the meal, and let NutriAI guide your next choice from today&apos;s targets and history.
           </p>
-          <div className="hero-reveal hero-delay-3 mt-9 flex flex-col gap-3 sm:flex-row">
-            <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-md bg-[#d7ff68] px-6 py-3 text-[15px] font-semibold text-[#101510] transition hover:bg-white">
+          <div className="hero-reveal hero-delay-3 mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d7ff68] px-6 py-3.5 text-[15px] font-bold text-[#101510] shadow-[0_18px_44px_rgba(215,255,104,0.22)] transition hover:bg-white">
               Get started
               <ArrowRight size={16} weight="bold" />
             </Link>
-            <a href="#product" className="inline-flex items-center justify-center gap-2 rounded-md border border-white/24 bg-white/10 px-6 py-3 text-[15px] font-semibold text-white backdrop-blur-md transition hover:bg-white/16">
+            <a href="#product" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/24 bg-white/10 px-6 py-3.5 text-[15px] font-bold text-white backdrop-blur-md transition hover:bg-white/16">
               See how it works
             </a>
           </div>
-          <div className="hero-reveal hero-delay-3 mt-10 grid max-w-xl grid-cols-3 gap-3 text-center">
+
+          <div className="hero-reveal hero-delay-3 mt-7 grid max-w-2xl gap-2 sm:grid-cols-3">
+            {["Editable scan results", "Daily target gaps", "Next-meal guidance"].map((item) => (
+              <div key={item} className="flex items-center gap-2 rounded-xl border border-white/14 bg-white/8 px-3 py-2.5 text-[12px] font-semibold text-white/78 backdrop-blur-md">
+                <Check size={14} weight="bold" className="text-[#d7ff68]" />
+                {item}
+              </div>
+            ))}
+          </div>
+
+          <div className="hero-reveal hero-delay-3 mt-8 grid max-w-xl grid-cols-3 gap-3 text-center">
             {[
-              ["24g", "protein gap"],
-              ["86%", "target hit"],
+              ["612", "kcal scan"],
+              ["24g", "protein left"],
               ["7 day", "streak"],
             ].map(([value, label]) => (
-              <div key={label} className="rounded-md border border-white/16 bg-white/10 px-3 py-3 backdrop-blur-md">
+              <div key={label} className="rounded-xl border border-white/16 bg-white/10 px-3 py-3 backdrop-blur-md">
                 <p className="text-[22px] font-semibold">{value}</p>
                 <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/56">{label}</p>
               </div>
             ))}
           </div>
+
+          <div className="hero-reveal hero-delay-3 mt-6 rounded-2xl border border-white/14 bg-white/10 p-4 backdrop-blur-xl lg:hidden">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#d7ff68]">Meal saved</p>
+                <h2 className="mt-1 text-[20px] font-semibold">Greek bowl</h2>
+              </div>
+              <span className="rounded-full bg-[#d7ff68] px-3 py-1 text-[11px] font-bold text-[#101510]">92% sure</span>
+            </div>
+            <div className="mt-4 grid grid-cols-4 gap-2 text-center">
+              {[
+                ["612", "kcal"],
+                ["42g", "pro"],
+                ["58g", "carb"],
+                ["19g", "fat"],
+              ].map(([value, label]) => (
+                <div key={label} className="rounded-xl bg-white/12 p-2">
+                  <p className="text-[15px] font-bold">{value}</p>
+                  <p className="text-[10px] font-semibold text-white/56">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="hero-stage hidden lg:block lg:scale-[0.82] lg:-translate-x-4 xl:translate-x-0 xl:scale-100">
-          <div className="pointer-events-none absolute left-[350px] top-[300px] z-0 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(215,255,104,0.10)_0%,transparent_70%)] blur-3xl" />
           <NutritionHUD />
           <FloatingPhone />
           <CoachBubble />
@@ -276,8 +308,8 @@ function Hero() {
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-1/2 z-20 hidden -translate-x-1/2 text-[12px] font-semibold uppercase tracking-[0.2em] text-white/55 md:block">
-        Scroll for product flow
+      <div className="absolute bottom-4 left-1/2 z-20 hidden -translate-x-1/2 text-[11px] font-bold uppercase tracking-[0.22em] text-white/55 md:block">
+        Product flow below
       </div>
     </section>
   );
