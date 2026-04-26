@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Camera, CheckCircle, Database, ImageSquare, PencilSimple, Sparkle, TextT } from "@phosphor-icons/react/dist/ssr";
+import Image from "next/image";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Camera, CheckCircle, ImageSquare, ListChecks, PencilSimple, Sparkle, TextT, X } from "@phosphor-icons/react/dist/ssr";
 import { analyzeFood } from "@/lib/api/food";
 import { ApiError } from "@/lib/api/client";
 import { createMeal, inferMealType } from "@/lib/api/meals";
@@ -71,12 +72,31 @@ export default function SnapPage() {
   const [assetId, setAssetId] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<"photo" | "text">("photo");
   const [errorMessage, setErrorMessage] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const previewUrlRef = useRef("");
 
   const sourceSteps = useMemo(() => [
     { label: assetId ? "Photo ready" : selectedFile ? "Photo selected" : "Prompt ready", icon: ImageSquare },
-    { label: "Nutrition estimated", icon: Database },
+    { label: "Nutrition estimated", icon: ListChecks },
     { label: "Review before saving", icon: Sparkle },
   ], [assetId, selectedFile]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
+  }, []);
+
+  function handleFileChange(file: File | null) {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const nextPreviewUrl = file ? URL.createObjectURL(file) : "";
+    previewUrlRef.current = nextPreviewUrl;
+    setPreviewUrl(nextPreviewUrl);
+    setSelectedFile(file);
+    setAssetId(null);
+    setCandidate(null);
+    setStatus("ready");
+  }
 
   async function handleAnalyze() {
     if (!text.trim() && !selectedFile && !assetId) return;
@@ -161,13 +181,17 @@ export default function SnapPage() {
     }) : current);
   }
 
+  function updateMealType(value: MealType) {
+    setCandidate((current) => current ? { ...current, mealType: value } : current);
+  }
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto max-w-7xl px-6 py-10 lg:px-10"
     >
-      <PageHeader eyebrow="Experience" title="Intelligent Food Analysis" />
+      <PageHeader eyebrow="Snap" title="Meal scanner" />
 
       <section className="grid gap-8 xl:grid-cols-[400px_1fr]">
         <div className="space-y-6">
@@ -202,30 +226,38 @@ export default function SnapPage() {
                   exit={{ opacity: 0, x: 10 }}
                   className="group relative flex h-[340px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-surface-alt/50 p-8 text-center transition-all hover:bg-surface-alt hover:border-teal/50"
                 >
-                  <span className="grid h-16 w-16 place-items-center rounded-2xl bg-white text-forest shadow-md transition-transform group-hover:scale-110 group-hover:rotate-3">
-                    <ImageSquare size={32} weight="duotone" />
+                  <span className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-2xl bg-white text-forest shadow-md transition-transform group-hover:scale-110 group-hover:rotate-3">
+                    {previewUrl ? (
+                      <Image src={previewUrl} alt="Selected meal" fill className="rounded-2xl object-cover" unoptimized />
+                    ) : (
+                      <ImageSquare size={32} weight="duotone" />
+                    )}
                   </span>
                   <p className="mt-6 text-[18px] font-bold text-forest">
                     {selectedFile ? "Change photo" : "Drop food photo"}
                   </p>
                   <p className="mt-2 text-[13px] leading-relaxed text-muted">
-                    {selectedFile ? `${selectedFile.name} ready` : "Upload a photo for instant nutrition analysis"}
+                    {selectedFile ? `${selectedFile.name} ready` : "Upload a photo to estimate nutrition"}
                   </p>
                   <input
                     type="file"
                     accept="image/*"
                     className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0] ?? null;
-                      setSelectedFile(file);
-                      setAssetId(null);
-                    }}
+                    onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
                   />
-                  {selectedFile && (
-                    <div className="absolute inset-0 z-0 p-4 opacity-10 blur-sm pointer-events-none">
-                       {/* This would show a preview if we had an object URL */}
-                    </div>
-                  )}
+                  {selectedFile ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        handleFileChange(null);
+                      }}
+                      className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white text-forest shadow-md"
+                      aria-label="Remove selected photo"
+                    >
+                      <X size={16} weight="bold" />
+                    </button>
+                  ) : null}
                 </motion.label>
               ) : (
                 <motion.div 
@@ -251,7 +283,7 @@ export default function SnapPage() {
               disabled={status === "analyzing" || status === "uploading" || (!text.trim() && !selectedFile && !assetId)}
               className="mt-6 w-full rounded-xl bg-forest py-4 text-[15px] font-bold text-white shadow-premium transition-all hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {status === "uploading" ? "Confirming Asset..." : status === "analyzing" ? "Running Intelligence..." : "Start Analysis"}
+              {status === "uploading" ? "Uploading photo..." : status === "analyzing" ? "Estimating nutrition..." : "Estimate nutrition"}
             </button>
             
             {status === "error" && (
@@ -263,12 +295,11 @@ export default function SnapPage() {
 
           <Panel className="p-6 bg-forest text-white border-none shadow-premium overflow-hidden relative">
              <div className="relative z-10">
-               <h3 className="text-[13px] font-bold uppercase tracking-[0.2em] text-lime mb-2">Pro Tip</h3>
+               <h3 className="text-[13px] font-bold uppercase tracking-[0.2em] text-lime mb-2">Tip</h3>
                <p className="text-[14px] leading-relaxed text-white/80">
                  Multiple items? List them all or snap a single photo. NutriAI separates complex meals into editable items.
                </p>
              </div>
-             <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-lime/10 blur-2xl" />
           </Panel>
         </div>
 
@@ -303,9 +334,18 @@ export default function SnapPage() {
                       <h2 className="text-[36px] font-bold tracking-tight text-forest leading-tight">
                         {candidate.title}
                       </h2>
-                      <p className="mt-3 text-[14px] font-medium text-muted">
-                        Analysis complete · Tagged as <span className="text-forest font-bold">{candidate.mealType.toLowerCase()}</span>
-                      </p>
+                      <label className="mt-4 inline-flex items-center gap-3 rounded-xl border border-border bg-surface-alt px-4 py-3 text-[13px] font-bold text-forest">
+                        Meal type
+                        <select
+                          value={candidate.mealType}
+                          onChange={(event) => updateMealType(event.target.value as MealType)}
+                          className="bg-transparent text-[13px] font-bold outline-none"
+                        >
+                          {(["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const).map((type) => (
+                            <option key={type} value={type}>{type.toLowerCase()}</option>
+                          ))}
+                        </select>
+                      </label>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -405,7 +445,7 @@ export default function SnapPage() {
                   <div className="flex flex-col gap-6 bg-surface-alt p-8 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <p className="text-[14px] font-medium text-muted leading-relaxed">
-                        Saving this meal will add these analyzed totals to your live meal diary.
+                        Saving this meal adds the reviewed totals to your diary.
                       </p>
                     </div>
                     <button
@@ -414,7 +454,7 @@ export default function SnapPage() {
                       className="flex h-14 items-center justify-center gap-3 rounded-2xl bg-lime px-10 text-[16px] font-bold text-forest shadow-premium transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                     >
                       <CheckCircle size={20} weight="fill" />
-                      {status === "saving" ? "Commiting Data..." : status === "saved" ? "Meal Saved!" : `Confirm & Save`}
+                      {status === "saving" ? "Saving meal..." : status === "saved" ? "Meal saved" : "Confirm and save"}
                     </button>
                   </div>
                 </Panel>
