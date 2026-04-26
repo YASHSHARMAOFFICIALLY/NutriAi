@@ -29,6 +29,7 @@ yarn-error.log*
 **/.claude/
 CLAUDE.md
 **/CLAUDE.md
+skills-lock.json
 
 # Framework generated type files
 next-env.d.ts
