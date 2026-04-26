@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createWeight, deleteWeight, listWeight, type WeightEntry } from "@/lib/api/weight";
 import { getProfile } from "@/lib/api/profile";
-import { PageHeader, Panel, Stat } from "../_components/ui";
+import { PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
 type WeightRow = { id: string; date: string; weightKg: number; note: string };
 
@@ -90,12 +90,21 @@ export default function WeightPage() {
         </Panel>
       ) : null}
 
-      <section className="mb-5 grid gap-3 md:grid-cols-4">
-        <Stat label="Current" value={latest ? `${latest.weightKg.toFixed(1)} kg` : "-"} sub={latest ? `${latest.date} · ${source}` : "No entries yet"} />
-        <Stat label="Starting" value={first ? `${first.weightKg.toFixed(1)} kg` : "-"} sub={first?.date ?? "No entries yet"} />
-        <Stat label="Target" value={targetWeight != null ? `${targetWeight.toFixed(1)} kg` : "-"} sub={targetWeight != null && latest ? `${Math.abs(targetDelta).toFixed(1)} kg ${targetDelta > 0 ? "above" : "below"} target` : "Set in profile"} />
-        <Stat label="Trend" value={`${delta.toFixed(1)} kg`} sub={`${trendLabel} across current range`} />
-      </section>
+      {source === "loading" ? (
+        <section className="mb-5 grid gap-3 md:grid-cols-4">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </section>
+      ) : (
+        <section className="mb-5 grid gap-3 md:grid-cols-4">
+          <Stat label="Current" value={latest ? `${latest.weightKg.toFixed(1)} kg` : "-"} sub={latest ? latest.date : "No entries yet"} />
+          <Stat label="Starting" value={first ? `${first.weightKg.toFixed(1)} kg` : "-"} sub={first?.date ?? "No entries yet"} />
+          <Stat label="Target" value={targetWeight != null ? `${targetWeight.toFixed(1)} kg` : "-"} sub={targetWeight != null && latest ? `${Math.abs(targetDelta).toFixed(1)} kg ${targetDelta > 0 ? "above" : "below"} target` : "Set in profile"} />
+          <Stat label="Trend" value={`${delta.toFixed(1)} kg`} sub={`${trendLabel} across current range`} />
+        </section>
+      )}
 
       <section className="grid gap-5 lg:grid-cols-[320px_1fr]">
         <Panel className="p-5">
@@ -126,13 +135,19 @@ export default function WeightPage() {
             </p>
           </div>
           <div className="flex h-[320px] items-end gap-3 rounded-lg bg-[#f8f8f3] p-4">
-            {chart.map((entry) => (
+            {source === "loading" ? (
+              <div className="grid w-full gap-3">
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+              </div>
+            ) : chart.map((entry) => (
               <div key={entry.id} className="flex flex-1 flex-col items-center gap-2">
                 <div className="w-full rounded-t-md bg-[#173c2b]" style={{ height: `${Math.max(12, (entry.weightKg / Math.max(1, (latest?.weightKg ?? entry.weightKg) + 3)) * 100)}%` }} />
                 <span className="text-[10px] font-bold text-[#5f675f]">{entry.weightKg.toFixed(1)}</span>
               </div>
             ))}
-            {!chart.length ? <p className="self-center text-[13px] font-semibold text-[#5f675f]">No weight entries yet.</p> : null}
+            {source !== "loading" && !chart.length ? <p className="self-center text-[13px] font-semibold text-[#5f675f]">No weight entries yet.</p> : null}
           </div>
         </Panel>
       </section>
@@ -142,7 +157,12 @@ export default function WeightPage() {
           <h2 className="text-[22px] font-semibold">History</h2>
         </div>
         <div className="divide-y divide-black/8">
-          {entries.map((entry) => (
+          {source === "loading" ? (
+            <div className="space-y-3 p-5">
+              <Skeleton className="h-16" />
+              <Skeleton className="h-16" />
+            </div>
+          ) : entries.map((entry) => (
             <div key={entry.id} className="flex items-center justify-between p-5">
               <div>
                 <p className="text-[15px] font-semibold">{entry.weightKg.toFixed(1)} kg</p>
@@ -154,7 +174,14 @@ export default function WeightPage() {
               </div>
             </div>
           ))}
-          {!entries.length ? <div className="p-5 text-[13px] font-semibold text-[#5f675f]">No weight entries yet.</div> : null}
+          {source !== "loading" && !entries.length ? (
+            <div className="p-5">
+              <div className="rounded-lg border border-dashed border-black/10 bg-[#f8f8f3] p-5 text-center">
+                <p className="text-[15px] font-bold text-[#173c2b]">No weight entries yet</p>
+                <p className="mt-2 text-[13px] text-[#5f675f]">Add your first entry to start trend tracking.</p>
+              </div>
+            </div>
+          ) : null}
         </div>
       </Panel>
     </div>
