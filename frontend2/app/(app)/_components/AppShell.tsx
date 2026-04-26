@@ -10,6 +10,7 @@ import {
   ForkKnife,
   Gear,
   House,
+  SidebarSimple,
   Sparkle,
   Star,
   Trophy,
@@ -37,6 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [totals, setTotals] = useState({ calories: 0, protein: 0 });
   const [targets, setTargets] = useState({ calories: 0, protein: 0 });
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,39 +72,59 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#f1f4f1] text-foreground selection:bg-teal/10">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[300px] border-r border-border bg-surface lg:flex lg:flex-col shadow-sm">
-        <div className="flex h-24 items-center px-10">
-          <Link href="/dashboard" className="flex items-center gap-4 group">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-forest text-white shadow-premium transition-transform group-hover:scale-110">
+      <aside
+        onMouseEnter={() => setExpanded(true)}
+        onMouseLeave={() => setExpanded(false)}
+        className={`fixed inset-y-0 left-0 z-40 hidden border-r border-border bg-white/92 shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-out lg:flex lg:flex-col ${expanded ? "w-[248px]" : "w-[86px]"}`}
+      >
+        <div className={`flex h-20 items-center border-b border-border px-5 ${expanded ? "justify-between" : "justify-center"}`}>
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-3 group" aria-label="NutriAI dashboard">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-forest text-white shadow-premium transition-transform group-hover:scale-105">
               <ForkKnife size={22} weight="bold" />
             </span>
-            <span>
-              <span className="block text-[20px] font-bold tracking-tight text-forest">NutriAI</span>
-              <span className="block text-[11px] font-bold uppercase tracking-[0.15em] text-teal/80">Premium Elite</span>
+            <span className={`overflow-hidden transition-all duration-300 ${expanded ? "w-28 opacity-100" : "w-0 opacity-0"}`}>
+              <span className="block whitespace-nowrap text-[17px] font-bold tracking-tight text-forest">NutriAI</span>
+              <span className="block whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.14em] text-teal/80">Workspace</span>
             </span>
           </Link>
+          {expanded ? (
+            <button
+              onClick={() => setExpanded((current) => !current)}
+              className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-surface-alt text-muted transition-colors hover:text-forest"
+              aria-label="Toggle sidebar"
+            >
+              <SidebarSimple size={17} weight="bold" />
+            </button>
+          ) : null}
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-6 py-10 custom-scrollbar">
-          <div className="mb-6 px-4 text-[11px] font-bold uppercase tracking-[0.25em] text-muted opacity-50">
+        <nav className="custom-scrollbar flex-1 overflow-y-auto overscroll-contain px-3 py-5">
+          <div className={`mb-4 px-3 text-[10px] font-bold uppercase tracking-[0.22em] text-muted/50 transition-opacity ${expanded ? "opacity-100" : "opacity-0"}`}>
             Navigation
           </div>
-          <ul className="space-y-2.5">
+          <ul className="space-y-1.5">
             {nav.map(({ href, label, icon: Icon }) => {
               const active = pathname === href;
               return (
                 <li key={href}>
                   <Link
                     href={href}
+                    title={label}
                     className={[
-                      "flex items-center gap-4 rounded-2xl px-5 py-4 text-[15px] font-bold transition-all duration-300",
+                      "group/nav relative flex h-11 items-center rounded-2xl text-[13px] font-bold transition-all duration-300",
+                      expanded ? "gap-3 px-3" : "justify-center px-0",
                       active
-                        ? "bg-forest text-white shadow-premium translate-x-1"
-                        : "text-muted hover:bg-surface-alt hover:text-forest hover:translate-x-1",
+                        ? "bg-forest text-white shadow-premium"
+                        : "text-muted hover:bg-surface-alt hover:text-forest",
                     ].join(" ")}
                   >
-                    <Icon size={22} weight={active ? "fill" : "bold"} />
-                    {label}
+                    <Icon size={19} weight={active ? "fill" : "bold"} />
+                    <span className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${expanded ? "w-36 opacity-100" : "w-0 opacity-0"}`}>{label}</span>
+                    {!expanded ? (
+                      <span className="pointer-events-none absolute left-[64px] z-50 rounded-xl border border-border bg-white px-3 py-2 text-[12px] font-bold text-forest opacity-0 shadow-lg transition-opacity group-hover/nav:opacity-100">
+                        {label}
+                      </span>
+                    ) : null}
                   </Link>
                 </li>
               );
@@ -110,18 +132,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </ul>
         </nav>
 
-        <div className="p-6">
-          <div className="rounded-[24px] bg-white p-6 border border-border shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Daily Target</p>
+        <div className="border-t border-border p-3">
+          <div className={`overflow-hidden rounded-2xl border border-border bg-surface-alt shadow-sm transition-all duration-300 ${expanded ? "p-4" : "p-2"}`}>
+            <div className={`mb-3 flex items-center ${expanded ? "justify-between" : "justify-center"}`}>
+              <p className={`text-[10px] font-bold uppercase tracking-wider text-muted transition-all ${expanded ? "w-auto opacity-100" : "w-0 opacity-0"}`}>Daily target</p>
               <span className="h-2 w-2 rounded-full bg-teal animate-pulse" />
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[22px] font-bold text-forest">{remaining.calories}</span>
-              <span className="text-[13px] font-bold text-muted uppercase">kcal left</span>
+            <div className={`flex items-baseline gap-1 ${expanded ? "" : "justify-center"}`}>
+              <span className="text-[20px] font-bold text-forest">{remaining.calories}</span>
+              <span className={`text-[11px] font-bold uppercase text-muted transition-all ${expanded ? "w-auto opacity-100" : "w-0 overflow-hidden opacity-0"}`}>kcal left</span>
             </div>
-            <div className="mt-6 flex flex-col gap-3">
-              <Link href="/recommendations" className="rounded-xl bg-surface-alt py-3 text-center text-[13px] font-bold text-forest transition-colors hover:bg-forest hover:text-white">
+            <div className={`mt-4 flex flex-col gap-3 transition-all ${expanded ? "max-h-20 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
+              <Link href="/recommendations" className="rounded-xl bg-white py-3 text-center text-[12px] font-bold text-forest transition-colors hover:bg-forest hover:text-white">
                 View Recommendations
               </Link>
             </div>
@@ -129,7 +151,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="pb-24 lg:ml-[300px] lg:pb-0 min-h-screen">
+      <main className="min-h-screen pb-24 transition-[margin] duration-300 ease-out lg:ml-[86px] lg:pb-0">
         <div className="mx-auto max-w-[1600px] w-full">
           {children}
         </div>
