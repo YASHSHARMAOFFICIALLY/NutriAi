@@ -10,7 +10,7 @@ import {
   revokeFamilyInvite,
 } from "@/lib/api/family";
 import type { FamilyInviteResponse, FamilyOverview } from "@/lib/api/types";
-import { PageHeader, Panel, Stat } from "../_components/ui";
+import { PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
 export default function FamilyPage() {
   const [overview, setOverview] = useState<FamilyOverview | null>(null);
@@ -26,6 +26,7 @@ export default function FamilyPage() {
       .then((data) => {
         if (cancelled) return;
         setOverview(data);
+        setMessage("");
         setStatus("idle");
       })
       .catch(() => {
@@ -55,6 +56,7 @@ export default function FamilyPage() {
       setLatestInvite(invite);
       setEmail("");
       await getFamilyOverview().then(setOverview);
+      setMessage("Invite created. Share the invite code with your family member.");
       setStatus("idle");
     } catch {
       setStatus("error");
@@ -71,6 +73,7 @@ export default function FamilyPage() {
       setAcceptToken("");
       setLatestInvite(null);
       await getFamilyOverview().then(setOverview);
+      setMessage("Invite accepted. Shared analytics are now available.");
       setStatus("idle");
     } catch {
       setStatus("error");
@@ -84,6 +87,7 @@ export default function FamilyPage() {
     try {
       await removeFamilyMember(memberId);
       await getFamilyOverview().then(setOverview);
+      setMessage("Family member removed.");
       setStatus("idle");
     } catch {
       setStatus("error");
@@ -97,6 +101,7 @@ export default function FamilyPage() {
     try {
       await revokeFamilyInvite(inviteId);
       await getFamilyOverview().then(setOverview);
+      setMessage("Invite canceled.");
       setStatus("idle");
     } catch {
       setStatus("error");
@@ -108,14 +113,22 @@ export default function FamilyPage() {
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Family" title="Analytics sharing" />
 
-      <section className="mb-5 grid gap-3 md:grid-cols-3">
-        <Stat label="Members" value={`${members.length}`} sub="Analytics-only access" />
-        <Stat label="Pending invites" value={`${pendingInvites.length}`} sub="Owner-managed" />
-        <Stat label="Shared views" value={`${sharedWithMe}`} sub="Visible in Analytics" />
-      </section>
+      {status === "loading" ? (
+        <section className="mb-5 grid gap-3 md:grid-cols-3">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </section>
+      ) : (
+        <section className="mb-5 grid gap-3 md:grid-cols-3">
+          <Stat label="Members" value={`${members.length}`} sub="Analytics-only access" />
+          <Stat label="Pending invites" value={`${pendingInvites.length}`} sub="Owner-managed" />
+          <Stat label="Shared views" value={`${sharedWithMe}`} sub="Visible in Analytics" />
+        </section>
+      )}
 
       {message ? (
-        <div className="mb-5 rounded-lg border border-[#b7791f]/30 bg-[#fff8e7] p-4 text-[13px] font-semibold text-[#8a5a10]">
+        <div className={`mb-5 rounded-lg border p-4 text-[13px] font-semibold ${status === "error" ? "border-[#b7791f]/30 bg-[#fff8e7] text-[#8a5a10]" : "border-[#173c2b]/20 bg-[#eef5f2] text-[#173c2b]"}`}>
           {message}
         </div>
       ) : null}
@@ -133,7 +146,12 @@ export default function FamilyPage() {
           </div>
 
           <div className="space-y-3">
-            {members.map((member) => (
+            {status === "loading" ? (
+              <>
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+              </>
+            ) : members.map((member) => (
               <div key={member.id} className="flex flex-col gap-3 rounded-lg border border-black/8 bg-[#f8f8f3] p-4 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">
                   <p className="truncate text-[15px] font-semibold">{member.user.name || member.user.email}</p>
@@ -190,6 +208,7 @@ export default function FamilyPage() {
               <div className="mt-4 rounded-md border border-[#d7ff68] bg-[#f8f8f3] p-3">
                 <p className="text-[12px] font-bold text-[#173c2b]">Invite code</p>
                 <p className="mt-2 break-all font-mono text-[12px]">{latestInvite.token}</p>
+                <p className="mt-2 text-[11px] font-semibold text-[#5f675f]">This code is shown once here. The recipient can paste it in Accept invite.</p>
               </div>
             ) : null}
           </Panel>
