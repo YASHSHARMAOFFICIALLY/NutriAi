@@ -6,8 +6,8 @@ import { FunnelSimple, Star } from "@phosphor-icons/react/dist/ssr";
 import { getDailySummary } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import { getMealRecommendations } from "@/lib/api/recommendations";
-import type { MealRecommendation } from "@/lib/api/types";
-import { PageHeader, Panel, SourceBadge } from "../_components/ui";
+import type { MealRecommendation, MealType } from "@/lib/api/types";
+import { PageHeader, Panel, Skeleton, SourceBadge } from "../_components/ui";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -21,6 +21,7 @@ export default function RecommendationsPage() {
   const [items, setItems] = useState<MealRecommendation[]>([]);
   const [remaining, setRemaining] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
   const [allergies, setAllergies] = useState<string[]>([]);
+  const [mealType, setMealType] = useState<MealType>("DINNER");
   const [source, setSource] = useState<"loading" | "live" | "error">("loading");
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function RecommendationsPage() {
           fat: Math.max(0, targets.fat - (daily?.totalFat ?? 0)),
         };
         const recs = await getMealRecommendations({
-          mealType: "DINNER",
+          mealType,
           limit: 6,
           remainingCalories: budget.calories,
           remainingProtein: budget.protein,
@@ -66,7 +67,7 @@ export default function RecommendationsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mealType]);
 
   const rows = useMemo(() => {
     return items.map((rec, index) => ({
@@ -82,9 +83,15 @@ export default function RecommendationsPage() {
     }));
   }, [items]);
 
+  function handleMealTypeChange(nextMealType: MealType) {
+    if (nextMealType === mealType) return;
+    setSource("loading");
+    setMealType(nextMealType);
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
-      <PageHeader eyebrow="Recommendations" title="Ranked from your meal history" action={{ label: "Ask Ria", href: "/coach" }} />
+      <PageHeader eyebrow="Recommendations" title="Meals from your own history" action={{ label: "Ask Ria", href: "/coach" }} />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
           <p className="text-[13px] font-semibold text-[#b7791f]">Could not load recommendations. Sign in and try again.</p>
@@ -95,7 +102,7 @@ export default function RecommendationsPage() {
         <div className="grid gap-4 lg:grid-cols-[1fr_420px] lg:items-center">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#0f8b8d]">Remaining budget</p>
-            <h2 className="mt-1 text-[26px] font-semibold">Dinner candidates are scored against what is left today.</h2>
+            <h2 className="mt-1 text-[26px] font-semibold">{mealType.toLowerCase()} ideas are matched against what is left today.</h2>
           </div>
           <div className="grid grid-cols-4 gap-2 text-center">
             {[
@@ -114,27 +121,48 @@ export default function RecommendationsPage() {
       </Panel>
 
       <div className="mb-5 flex flex-wrap gap-2">
-        {["Dinner", "Fits calories", "Protein gap", "Not eaten recently", allergies[0] ? `Avoids ${allergies[0]}` : "Uses saved profile"].map((filter, index) => (
-          <button key={filter} className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-bold ${index === 0 ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f]"}`}>
-            {index === 0 ? <FunnelSimple size={13} weight="fill" /> : null}
-            {filter}
+        {(["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const).map((filter) => (
+          <button
+            key={filter}
+            onClick={() => handleMealTypeChange(filter)}
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-bold ${mealType === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f]"}`}
+          >
+            {mealType === filter ? <FunnelSimple size={13} weight="fill" /> : null}
+            {filter.toLowerCase()}
           </button>
+        ))}
+        {["Fits calories", "Protein gap", "Not eaten recently", allergies[0] ? `Avoids ${allergies[0]}` : "Uses saved profile"].map((filter) => (
+          <span key={filter} className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-[12px] font-bold text-[#5f675f]">
+            {filter}
+          </span>
         ))}
       </div>
 
       <section className="space-y-3">
-        {!rows.length ? (
+        {source === "loading" ? (
+          <>
+            <Skeleton className="h-36" />
+            <Skeleton className="h-36" />
+            <Skeleton className="h-36" />
+          </>
+        ) : null}
+        {source !== "loading" && !rows.length ? (
           <Panel className="p-8 text-center">
-            <h2 className="text-[26px] font-semibold">Log 3 meals to unlock history-based recommendations.</h2>
+            <h2 className="text-[26px] font-semibold">Log more {mealType.toLowerCase()} meals to unlock recommendations.</h2>
             <p className="mx-auto mt-3 max-w-xl text-[14px] leading-6 text-[#5f675f]">
-              The recommendation engine ranks repeat meals from your history, excludes allergies, and scores against the remaining budget. It needs saved meals before it can personalize dinner.
+              Saved meals help NutriAI rank familiar options, respect your profile, and match the remaining budget for today.
             </p>
-            <Link href="/snap" className="mt-5 inline-flex rounded-md bg-[#173c2b] px-5 py-3 text-[14px] font-bold text-white">
-              Analyze a meal
-            </Link>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <Link href="/snap" className="inline-flex rounded-md bg-[#173c2b] px-5 py-3 text-[14px] font-bold text-white">
+                Scan meal
+              </Link>
+              <Link href="/meals" className="inline-flex rounded-md border border-black/10 bg-white px-5 py-3 text-[14px] font-bold text-[#173c2b]">
+                Open diary
+              </Link>
+            </div>
           </Panel>
         ) : null}
-        {rows.map((rec, index) => (
+        {source !== "loading" && rows.map((rec, index) => (
           <Panel key={rec.signature} className={index === 0 ? "border-[#173c2b] ring-2 ring-[#d7ff68]" : ""}>
             <div className="grid gap-4 p-5 xl:grid-cols-[1fr_220px_150px] xl:items-center">
               <div>
