@@ -1,43 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Activity, AlertTriangle, Database, Gauge, Key, Search, Sparkle, Users } from "lucide-react";
-import { getAdminActivity, getAdminAiSettings, getAdminOverview, getAdminRuntime, getAdminUsage, listAdminUsers, updateAdminAiSettings } from "@/lib/api/admin";
-import type { AdminActivityItem, AdminAiSettings, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserRow, UserRole } from "@/lib/api/types";
+import { getAdminActivity, getAdminAiSettings, getAdminOverview, getAdminRuntime, getAdminUsage, getAdminUserDetail, listAdminUsers, updateAdminAiSettings } from "@/lib/api/admin";
+import type { AdminActivityItem, AdminAiSettings, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserDetail, AdminUserRow, UserRole } from "@/lib/api/types";
 import { PageHeader, Panel, Stat } from "../_components/ui";
 
-const fallbackUsers = [
-  { id: "1", email: "yash@example.com", name: "Yash", role: "USER", createdAt: "", emailVerified: true, goal: "GAIN", notifications: { streakRisk: true, weeklyDigest: true }, counts: { meals: 42, apiKeys: 1, weightEntries: 8, challenges: 3 }, lastMealAt: new Date().toISOString(), ai: { requests: 18, totalTokens: 4200, costUsd: 0.018 } },
-  { id: "2", email: "admin@nutriai.app", name: "Admin", role: "ADMIN", createdAt: "", emailVerified: true, goal: "MAINTAIN", notifications: { streakRisk: true, weeklyDigest: true }, counts: { meals: 12, apiKeys: 2, weightEntries: 2, challenges: 1 }, lastMealAt: new Date(Date.now() - 86400000).toISOString(), ai: { requests: 6, totalTokens: 1200, costUsd: 0.006 } },
-] satisfies AdminUserRow[];
-
-const fallbackOverview: AdminOverview = {
-  users: { total: 128, newThisWeek: 14 },
-  meals: { today: 342, thisWeek: 1904 },
-  ai: { requestsToday: 1105, tokensToday: 184000, costTodayUsd: 2.18, costThisWeekUsd: 8.42 },
-  api: { activeKeys: 9, failedCallsToday: 2 },
+const emptyOverview: AdminOverview = {
+  users: { total: 0, newThisWeek: 0 },
+  meals: { today: 0, thisWeek: 0 },
+  ai: { requestsToday: 0, tokensToday: 0, costTodayUsd: 0, costThisWeekUsd: 0 },
+  api: { activeKeys: 0, failedCallsToday: 0 },
 };
 
-const fallbackUsage: AdminUsageResponse = {
-  summary: { requests: 1105, promptTokens: 82000, completionTokens: 102000, totalTokens: 184000, costUsd: 2.18, avgLatencyMs: 1400, cacheHitRate: 0.18 },
+const emptyUsage: AdminUsageResponse = {
+  summary: { requests: 0, promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0, avgLatencyMs: 0, cacheHitRate: 0 },
   byProvider: [],
   byModel: [],
-  byEndpoint: [
-    { endpoint: "food.analyze", requests: 842, totalTokens: 184000, costUsd: 1.42 },
-    { endpoint: "chat.send", requests: 219, totalTokens: 91000, costUsd: 0.58 },
-    { endpoint: "public.analyze", requests: 44, totalTokens: 23000, costUsd: 0.18 },
-  ],
+  byEndpoint: [],
 };
 
-const fallbackActivity: AdminActivityItem[] = [
-  { id: "a1", type: "analysis", createdAt: new Date().toISOString(), title: "Food analyzed", detail: "yash@example.com analyzed paneer rice bowl", user: null },
-  { id: "a2", type: "meal", createdAt: new Date().toISOString(), title: "Meal saved", detail: "coach-test@example.com saved dinner", user: null },
-  { id: "a3", type: "api_usage", createdAt: new Date().toISOString(), title: "API warning", detail: "Public API key exceeded soft warning threshold", user: null },
-];
-
-const fallbackRuntime: AdminRuntimeResponse = {
+const emptyRuntime: AdminRuntimeResponse = {
   runtime: {
-    process: { uptimeSec: 0, memoryMb: 0, nodeEnv: "fallback" },
+    process: { uptimeSec: 0, memoryMb: 0, nodeEnv: "unknown" },
     http: { totalRequests: 0, total5xx: 0, requestsLastMinute: 0, errorsLastMinute: 0, avgLatencyMsLastMinute: 0 },
     ai: {
       callsLastFiveMinutes: 0,
@@ -56,7 +41,7 @@ const fallbackRuntime: AdminRuntimeResponse = {
   slowAiCalls: [],
 };
 
-const fallbackAiSettings: AdminAiSettings = {
+const emptyAiSettings: AdminAiSettings = {
   aiDailyBudgetUsd: 2,
   aiChatDailyMessageLimit: 5,
   aiChatMaxWords: 100,
@@ -76,44 +61,85 @@ function timeAgo(value: string | null) {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+function Field({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-md bg-[#f8f8f3] p-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5f675f]">{label}</p>
+      <div className="mt-1 break-words text-[13px] font-semibold">{value ?? "-"}</div>
+    </div>
+  );
+}
+
+function JsonBlock({ value }: { value: unknown }) {
+  return (
+    <pre className="max-h-[420px] overflow-auto rounded-md bg-[#101510] p-4 text-[11px] leading-5 text-white">
+      {JSON.stringify(value, null, 2)}
+    </pre>
+  );
+}
+
 export default function AdminPage() {
-  const [overview, setOverview] = useState(fallbackOverview);
-  const [users, setUsers] = useState<AdminUserRow[]>(fallbackUsers);
-  const [usage, setUsage] = useState(fallbackUsage);
-  const [runtime, setRuntime] = useState(fallbackRuntime);
-  const [activity, setActivity] = useState(fallbackActivity);
-  const [aiSettings, setAiSettings] = useState<AdminAiSettings>(fallbackAiSettings);
+  const [overview, setOverview] = useState(emptyOverview);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [usage, setUsage] = useState(emptyUsage);
+  const [runtime, setRuntime] = useState(emptyRuntime);
+  const [activity, setActivity] = useState<AdminActivityItem[]>([]);
+  const [aiSettings, setAiSettings] = useState<AdminAiSettings>(emptyAiSettings);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<"ALL" | "USER" | "ADMIN">("ALL");
   const [usageFrom, setUsageFrom] = useState("");
   const [usageTo, setUsageTo] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
+  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
   const [savingAiSettings, setSavingAiSettings] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUserDetail | null>(null);
+  const [userDetailsById, setUserDetailsById] = useState<Record<string, AdminUserDetail>>({});
+  const [tableDetailsLoading, setTableDetailsLoading] = useState(false);
+  const [userDetailStatus, setUserDetailStatus] = useState<"idle" | "loading" | "error">("idle");
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
       getAdminOverview(),
-      listAdminUsers({ search, role: role === "ALL" ? undefined : role as UserRole, page, limit: 10 }).catch(() => ({ items: fallbackUsers, page: 1, limit: 10, total: fallbackUsers.length, totalPages: 1 })),
-      getAdminUsage({ from: usageFrom || undefined, to: usageTo || undefined }).catch(() => fallbackUsage),
-      getAdminActivity(10).catch(() => ({ items: fallbackActivity })),
-      getAdminRuntime().catch(() => fallbackRuntime),
-      getAdminAiSettings().catch(() => fallbackAiSettings),
+      listAdminUsers({ search, role: role === "ALL" ? undefined : role as UserRole, page, limit: 10 }),
+      getAdminUsage({ from: usageFrom || undefined, to: usageTo || undefined }),
+      getAdminActivity(10),
+      getAdminRuntime(),
+      getAdminAiSettings(),
     ])
-      .then(([apiOverview, apiUsers, apiUsage, apiActivity, apiRuntime, apiAiSettings]) => {
+      .then(async ([apiOverview, apiUsers, apiUsage, apiActivity, apiRuntime, apiAiSettings]) => {
         if (cancelled) return;
         setOverview(apiOverview);
         setUsers(apiUsers.items);
         setTotalPages(apiUsers.totalPages);
         setUsage(apiUsage);
-        setActivity(apiActivity.items.length ? apiActivity.items : fallbackActivity);
+        setActivity(apiActivity.items);
         setRuntime(apiRuntime);
         setAiSettings(apiAiSettings);
         setSource("live");
+        if (!apiUsers.items.length) {
+          setSelectedUser(null);
+          setUserDetailsById({});
+          setUserDetailStatus("idle");
+          return;
+        }
+        setTableDetailsLoading(true);
+        const detailResults = await Promise.allSettled(apiUsers.items.map((user) => getAdminUserDetail(user.id)));
+        if (cancelled) return;
+        const details = detailResults.reduce<Record<string, AdminUserDetail>>((acc, result) => {
+          if (result.status === "fulfilled") acc[result.value.id] = result.value;
+          return acc;
+        }, {});
+        setUserDetailsById(details);
+        setSelectedUser(details[apiUsers.items[0].id] ?? null);
+        setUserDetailStatus(Object.keys(details).length ? "idle" : "error");
+        setTableDetailsLoading(false);
       })
-      .catch(() => setSource("fallback"));
+      .catch(() => {
+        setSource("error");
+        setTableDetailsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -136,15 +162,32 @@ export default function AdminPage() {
       setAiSettings(next);
       setSource("live");
     } catch {
-      setSource("fallback");
+      setSource("error");
     } finally {
       setSavingAiSettings(false);
+    }
+  }
+
+  async function handleOpenUser(id: string) {
+    setUserDetailStatus("loading");
+    try {
+      const detail = await getAdminUserDetail(id);
+      setSelectedUser(detail);
+      setUserDetailsById((current) => ({ ...current, [detail.id]: detail }));
+      setUserDetailStatus("idle");
+    } catch {
+      setUserDetailStatus("error");
     }
   }
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow={`Admin · ${source}`} title="Operations, users, usage" />
+      {source === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live admin data. Check backend availability and ADMIN permissions.</p>
+        </Panel>
+      ) : null}
 
       <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Stat label="Users" value={`${overview.users.total}`} sub={`+${overview.users.newThisWeek} this week`} />
@@ -171,34 +214,59 @@ export default function AdminPage() {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-[13px]">
+            <table className="w-full min-w-[1320px] text-left text-[13px]">
               <thead className="bg-[#eef5f2] text-[#5f675f]">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Email</th>
                   <th className="px-5 py-3 font-semibold">Role</th>
                   <th className="px-5 py-3 font-semibold">Verified</th>
+                  <th className="px-5 py-3 font-semibold">Location</th>
+                  <th className="px-5 py-3 font-semibold">IP</th>
+                  <th className="px-5 py-3 font-semibold">Device</th>
+                  <th className="px-5 py-3 font-semibold">Last session</th>
+                  <th className="px-5 py-3 text-right font-semibold">Sessions</th>
                   <th className="px-5 py-3 text-right font-semibold">Meals</th>
                   <th className="px-5 py-3 text-right font-semibold">API keys</th>
                   <th className="px-5 py-3 text-right font-semibold">Weight</th>
                   <th className="px-5 py-3 text-right font-semibold">Challenges</th>
                   <th className="px-5 py-3 font-semibold">Last meal</th>
                   <th className="px-5 py-3 text-right font-semibold">AI spend</th>
+                  <th className="px-5 py-3 text-right font-semibold">Details</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="border-t border-black/8">
-                    <td className="px-5 py-4 font-semibold">{user.email}</td>
-                    <td className="px-5 py-4">{user.role}</td>
-                    <td className="px-5 py-4">{user.emailVerified ? "Yes" : "No"}</td>
-                    <td className="px-5 py-4 text-right">{user.counts.meals}</td>
-                    <td className="px-5 py-4 text-right">{user.counts.apiKeys}</td>
-                    <td className="px-5 py-4 text-right">{user.counts.weightEntries}</td>
-                    <td className="px-5 py-4 text-right">{user.counts.challenges}</td>
-                    <td className="px-5 py-4">{timeAgo(user.lastMealAt)}</td>
-                    <td className="px-5 py-4 text-right">${user.ai.costUsd.toFixed(3)}</td>
-                  </tr>
-                ))}
+                {filteredUsers.map((user) => {
+                  const detail = userDetailsById[user.id];
+                  const latestSession = detail?.sessions[0];
+                  const device = [latestSession?.deviceModel, latestSession?.os, latestSession?.browser].filter(Boolean).join(" · ");
+                  return (
+                    <tr key={user.id} className={`border-t border-black/8 ${selectedUser?.id === user.id ? "bg-[#eef5f2]" : ""}`}>
+                      <td className="px-5 py-4 font-semibold">{user.email}</td>
+                      <td className="px-5 py-4">{user.role}</td>
+                      <td className="px-5 py-4">{user.emailVerified ? "Yes" : "No"}</td>
+                      <td className="max-w-[180px] px-5 py-4">
+                        <span className="line-clamp-2">{latestSession?.location || (tableDetailsLoading ? "Loading..." : "-")}</span>
+                      </td>
+                      <td className="px-5 py-4 font-mono text-[12px]">{latestSession?.ipAddress || "-"}</td>
+                      <td className="max-w-[210px] px-5 py-4">
+                        <span className="line-clamp-2">{device || "-"}</span>
+                      </td>
+                      <td className="px-5 py-4">{latestSession ? timeAgo(latestSession.lastSeenAt) : "-"}</td>
+                      <td className="px-5 py-4 text-right">{detail?._count.sessions ?? "-"}</td>
+                      <td className="px-5 py-4 text-right">{user.counts.meals}</td>
+                      <td className="px-5 py-4 text-right">{user.counts.apiKeys}</td>
+                      <td className="px-5 py-4 text-right">{user.counts.weightEntries}</td>
+                      <td className="px-5 py-4 text-right">{user.counts.challenges}</td>
+                      <td className="px-5 py-4">{timeAgo(user.lastMealAt)}</td>
+                      <td className="px-5 py-4 text-right">${user.ai.costUsd.toFixed(3)}</td>
+                      <td className="px-5 py-4 text-right">
+                        <button onClick={() => handleOpenUser(user.id)} className="rounded-md bg-[#173c2b] px-3 py-2 text-[11px] font-bold text-white">
+                          Detail
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -235,17 +303,134 @@ export default function AdminPage() {
               <h2 className="text-[20px] font-semibold">Activity</h2>
             </div>
             <div className="space-y-3">
-              {activity.map((item) => (
+              {activity.length ? activity.map((item) => (
                 <div key={item.id} className="rounded-md border border-black/8 bg-[#f8f8f3] p-3">
                   <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-[#0f8b8d]">{item.type}</p>
                   <p className="mt-1 text-[13px] font-semibold">{item.detail || item.title}</p>
                   <p className="mt-1 text-[11px] text-[#5f675f]">{timeAgo(item.createdAt)}</p>
                 </div>
-              ))}
+              )) : <p className="text-[13px] font-semibold text-[#5f675f]">No recent activity.</p>}
             </div>
           </Panel>
         </div>
       </section>
+
+      {userDetailStatus === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load selected user details.</p>
+        </Panel>
+      ) : null}
+
+      {selectedUser ? (
+        <Panel className="mb-5 overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-black/10 bg-[#eef5f2] p-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#0f8b8d]">Full user record</p>
+              <h2 className="mt-1 text-[28px] font-semibold">{selectedUser.email}</h2>
+              <p className="mt-1 text-[13px] text-[#5f675f]">{selectedUser.id}</p>
+            </div>
+            <button onClick={() => setSelectedUser(null)} className="rounded-md border border-black/10 bg-white px-3 py-2 text-[12px] font-bold">Close</button>
+          </div>
+
+          <div className="grid gap-5 p-5 xl:grid-cols-[1fr_420px]">
+            <div className="space-y-5">
+              <section>
+                <h3 className="mb-3 text-[18px] font-semibold">Identity and permission</h3>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Field label="Name" value={selectedUser.name || "-"} />
+                  <Field label="Role" value={selectedUser.role} />
+                  <Field label="Verified" value={selectedUser.emailVerified ? "Yes" : "No"} />
+                  <Field label="Google ID" value={selectedUser.googleId || "-"} />
+                  <Field label="Created" value={new Date(selectedUser.createdAt).toLocaleString()} />
+                  <Field label="Updated" value={new Date(selectedUser.updatedAt).toLocaleString()} />
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-[18px] font-semibold">Location, device, sessions</h3>
+                <div className="space-y-3">
+                  {selectedUser.sessions.map((session) => (
+                    <div key={session.id} className="rounded-md border border-black/8 bg-white p-4">
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <Field label="Location" value={session.location || "Not provided by edge headers"} />
+                        <Field label="IP address" value={session.ipAddress || "-"} />
+                        <Field label="Phone/model" value={session.deviceModel || "Unknown"} />
+                        <Field label="Device type" value={session.deviceType || "-"} />
+                        <Field label="OS" value={session.os || "-"} />
+                        <Field label="Browser" value={session.browser || "-"} />
+                        <Field label="First seen" value={new Date(session.createdAt).toLocaleString()} />
+                        <Field label="Last seen" value={new Date(session.lastSeenAt).toLocaleString()} />
+                        <Field label="Session" value={session.revokedAt ? "Revoked" : "Active"} />
+                      </div>
+                      <details className="mt-3">
+                        <summary className="cursor-pointer text-[12px] font-bold text-[#0f8b8d]">User agent</summary>
+                        <p className="mt-2 break-all rounded-md bg-[#f8f8f3] p-3 text-[11px] text-[#5f675f]">{session.userAgent || "-"}</p>
+                      </details>
+                    </div>
+                  ))}
+                  {!selectedUser.sessions.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No tracked sessions yet. New logins/refreshes will populate this.</p> : null}
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-[18px] font-semibold">Nutrition profile</h3>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <Field label="Sex" value={selectedUser.profile?.sex || "-"} />
+                  <Field label="Birth year" value={selectedUser.profile?.birthYear || "-"} />
+                  <Field label="Height" value={selectedUser.profile?.heightCm ? `${selectedUser.profile.heightCm} cm` : "-"} />
+                  <Field label="Weight" value={selectedUser.profile?.weightKg ? `${selectedUser.profile.weightKg} kg` : "-"} />
+                  <Field label="Goal" value={selectedUser.profile?.goal || "-"} />
+                  <Field label="Activity" value={selectedUser.profile?.activityLevel || "-"} />
+                  <Field label="Timezone" value={selectedUser.profile?.timezone || "-"} />
+                  <Field label="Budget" value={selectedUser.profile?.dailyBudgetUsd ?? "-"} />
+                  <Field label="Cal target" value={selectedUser.profile?.dailyCalorieTarget ?? "-"} />
+                  <Field label="Protein" value={selectedUser.profile?.proteinTargetG ?? "-"} />
+                  <Field label="Carbs" value={selectedUser.profile?.carbsTargetG ?? "-"} />
+                  <Field label="Fat" value={selectedUser.profile?.fatTargetG ?? "-"} />
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-[18px] font-semibold">Recent data</h3>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Field label="Meals" value={`${selectedUser._count.meals} total · showing ${selectedUser.meals.length}`} />
+                  <Field label="Analyses" value={`${selectedUser._count.foodQueries} total · showing ${selectedUser.foodQueries.length}`} />
+                  <Field label="Weight entries" value={`${selectedUser._count.weightEntries} total · showing ${selectedUser.weightEntries.length}`} />
+                  <Field label="Chats" value={`${selectedUser._count.conversations} total · showing ${selectedUser.conversations.length}`} />
+                  <Field label="Uploads" value={`${selectedUser._count.assets} total · showing ${selectedUser.assets.length}`} />
+                  <Field label="API keys" value={`${selectedUser._count.apiKeys} total · showing ${selectedUser.apiKeys.length}`} />
+                </div>
+              </section>
+            </div>
+
+            <aside className="space-y-5">
+              <Panel className="p-5">
+                <h3 className="mb-3 text-[18px] font-semibold">AI summary</h3>
+                <div className="grid gap-3">
+                  <Field label="Requests" value={selectedUser.aiSummary.requests} />
+                  <Field label="Tokens" value={selectedUser.aiSummary.totalTokens} />
+                  <Field label="Cost" value={`$${selectedUser.aiSummary.costUsd.toFixed(4)}`} />
+                  <Field label="Avg latency" value={`${selectedUser.aiSummary.avgLatencyMs}ms`} />
+                </div>
+              </Panel>
+              <Panel className="p-5">
+                <h3 className="mb-3 text-[18px] font-semibold">Integrations</h3>
+                <div className="grid gap-3">
+                  <Field label="Telegram" value={selectedUser.telegramAccount ? "Linked" : "Not linked"} />
+                  <Field label="Families owned" value={selectedUser.ownedFamilies.length} />
+                  <Field label="Family memberships" value={selectedUser.familyMemberships.length} />
+                  <Field label="Invites sent" value={selectedUser.familyInvitesSent.length} />
+                </div>
+              </Panel>
+            </aside>
+          </div>
+
+          <div className="border-t border-black/10 p-5">
+            <h3 className="mb-3 text-[18px] font-semibold">Complete admin JSON</h3>
+            <JsonBlock value={selectedUser} />
+          </div>
+        </Panel>
+      ) : null}
 
       <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <Panel className="overflow-hidden">
@@ -369,7 +554,7 @@ export default function AdminPage() {
         <Panel className="p-5">
           <h2 className="mb-4 text-[20px] font-semibold">Provider mix</h2>
           <div className="space-y-2">
-            {(usage.byProvider.length ? usage.byProvider : [{ provider: "openai", requests: usage.summary.requests, totalTokens: usage.summary.totalTokens, costUsd: usage.summary.costUsd }]).map((row) => (
+            {usage.byProvider.length ? usage.byProvider.map((row) => (
               <div key={row.provider} className="rounded-md bg-[#f8f8f3] p-3">
                 <div className="flex justify-between text-[13px]">
                   <span className="font-semibold">{row.provider}</span>
@@ -377,7 +562,7 @@ export default function AdminPage() {
                 </div>
                 <p className="mt-1 text-[11px] text-[#5f675f]">{row.requests} requests · {row.totalTokens} tokens</p>
               </div>
-            ))}
+            )) : <p className="text-[13px] font-semibold text-[#5f675f]">No provider usage in this range.</p>}
           </div>
         </Panel>
         </div>

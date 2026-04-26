@@ -9,6 +9,7 @@ import { env, isProd } from './config/env';
 import { logger } from './config/logger';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { rateLimit } from './middleware/rateLimit';
+import { requireMetricsToken } from './middleware/metricsAuth';
 import { requestMetrics } from './middleware/metrics';
 import { configureGooglePassport, passport } from './config/passport';
 import { healthHandler, metricsHandler, readinessHandler } from './controllers/healthController';
@@ -82,7 +83,7 @@ export const createApp = () => {
   // Liveness probe is exempt from rate limiting.
   app.get('/health', healthHandler);
   app.get('/ready', readinessHandler);
-  app.get('/metrics', metricsHandler);
+  app.get('/metrics', requireMetricsToken, metricsHandler);
   app.use(telegramWebhookRouter);
 
   app.use(rateLimit());

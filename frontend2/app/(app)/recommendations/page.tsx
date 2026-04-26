@@ -7,7 +7,6 @@ import { getDailySummary } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import { getMealRecommendations } from "@/lib/api/recommendations";
 import type { MealRecommendation } from "@/lib/api/types";
-import { profile, recommendations, remaining as fallbackRemaining } from "../_components/mock-data";
 import { PageHeader, Panel, SourceBadge } from "../_components/ui";
 
 function todayISO() {
@@ -20,9 +19,9 @@ function safeNumber(value: number, fallback = 0) {
 
 export default function RecommendationsPage() {
   const [items, setItems] = useState<MealRecommendation[]>([]);
-  const [remaining, setRemaining] = useState(fallbackRemaining);
-  const [allergies, setAllergies] = useState(profile.allergies);
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
+  const [remaining, setRemaining] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
 
   useEffect(() => {
     let cancelled = false;
@@ -33,10 +32,10 @@ export default function RecommendationsPage() {
       .then(async ([apiProfile, daily]) => {
         if (cancelled) return;
         const targets = {
-          calories: apiProfile?.dailyCalorieTarget ?? profile.targets.calories,
-          protein: apiProfile?.proteinTargetG ?? profile.targets.protein,
-          carbs: apiProfile?.carbsTargetG ?? profile.targets.carbs,
-          fat: apiProfile?.fatTargetG ?? profile.targets.fat,
+          calories: apiProfile?.dailyCalorieTarget ?? 0,
+          protein: apiProfile?.proteinTargetG ?? 0,
+          carbs: apiProfile?.carbsTargetG ?? 0,
+          fat: apiProfile?.fatTargetG ?? 0,
         };
         const budget = {
           calories: Math.max(0, targets.calories - (daily?.totalCalories ?? 0)),
@@ -59,19 +58,17 @@ export default function RecommendationsPage() {
           carbs: recs.remaining.carbs ?? budget.carbs,
           fat: recs.remaining.fat ?? budget.fat,
         });
-        setAllergies(apiProfile?.allergies?.length ? apiProfile.allergies : profile.allergies);
+        setAllergies(apiProfile?.allergies ?? []);
         setItems(recs.recommendations);
         setSource("live");
       })
-      .catch(() => setSource("fallback"));
+      .catch(() => setSource("error"));
     return () => {
       cancelled = true;
     };
   }, []);
 
   const rows = useMemo(() => {
-    if (!items.length && source === "live") return [];
-    if (!items.length) return recommendations;
     return items.map((rec, index) => ({
       signature: rec.signature || `${rec.sampleMealId}-${index}`,
       mealType: rec.mealType,
@@ -83,11 +80,16 @@ export default function RecommendationsPage() {
       totals: rec.totals,
       items: rec.items.map((item) => item.name),
     }));
-  }, [items, source]);
+  }, [items]);
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Recommendations" title="Ranked from your meal history" action={{ label: "Ask Ria", href: "/coach" }} />
+      {source === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live recommendations. Backend data is required.</p>
+        </Panel>
+      ) : null}
 
       <Panel className="mb-5 p-5">
         <div className="grid gap-4 lg:grid-cols-[1fr_420px] lg:items-center">
@@ -112,7 +114,7 @@ export default function RecommendationsPage() {
       </Panel>
 
       <div className="mb-5 flex flex-wrap gap-2">
-        {["Dinner", "Fits calories", "Protein gap", "Not eaten recently", `Avoids ${allergies[0] ?? "allergies"}`].map((filter, index) => (
+        {["Dinner", "Fits calories", "Protein gap", "Not eaten recently", allergies[0] ? `Avoids ${allergies[0]}` : "Uses saved profile"].map((filter, index) => (
           <button key={filter} className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-bold ${index === 0 ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f]"}`}>
             {index === 0 ? <FunnelSimple size={13} weight="fill" /> : null}
             {filter}

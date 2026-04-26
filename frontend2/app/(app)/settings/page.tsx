@@ -5,7 +5,6 @@ import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api/apiKeys";
 import { getApiUrl } from "@/lib/api/auth";
 import { deleteProfile, getProfile, updateProfile } from "@/lib/api/profile";
 import type { ActivityLevel, ApiKeyRow, Goal, IssuedApiKey, Sex, UserProfile } from "@/lib/api/types";
-import { profile } from "../_components/mock-data";
 import { CheckRow, PageHeader, Panel, Stat } from "../_components/ui";
 
 type ProfileForm = {
@@ -30,21 +29,21 @@ type ProfileForm = {
 
 function formFromProfile(apiProfile?: UserProfile | null): ProfileForm {
   return {
-    sex: apiProfile?.sex ?? (profile.sex as Sex),
-    birthYear: String(apiProfile?.birthYear ?? profile.birthYear),
-    heightCm: String(apiProfile?.heightCm ?? profile.heightCm),
-    weightKg: String(apiProfile?.weightKg ?? profile.weightKg),
-    activityLevel: apiProfile?.activityLevel ?? (profile.activityLevel as ActivityLevel),
-    goal: apiProfile?.goal ?? (profile.goal as Goal),
-    targetWeightKg: String(apiProfile?.targetWeightKg ?? profile.targetWeightKg),
-    dailyBudgetUsd: String(apiProfile?.dailyBudgetUsd ?? profile.dailyBudgetUsd),
-    timezone: apiProfile?.timezone ?? profile.timezone,
-    dailyCalorieTarget: String(apiProfile?.dailyCalorieTarget ?? profile.targets.calories),
-    proteinTargetG: String(apiProfile?.proteinTargetG ?? profile.targets.protein),
-    carbsTargetG: String(apiProfile?.carbsTargetG ?? profile.targets.carbs),
-    fatTargetG: String(apiProfile?.fatTargetG ?? profile.targets.fat),
-    dietaryPrefs: (apiProfile?.dietaryPrefs?.length ? apiProfile.dietaryPrefs : profile.dietaryPrefs).join(", "),
-    allergies: (apiProfile?.allergies?.length ? apiProfile.allergies : profile.allergies).join(", "),
+    sex: apiProfile?.sex ?? "",
+    birthYear: apiProfile?.birthYear ? String(apiProfile.birthYear) : "",
+    heightCm: apiProfile?.heightCm ? String(apiProfile.heightCm) : "",
+    weightKg: apiProfile?.weightKg ? String(apiProfile.weightKg) : "",
+    activityLevel: apiProfile?.activityLevel ?? "",
+    goal: apiProfile?.goal ?? "",
+    targetWeightKg: apiProfile?.targetWeightKg ? String(apiProfile.targetWeightKg) : "",
+    dailyBudgetUsd: apiProfile?.dailyBudgetUsd ? String(apiProfile.dailyBudgetUsd) : "",
+    timezone: apiProfile?.timezone ?? "",
+    dailyCalorieTarget: apiProfile?.dailyCalorieTarget ? String(apiProfile.dailyCalorieTarget) : "",
+    proteinTargetG: apiProfile?.proteinTargetG ? String(apiProfile.proteinTargetG) : "",
+    carbsTargetG: apiProfile?.carbsTargetG ? String(apiProfile.carbsTargetG) : "",
+    fatTargetG: apiProfile?.fatTargetG ? String(apiProfile.fatTargetG) : "",
+    dietaryPrefs: (apiProfile?.dietaryPrefs ?? []).join(", "),
+    allergies: (apiProfile?.allergies ?? []).join(", "),
     notifyStreakRisk: apiProfile?.notifyStreakRisk ?? true,
     notifyWeeklyDigest: apiProfile?.notifyWeeklyDigest ?? true,
   };
@@ -67,7 +66,7 @@ export default function SettingsPage() {
   const [apiToken, setApiToken] = useState("");
   const [apiText, setApiText] = useState("2 roti and dal");
   const [apiResult, setApiResult] = useState<string | null>(null);
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
+  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -82,7 +81,7 @@ export default function SettingsPage() {
         setApiKeys(keys);
         setSource("live");
       })
-      .catch(() => setSource("fallback"));
+      .catch(() => setSource("error"));
     return () => {
       cancelled = true;
     };
@@ -90,9 +89,10 @@ export default function SettingsPage() {
 
   const derived = useMemo(() => {
     const sex = form.sex;
-    const weight = numberOrNull(form.weightKg) ?? profile.weightKg;
-    const height = numberOrNull(form.heightCm) ?? profile.heightCm;
-    const birthYear = numberOrNull(form.birthYear) ?? profile.birthYear;
+    const weight = numberOrNull(form.weightKg) ?? 0;
+    const height = numberOrNull(form.heightCm) ?? 0;
+    const birthYear = numberOrNull(form.birthYear);
+    if (!weight || !height || !birthYear) return { bmr: 0, tdee: 0 };
     const age = new Date().getFullYear() - birthYear;
     const bmr = Math.round(10 * weight + 6.25 * height - 5 * age + (sex === "FEMALE" ? -161 : 5));
     const activityMultiplier = form.activityLevel === "ACTIVE" ? 1.725 : form.activityLevel === "MODERATE" ? 1.55 : form.activityLevel === "LIGHT" ? 1.375 : 1.2;
@@ -128,7 +128,7 @@ export default function SettingsPage() {
       setForm(formFromProfile(updated));
       setSource("live");
     } catch {
-      setSource("fallback");
+      setSource("error");
     } finally {
       setSaving(false);
     }
@@ -148,7 +148,7 @@ export default function SettingsPage() {
       setApiKeys((current) => [key, ...current]);
       setSource("live");
     } catch {
-      setSource("fallback");
+      setSource("error");
     } finally {
       setSaving(false);
     }
@@ -168,10 +168,10 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       setApiResult(JSON.stringify(data, null, 2));
-      setSource(res.ok ? "live" : "fallback");
+      setSource(res.ok ? "live" : "error");
     } catch {
       setApiResult("Public API call failed. Check the key, backend, and CORS.");
-      setSource("fallback");
+      setSource("error");
     } finally {
       setSaving(false);
     }
@@ -184,7 +184,7 @@ export default function SettingsPage() {
       setForm(formFromProfile(null));
       setSource("live");
     } catch {
-      setSource("fallback");
+      setSource("error");
     } finally {
       setSaving(false);
     }
@@ -197,7 +197,7 @@ export default function SettingsPage() {
       setApiKeys((current) => current.map((key) => key.id === id ? { ...key, revokedAt: revoked.revokedAt } : key));
       setSource("live");
     } catch {
-      setSource("fallback");
+      setSource("error");
     } finally {
       setSaving(false);
     }
@@ -218,30 +218,35 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Settings" title="Profile, targets, preferences" />
+      {source === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load or save live settings. Backend data is required.</p>
+        </Panel>
+      ) : null}
 
-      <section className="mb-5 grid gap-3 md:grid-cols-3">
+      <section className="mb-6 grid gap-4 md:grid-cols-3">
         <Stat label="BMR" value={`${derived.bmr}`} sub="Mifflin-St Jeor" />
         <Stat label="TDEE" value={`${derived.tdee}`} sub="Activity-adjusted" />
-        <Stat label="Calorie target" value={`${form.dailyCalorieTarget}`} sub={source === "live" ? "Live profile" : "Demo fallback"} />
+        <Stat label="Calorie target" value={form.dailyCalorieTarget || "-"} sub={source === "live" ? "Live profile" : "Waiting for backend data"} />
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <Panel className="p-5">
-          <h2 className="mb-5 text-[22px] font-semibold">Profile inputs</h2>
+      <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <Panel className="p-6">
+          <h2 className="mb-6 text-[22px] font-bold text-forest tracking-tight">Profile inputs</h2>
           <div className="grid gap-4 md:grid-cols-2">
             {fields.map(([key, label]) => (
               <label key={key} className="block">
-                <span className="text-[12px] font-semibold text-[#5f675f]">{label}</span>
-                <input className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-semibold outline-none" value={String(form[key])} onChange={(event) => updateField(key, event.target.value as ProfileForm[typeof key])} />
+                <span className="text-[12px] font-bold text-muted">{label}</span>
+                <input className="mt-2 w-full rounded-xl border border-border bg-surface-alt px-4 py-3 text-[14px] font-semibold outline-none transition-all focus:border-teal/40 focus:ring-2 focus:ring-teal/10" value={String(form[key])} onChange={(event) => updateField(key, event.target.value as ProfileForm[typeof key])} />
               </label>
             ))}
           </div>
-          <button onClick={handleSave} disabled={saving} className="mt-5 rounded-md bg-[#173c2b] px-5 py-3 text-[14px] font-bold text-white disabled:opacity-60">{saving ? "Saving..." : "Save profile"}</button>
+          <button onClick={handleSave} disabled={saving} className="mt-6 rounded-xl bg-forest px-6 py-3 text-[14px] font-bold text-white transition-all hover:bg-forest-soft hover:shadow-md active:scale-[0.98] disabled:opacity-60">{saving ? "Saving..." : "Save profile"}</button>
         </Panel>
 
         <div className="space-y-5">
           <Panel className="p-5">
-            <h2 className="mb-4 text-[22px] font-semibold">Macro targets</h2>
+            <h2 className="mb-4 text-[22px] font-bold text-forest tracking-tight">Macro targets</h2>
             <div className="grid grid-cols-2 gap-3">
               {[
                 ["Calories", form.dailyCalorieTarget],
@@ -249,38 +254,38 @@ export default function SettingsPage() {
                 ["Carbs", `${form.carbsTargetG}g`],
                 ["Fat", `${form.fatTargetG}g`],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-md bg-[#f8f8f3] p-3">
-                  <p className="text-[18px] font-semibold">{value}</p>
-                  <p className="text-[11px] text-[#5f675f]">{label}</p>
+                <div key={label} className="rounded-xl bg-surface-alt p-3.5 border border-border">
+                  <p className="text-[18px] font-bold text-forest">{value}</p>
+                  <p className="text-[11px] font-medium text-muted">{label}</p>
                 </div>
               ))}
             </div>
           </Panel>
           <Panel className="p-5">
-            <h2 className="mb-4 text-[22px] font-semibold">Preferences</h2>
+            <h2 className="mb-4 text-[22px] font-bold text-forest tracking-tight">Preferences</h2>
             <div className="space-y-3">
               <label className="block">
-                <span className="text-[12px] font-semibold text-[#5f675f]">Dietary preferences</span>
-                <input className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] outline-none" value={form.dietaryPrefs} onChange={(event) => updateField("dietaryPrefs", event.target.value)} />
+                <span className="text-[12px] font-bold text-muted">Dietary preferences</span>
+                <input className="mt-2 w-full rounded-xl border border-border bg-surface-alt px-4 py-3 text-[14px] outline-none transition-all focus:border-teal/40 focus:ring-2 focus:ring-teal/10" value={form.dietaryPrefs} onChange={(event) => updateField("dietaryPrefs", event.target.value)} />
               </label>
               <label className="block">
-                <span className="text-[12px] font-semibold text-[#5f675f]">Allergies</span>
-                <input className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] outline-none" value={form.allergies} onChange={(event) => updateField("allergies", event.target.value)} />
+                <span className="text-[12px] font-bold text-muted">Allergies</span>
+                <input className="mt-2 w-full rounded-xl border border-border bg-surface-alt px-4 py-3 text-[14px] outline-none transition-all focus:border-teal/40 focus:ring-2 focus:ring-teal/10" value={form.allergies} onChange={(event) => updateField("allergies", event.target.value)} />
               </label>
             </div>
           </Panel>
           <Panel className="p-5">
-            <h2 className="mb-4 text-[22px] font-semibold">Notifications</h2>
+            <h2 className="mb-4 text-[22px] font-bold text-forest tracking-tight">Notifications</h2>
             <div className="space-y-2">
               <button onClick={() => updateField("notifyStreakRisk", !form.notifyStreakRisk)} className="w-full text-left"><CheckRow>{form.notifyStreakRisk ? "Streak risk email on" : "Streak risk email off"}</CheckRow></button>
               <button onClick={() => updateField("notifyWeeklyDigest", !form.notifyWeeklyDigest)} className="w-full text-left"><CheckRow>{form.notifyWeeklyDigest ? "Weekly digest on" : "Weekly digest off"}</CheckRow></button>
             </div>
           </Panel>
           <Panel className="p-5">
-            <h2 className="mb-4 text-[22px] font-semibold">API keys</h2>
-            <div className="rounded-md bg-[#eef5f2] p-3">
-              <p className="text-[12px] font-semibold text-[#173c2b]">Public endpoint</p>
-              <p className="mt-1 break-all text-[13px] text-[#5f675f]">POST /v1/public/calories · scope calories:read</p>
+            <h2 className="mb-4 text-[22px] font-bold text-forest tracking-tight">API keys</h2>
+            <div className="rounded-xl bg-surface-alt p-4 border border-border">
+              <p className="text-[12px] font-bold text-forest">Public endpoint</p>
+              <p className="mt-1 break-all text-[13px] text-muted">POST /v1/public/calories · scope calories:read</p>
               <pre className="mt-3 overflow-x-auto rounded-md bg-white p-3 text-[11px] text-[#5f675f]">{`curl -X POST ${getApiUrl()}/v1/public/calories \\
   -H "x-api-key: nk_..." \\
   -H "Content-Type: application/json" \\
@@ -320,10 +325,10 @@ export default function SettingsPage() {
               {!apiKeys.length ? <p className="text-[12px] font-semibold text-[#5f675f]">No API keys yet.</p> : null}
             </div>
           </Panel>
-          <Panel className="border-[#b7791f]/40 p-5">
-            <h2 className="mb-2 text-[22px] font-semibold">Danger zone</h2>
-            <p className="text-[13px] leading-6 text-[#5f675f]">Delete the saved nutrition profile. This does not delete the login account, meals, or history.</p>
-            <button onClick={handleDeleteProfile} disabled={saving} className="mt-4 rounded-md border border-[#b7791f]/40 px-3 py-2 text-[12px] font-bold text-[#b7791f] disabled:opacity-60">
+          <Panel className="border-amber-200 p-5">
+            <h2 className="mb-2 text-[22px] font-bold text-amber-700 tracking-tight">Danger zone</h2>
+            <p className="text-[13px] leading-6 text-muted">Delete the saved nutrition profile. This does not delete the login account, meals, or history.</p>
+            <button onClick={handleDeleteProfile} disabled={saving} className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[12px] font-bold text-amber-700 transition-all hover:bg-amber-100 hover:border-amber-300 disabled:opacity-60">
               Delete profile
             </button>
           </Panel>

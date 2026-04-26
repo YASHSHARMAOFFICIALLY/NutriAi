@@ -419,6 +419,86 @@ export interface AdminUsersResponse {
   totalPages: number;
 }
 
+export interface AdminUserDetail extends AdminUserRow {
+  googleId: string | null;
+  avatarUrl: string | null;
+  emailVerifiedAt: string | null;
+  updatedAt: string;
+  profile: UserProfile | null;
+  sessions: Array<{
+    id: string;
+    ipAddress: string | null;
+    userAgent: string | null;
+    deviceType: string | null;
+    deviceModel: string | null;
+    os: string | null;
+    browser: string | null;
+    location: string | null;
+    createdAt: string;
+    lastSeenAt: string;
+    revokedAt: string | null;
+    refreshToken: { expiresAt: string; revokedAt: string | null; createdAt: string };
+  }>;
+  refreshTokens: Array<{ id: string; expiresAt: string; revokedAt: string | null; createdAt: string }>;
+  meals: MealDTO[];
+  foodQueries: Array<HistoryEntry & { asset: unknown | null }>;
+  weightEntries: Array<{ id: string; weightKg: number; note: string | null; recordedAt: string; createdAt: string }>;
+  conversations: Array<ConversationDTO>;
+  assets: Array<{
+    id: string;
+    bucket: string;
+    key: string;
+    contentType: string;
+    size: number | null;
+    status: string;
+    createdAt: string;
+    uploadedAt: string | null;
+  }>;
+  apiKeys: Array<ApiKeyRow & { _count: { usage: number }; usage: Array<{ id: string; endpoint: string; statusCode: number; latencyMs: number; createdAt: string }> }>;
+  tokenUsage: Array<{
+    id: string;
+    endpoint: string;
+    provider: string;
+    model: string;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    costUsd: number;
+    cached: boolean;
+    latencyMs: number;
+    createdAt: string;
+  }>;
+  userChallenges: UserChallengeDTO[];
+  telegramAccount: unknown | null;
+  ownedFamilies: unknown[];
+  familyMemberships: unknown[];
+  familyInvitesSent: unknown[];
+  emailVerificationTokens: unknown[];
+  passwordResetTokens: unknown[];
+  telegramLinkTokens: unknown[];
+  telegramPendingActions: unknown[];
+  aiSummary: {
+    requests: number;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    costUsd: number;
+    avgLatencyMs: number;
+  };
+  _count: {
+    meals: number;
+    foodQueries: number;
+    conversations: number;
+    assets: number;
+    apiKeys: number;
+    tokenUsage: number;
+    userChallenges: number;
+    weightEntries: number;
+    refreshTokens: number;
+    sessions: number;
+  };
+}
+
 export interface AdminUsageResponse {
   summary: {
     requests: number;

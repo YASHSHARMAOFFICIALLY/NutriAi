@@ -9,22 +9,9 @@ import { ApiError } from "@/lib/api/client";
 import { getDailySummary, listMeals } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import { getMealRecommendations } from "@/lib/api/recommendations";
-import type { ConversationSummary, MealDTO } from "@/lib/api/types";
-import { challenge, profile, recommendations, summary, todayMeals } from "../_components/mock-data";
-import type { Meal } from "../_components/mock-data";
+import type { ConversationSummary, MealDTO, UserChallengeDTO } from "@/lib/api/types";
 import { BudgetBar, MealLine, PageHeader, Panel } from "../_components/ui";
-
-const fallbackConversations = [
-  "Dinner with 310 kcal left",
-  "Protein target questions",
-  "Weekend eating plan",
-];
-
-const fallbackMessages = [
-  { role: "assistant", text: "You have 310 kcal left and need 70g protein. Your highest-fit repeat meal is dal, cucumber salad, and a small roti." },
-  { role: "user", text: "Can I eat rice tonight?" },
-  { role: "assistant", text: "Small portion, yes. Your carbs have room, but protein is the bigger issue. Pair rice with tofu, dal, paneer, or grilled chicken." },
-];
+import type { Meal } from "../_components/ui";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -61,13 +48,15 @@ function mealFromApi(meal: MealDTO): Meal {
 export default function CoachPage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState(fallbackMessages);
+  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; text: string }>>([]);
   const [input, setInput] = useState("");
-  const [meals, setMeals] = useState<Meal[]>(todayMeals);
-  const [totals, setTotals] = useState(summary.totals);
-  const [targets, setTargets] = useState(profile.targets);
-  const [topMeal, setTopMeal] = useState(recommendations[0].title);
-  const [activeChallenge, setActiveChallenge] = useState(challenge);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [targets, setTargets] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [topMeal, setTopMeal] = useState("");
+  const [activeChallenge, setActiveChallenge] = useState<UserChallengeDTO | null>(null);
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -95,27 +84,18 @@ export default function CoachPage() {
         if (apiMeals.length) setMeals(apiMeals.map(mealFromApi));
         if (apiProfile) {
           setTargets({
-            calories: apiProfile.dailyCalorieTarget ?? profile.targets.calories,
-            protein: apiProfile.proteinTargetG ?? profile.targets.protein,
-            carbs: apiProfile.carbsTargetG ?? profile.targets.carbs,
-            fat: apiProfile.fatTargetG ?? profile.targets.fat,
+            calories: apiProfile.dailyCalorieTarget ?? 0,
+            protein: apiProfile.proteinTargetG ?? 0,
+            carbs: apiProfile.carbsTargetG ?? 0,
+            fat: apiProfile.fatTargetG ?? 0,
           });
+          setAllergies(apiProfile.allergies ?? []);
         }
         if (apiRecs.recommendations[0]) setTopMeal(apiRecs.recommendations[0].items.map((item) => item.name).join(", "));
-        if (apiChallenges[0]) {
-          setActiveChallenge({
-            id: apiChallenges[0].id,
-            title: apiChallenges[0].title,
-            description: apiChallenges[0].description ?? "",
-            durationDays: apiChallenges[0].durationDays,
-            daysCheckedIn: apiChallenges[0].daysCheckedIn,
-            lastCheckInDate: apiChallenges[0].lastCheckInDate ?? "",
-            status: apiChallenges[0].status,
-            category: apiChallenges[0].challenge?.category ?? "HABIT",
-          });
-        }
+        setActiveChallenge(apiChallenges[0] ?? null);
+        setLoadError(false);
       })
-      .catch(() => {});
+      .catch(() => setLoadError(true));
     return () => {
       cancelled = true;
     };
@@ -141,11 +121,11 @@ export default function CoachPage() {
       setConversationId(response.conversationId);
       setMessages((current) => [...current, { role: "assistant", text: response.reply }]);
     } catch (error) {
-      const fallbackMessage =
+      const errorMessage =
         error instanceof ApiError
           ? error.message
           : "I could not reach the coach API. The live chat will work once the backend session is available.";
-      setMessages((current) => [...current, { role: "assistant", text: fallbackMessage }]);
+      setMessages((current) => [...current, { role: "assistant", text: errorMessage }]);
     } finally {
       setSending(false);
     }
@@ -168,7 +148,7 @@ export default function CoachPage() {
       setConversations((current) => current.filter((item) => item.id !== id));
       if (conversationId === id) {
         setConversationId(null);
-        setMessages(fallbackMessages);
+        setMessages([]);
       }
     } catch {}
   }
@@ -176,6 +156,11 @@ export default function CoachPage() {
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Coach Ria" title="Chat with nutrition context" />
+      {loadError ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load live coach context. Chat still requires the backend session.</p>
+        </Panel>
+      ) : null}
 
       <section className="grid min-h-[720px] gap-5 xl:grid-cols-[260px_1fr_360px]">
         <Panel className="hidden p-4 xl:block">
@@ -191,17 +176,13 @@ export default function CoachPage() {
                   Delete
                 </button>
               </div>
-            )) : fallbackConversations.map((title, index) => (
-              <button key={`${title}-${index}`} className={`w-full rounded-md p-3 text-left text-[13px] font-semibold ${index === 0 ? "bg-[#173c2b] text-white" : "bg-[#f8f8f3] text-[#5f675f]"}`}>
-                {title}
-              </button>
-            ))}
+            )) : <p className="rounded-md bg-[#f8f8f3] p-3 text-[13px] font-semibold text-[#5f675f]">No conversations yet.</p>}
           </div>
         </Panel>
 
         <Panel className="flex flex-col p-5">
-          <div className="mb-5 flex items-center gap-3 border-b border-black/10 pb-4">
-            <span className="grid h-10 w-10 place-items-center rounded-md bg-[#d7ff68]">
+          <div className="mb-5 flex items-center gap-3 border-b border-border pb-4">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-lime shadow-sm">
               <Sparkle size={20} weight="fill" />
             </span>
             <div>
@@ -215,20 +196,26 @@ export default function CoachPage() {
               const user = message.role === "user";
               return (
                 <div key={index} className={`flex ${user ? "justify-end" : "justify-start"}`}>
-                  <p className={`max-w-[78%] rounded-lg px-4 py-3 text-[14px] leading-6 ${user ? "bg-[#173c2b] text-white" : "bg-[#eef5f2]"}`}>
+                  <p className={`max-w-[78%] rounded-2xl px-5 py-3.5 text-[14px] leading-6 ${user ? "bg-forest text-white shadow-sm" : "bg-surface-alt border border-border"}`}>
                     {message.text}
                   </p>
                 </div>
               );
             })}
+            {!messages.length ? (
+              <div className="rounded-2xl border border-dashed border-border bg-surface-alt p-6 text-center">
+                <p className="text-[14px] font-semibold text-forest">Ask your first live nutrition question.</p>
+                <p className="mt-2 text-[12px] text-muted">Coach replies come from the backend chat endpoint.</p>
+              </div>
+            ) : null}
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
             {[
               `What fits ${liveRemaining.calories} kcal?`,
               `Close ${liveRemaining.protein}g protein`,
-              `Avoid ${profile.allergies[0]}`,
+              allergies[0] ? `Avoid ${allergies[0]}` : "Use my saved preferences",
             ].map((prompt) => (
-              <button key={prompt} onClick={() => handleSend(prompt)} className="rounded-full border border-black/10 bg-[#f8f8f3] px-3 py-1.5 text-[12px] font-bold text-[#5f675f]">
+              <button key={prompt} onClick={() => handleSend(prompt)} className="rounded-full border border-border bg-surface-alt px-3 py-1.5 text-[12px] font-bold text-muted transition-all hover:border-teal/30 hover:bg-white hover:text-forest">
                 {prompt}
               </button>
             ))}
@@ -239,10 +226,10 @@ export default function CoachPage() {
               event.preventDefault();
               handleSend();
             }}
-            className="mt-4 flex items-end gap-3 rounded-lg border border-black/10 bg-[#f8f8f3] p-3"
+            className="mt-4 flex items-end gap-3 rounded-2xl border border-border bg-surface-alt p-3 transition-all focus-within:border-teal/30 focus-within:ring-2 focus-within:ring-teal/10"
           >
             <textarea className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1 text-[14px] outline-none" rows={1} placeholder="Ask Ria..." value={input} onChange={(event) => setInput(event.target.value)} />
-            <button disabled={sending || !input.trim()} className="grid h-9 w-9 place-items-center rounded-md bg-[#173c2b] text-white disabled:opacity-60">
+            <button disabled={sending || !input.trim()} className="grid h-9 w-9 place-items-center rounded-xl bg-forest text-white transition-all hover:bg-forest-soft active:scale-95 disabled:opacity-60">
               <PaperPlaneTilt size={16} weight="fill" />
             </button>
           </form>
@@ -258,19 +245,20 @@ export default function CoachPage() {
           </Panel>
           <Panel className="p-5">
             <h2 className="mb-3 text-[20px] font-semibold">Top repeat meal</h2>
-            <p className="text-[15px] font-semibold">{topMeal}</p>
+            <p className="text-[15px] font-semibold">{topMeal || "No repeat meal yet"}</p>
             <p className="mt-2 text-[13px] leading-6 text-[#5f675f]">Recommendation endpoint feeds this panel when authenticated.</p>
           </Panel>
           <Panel className="p-5">
             <h2 className="mb-3 text-[20px] font-semibold">Recent meals</h2>
             <div className="space-y-2">
               {meals.slice(0, 2).map((meal) => <MealLine key={meal.id} meal={meal} />)}
+              {!meals.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No meals logged today.</p> : null}
             </div>
           </Panel>
           <Panel className="p-5">
             <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#0f8b8d]">Active challenge</p>
-            <p className="mt-2 text-[18px] font-semibold">{activeChallenge.title}</p>
-            <p className="mt-1 text-[13px] text-[#5f675f]">{activeChallenge.daysCheckedIn}/{activeChallenge.durationDays} days checked in</p>
+            <p className="mt-2 text-[18px] font-semibold">{activeChallenge?.title ?? "No active challenge"}</p>
+            <p className="mt-1 text-[13px] text-[#5f675f]">{activeChallenge ? `${activeChallenge.daysCheckedIn}/${activeChallenge.durationDays} days checked in` : "Start a challenge to add context."}</p>
           </Panel>
         </aside>
       </section>

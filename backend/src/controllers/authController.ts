@@ -1,3 +1,4 @@
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Request, RequestHandler, Response } from 'express';
 import type { User } from '@prisma/client';
 import passport from 'passport';
@@ -6,8 +7,10 @@ import { prisma } from '../config/prisma';
 import { googleConfigured } from '../config/passport';
 import { issueTokens, revokeRefresh, rotateRefresh } from '../services/authService';
 import { AppError, BadRequestError, NotFoundError, UnauthorizedError } from '../utils/errors';
+import { getSessionMetadata } from '../utils/sessionMetadata';
 
 const REFRESH_COOKIE = 'nutriai_rt';
+const OAUTH_STATE_COOKIE = 'nutriai_oauth_state';
 
 const setRefreshCookie = (res: Response, token: string, expiresAt: Date): void => {
   res.cookie(REFRESH_COOKIE, token, {
@@ -20,25 +23,57 @@ const setRefreshCookie = (res: Response, token: string, expiresAt: Date): void =
 };
 
 const clearRefreshCookie = (res: Response): void => {
-  res.clearCookie(REFRESH_COOKIE, { path: '/auth' });
+  res.clearCookie(REFRESH_COOKIE, { secure: isProd, sameSite: 'lax', path: '/auth' });
+};
+
+const setOAuthStateCookie = (res: Response, state: string): void => {
+  res.cookie(OAUTH_STATE_COOKIE, state, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'lax',
+    path: '/auth/google/callback',
+    maxAge: 10 * 60 * 1000,
+  });
+};
+
+const clearOAuthStateCookie = (res: Response): void => {
+  res.clearCookie(OAUTH_STATE_COOKIE, {
+    secure: isProd,
+    sameSite: 'lax',
+    path: '/auth/google/callback',
+  });
+};
+
+const stateMatches = (actual: string, expected: string): boolean => {
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
 };
 
 export const googleStart: RequestHandler = (req, res, next) => {
   if (!googleConfigured()) {
     throw new AppError(503, 'OAUTH_NOT_CONFIGURED', 'Google OAuth is not configured');
   }
-  passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
+  const state = randomBytes(32).toString('base64url');
+  setOAuthStateCookie(res, state);
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false, state })(req, res, next);
 };
 
 export const googleCallback: RequestHandler = (req, res, next) => {
   if (!googleConfigured()) {
     throw new AppError(503, 'OAUTH_NOT_CONFIGURED', 'Google OAuth is not configured');
   }
+  const expectedState = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
+  const actualState = typeof req.query.state === 'string' ? req.query.state : '';
+  clearOAuthStateCookie(res);
+  if (!expectedState || !actualState || !stateMatches(actualState, expectedState)) {
+    throw new UnauthorizedError('Invalid OAuth state');
+  }
   passport.authenticate('google', { session: false }, async (err: unknown, user: User | false) => {
     if (err) return next(err);
     if (!user) return next(new UnauthorizedError('Google authentication failed'));
     try {
-      const tokens = await issueTokens(user);
+      const tokens = await issueTokens(user, getSessionMetadata(req));
       setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
       // Redirect back to frontend with access token in fragment (not query) to avoid server logs.
       const redirectUrl = `${env.FRONTEND_POST_LOGIN_URL}#access_token=${tokens.accessToken}`;
@@ -52,7 +87,7 @@ export const googleCallback: RequestHandler = (req, res, next) => {
 export const refresh: RequestHandler = async (req, res) => {
   const presented = req.cookies?.[REFRESH_COOKIE] as string | undefined;
   if (!presented) throw new UnauthorizedError('Missing refresh token');
-  const tokens = await rotateRefresh(presented);
+  const tokens = await rotateRefresh(presented, getSessionMetadata(req));
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
   res.json({ accessToken: tokens.accessToken });
 };
@@ -93,7 +128,7 @@ export const devLogin: RequestHandler = async (req: Request, res) => {
     update: {},
     create: { email, name: email.split('@')[0] },
   });
-  const tokens = await issueTokens(user);
+  const tokens = await issueTokens(user, getSessionMetadata(req));
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
   res.json({
     accessToken: tokens.accessToken,

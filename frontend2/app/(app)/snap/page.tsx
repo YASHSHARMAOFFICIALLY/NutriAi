@@ -7,8 +7,7 @@ import { ApiError } from "@/lib/api/client";
 import { createMeal, inferMealType } from "@/lib/api/meals";
 import { uploadFoodImage } from "@/lib/api/uploads";
 import type { AnalyzeFoodResponse, MealType } from "@/lib/api/types";
-import { analysisCandidate, remaining } from "../_components/mock-data";
-import { PageHeader, Panel, SourceBadge } from "../_components/ui";
+import { PageHeader, Panel } from "../_components/ui";
 
 type Candidate = {
   queryId: string;
@@ -59,29 +58,15 @@ function candidateFromApi(result: AnalyzeFoodResponse): Candidate {
   };
 }
 
-const fallbackCandidate: Candidate = {
-  queryId: analysisCandidate.queryId,
-  provider: analysisCandidate.provider,
-  model: analysisCandidate.model,
-  cached: analysisCandidate.cached,
-  latencyMs: analysisCandidate.latencyMs,
-  confidence: analysisCandidate.confidence,
-  title: analysisCandidate.title,
-  mealType: analysisCandidate.mealType,
-  items: analysisCandidate.items,
-  totals: analysisCandidate.totals,
-};
-
 import { motion, AnimatePresence } from "framer-motion";
 import { AnalyzingState } from "./_components/AnalyzingState";
 
 // ... (helper functions and types remain same)
 
 export default function SnapPage() {
-  const [text, setText] = useState("Paneer rice bowl with mixed vegetables");
-  const [candidate, setCandidate] = useState<Candidate>(fallbackCandidate);
+  const [text, setText] = useState("");
+  const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [status, setStatus] = useState<"ready" | "uploading" | "analyzing" | "saving" | "saved" | "error">("ready");
-  const [source, setSource] = useState<"live" | "fallback">("fallback");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [assetId, setAssetId] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<"photo" | "text">("photo");
@@ -91,7 +76,7 @@ export default function SnapPage() {
     { label: assetId ? "Photo ready" : selectedFile ? "Photo selected" : "Prompt ready", icon: ImageSquare },
     { label: "Nutrition estimated", icon: Database },
     { label: "Review before saving", icon: Sparkle },
-  ], [assetId, candidate, selectedFile, text]);
+  ], [assetId, selectedFile]);
 
   async function handleAnalyze() {
     if (!text.trim() && !selectedFile && !assetId) return;
@@ -109,20 +94,19 @@ export default function SnapPage() {
         confirmedAssetId ? { assetId: confirmedAssetId, text: text.trim() || undefined } : { text: text.trim() },
       );
       setCandidate(candidateFromApi(result));
-      setSource("live");
       setStatus("ready");
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError
           ? error.message
-          : "Network error. Showing local intelligence fallback.",
+          : "Network error. Backend analysis is required.",
       );
-      setSource("fallback");
       setStatus("error");
     }
   }
 
   async function handleSave() {
+    if (!candidate) return;
     setStatus("saving");
     try {
       await createMeal({
@@ -139,7 +123,6 @@ export default function SnapPage() {
         })),
       });
       setStatus("saved");
-      setSource("live");
     } catch {
       setErrorMessage("Could not save this meal right now.");
       setStatus("error");
@@ -148,6 +131,7 @@ export default function SnapPage() {
 
   function updateItem(index: number, field: keyof Candidate["items"][number], value: string) {
     setCandidate((current) => {
+      if (!current) return current;
       const items = current.items.map((item, itemIndex) => {
         if (itemIndex !== index) return item;
         if (field === "quantity" || field === "name") return { ...item, [field]: value };
@@ -168,13 +152,13 @@ export default function SnapPage() {
   }
 
   function addItem() {
-    setCandidate((current) => ({
+    setCandidate((current) => current ? ({
       ...current,
       items: [
         ...current.items,
         { name: "New item", quantity: "1 serving", calories: 0, protein: 0, carbs: 0, fat: 0, confidence: 0.5 },
       ],
-    }));
+    }) : current);
   }
 
   return (
@@ -272,7 +256,7 @@ export default function SnapPage() {
             
             {status === "error" && (
               <p className="mt-4 rounded-lg bg-amber-50 p-3 text-center text-[12px] font-bold text-amber-700 border border-amber-100">
-                {errorMessage || "Network error. Showing local intelligence fallback."}
+                {errorMessage || "Network error. Backend analysis is required."}
               </p>
             )}
           </Panel>
@@ -301,7 +285,7 @@ export default function SnapPage() {
                   <AnalyzingState />
                 </Panel>
               </motion.div>
-            ) : (
+            ) : candidate ? (
               <motion.div 
                 key="result"
                 initial={{ opacity: 0, y: 20 }} 
@@ -421,8 +405,7 @@ export default function SnapPage() {
                   <div className="flex flex-col gap-6 bg-surface-alt p-8 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <p className="text-[14px] font-medium text-muted leading-relaxed">
-                        Saving this will leave you with <span className="text-forest font-bold">{Math.max(0, remaining.calories - candidate.totals.calories)} kcal</span> 
-                        <br className="hidden sm:block" /> and a <span className="text-forest font-bold">{Math.max(0, remaining.protein - candidate.totals.protein)}g protein gap</span> for the day.
+                        Saving this meal will add these analyzed totals to your live meal diary.
                       </p>
                     </div>
                     <button
@@ -436,6 +419,13 @@ export default function SnapPage() {
                   </div>
                 </Panel>
               </motion.div>
+            ) : (
+              <Panel className="flex min-h-[500px] items-center justify-center p-12 text-center">
+                <div>
+                  <p className="text-[22px] font-bold text-forest">No analysis yet</p>
+                  <p className="mt-2 text-[13px] text-muted">Enter a meal description or upload a photo to fetch live backend analysis.</p>
+                </div>
+              </Panel>
             )}
           </AnimatePresence>
         </div>

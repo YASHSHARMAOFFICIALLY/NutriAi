@@ -9,6 +9,7 @@ import {
   resetPasswordWithToken,
   verifyEmailWithToken,
 } from '../services/emailAuthService';
+import { getSessionMetadata } from '../utils/sessionMetadata';
 
 const REFRESH_COOKIE = 'nutriai_rt';
 
@@ -31,7 +32,7 @@ export const register: RequestHandler = async (req, res) => {
 export const login: RequestHandler = async (req, res) => {
   const { email, password } = req.body as { email: string; password: string };
   const user = await authenticateWithPassword({ email, password });
-  const tokens = await issueTokens(user);
+  const tokens = await issueTokens(user, getSessionMetadata(req));
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
   res.json({
     accessToken: tokens.accessToken,
@@ -42,7 +43,7 @@ export const login: RequestHandler = async (req, res) => {
 export const verifyEmail: RequestHandler = async (req, res) => {
   const { token } = req.body as { token: string };
   const user = await verifyEmailWithToken(token);
-  const tokens = await issueTokens(user);
+  const tokens = await issueTokens(user, getSessionMetadata(req));
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
   res.json({
     accessToken: tokens.accessToken,
@@ -65,7 +66,7 @@ export const forgotPassword: RequestHandler = async (req, res) => {
 export const resetPassword: RequestHandler = async (req, res) => {
   const { token, password } = req.body as { token: string; password: string };
   const user = await resetPasswordWithToken({ token, newPassword: password });
-  const tokens = await issueTokens(user);
+  const tokens = await issueTokens(user, getSessionMetadata(req));
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
   res.json({
     accessToken: tokens.accessToken,

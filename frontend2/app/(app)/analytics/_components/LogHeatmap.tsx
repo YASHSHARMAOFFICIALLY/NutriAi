@@ -1,4 +1,3 @@
-import { analytics } from "../../_components/mock-data";
 import { motion } from "framer-motion";
 
 export function LogHeatmap() {

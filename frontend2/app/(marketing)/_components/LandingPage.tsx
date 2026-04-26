@@ -232,16 +232,16 @@ function Hero() {
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,16,0.94)_0%,rgba(16,21,16,0.76)_42%,rgba(16,21,16,0.22)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#101510] to-transparent" />
 
-      <div className="relative z-10 mx-auto grid min-h-[92vh] max-w-7xl items-center gap-8 px-5 pb-28 pt-28 xl:grid-cols-[0.72fr_1.28fr] lg:px-8">
+      <div className="relative z-10 mx-auto grid min-h-[92vh] max-w-7xl items-center gap-8 px-5 pb-28 pt-28 lg:grid-cols-[0.86fr_1fr] lg:px-8 xl:grid-cols-[0.72fr_1.28fr]">
         <div className="max-w-3xl">
           <div className="hero-reveal mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] font-semibold backdrop-blur-md">
             <Sparkle size={14} weight="fill" className="text-[#d7ff68]" />
             Meal scanner, coach, tracker, and habit system
           </div>
-          <h1 className="hero-reveal hero-delay-1 display-heading text-[46px] font-semibold leading-[0.98] md:text-[72px]">
+          <h1 className="hero-reveal hero-delay-1 display-heading text-[46px] font-semibold leading-[0.98] md:text-[58px] xl:text-[72px]">
             Know what to eat next, not just what you ate.
           </h1>
-          <p className="hero-reveal hero-delay-2 mt-7 max-w-2xl text-[18px] leading-8 text-white/78 md:text-[19px]">
+          <p className="hero-reveal hero-delay-2 mt-6 max-w-2xl text-[17px] leading-7 text-white/78 xl:mt-7 xl:text-[19px] xl:leading-8">
             Snap a meal, verify the macros, save it to your day, then let NutriAI guide dinner, weight progress, streaks, and weekly habits.
           </p>
           <div className="hero-reveal hero-delay-3 mt-9 flex flex-col gap-3 sm:flex-row">
@@ -267,7 +267,8 @@ function Hero() {
           </div>
         </div>
 
-        <div className="hero-stage hidden xl:block">
+        <div className="hero-stage hidden lg:block lg:scale-[0.82] lg:-translate-x-4 xl:translate-x-0 xl:scale-100">
+          <div className="pointer-events-none absolute left-[350px] top-[300px] z-0 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(215,255,104,0.10)_0%,transparent_70%)] blur-3xl" />
           <NutritionHUD />
           <FloatingPhone />
           <CoachBubble />
@@ -284,35 +285,82 @@ function Hero() {
 
 function FloatingPhone() {
   return (
-    <div className="float-slow absolute left-[275px] top-10 z-30 h-[540px] w-[270px] rounded-[34px] border border-white/20 bg-[#101510] p-3 shadow-[0_40px_100px_rgba(0,0,0,0.45)]">
-      <div className="h-full overflow-hidden rounded-[28px] bg-[#f8f8f3] text-[#101510]">
-        <img src={phoneImage} alt="Healthy meal ingredients" className="h-44 w-full object-cover" />
-        <div className="p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f675f]">Lunch analysis</p>
-            <span className="rounded-full bg-[#d7ff68] px-2.5 py-1 text-[11px] font-bold">92% sure</span>
+    <div className="float-slow absolute left-[210px] top-4 z-30 h-[560px] w-[286px] rounded-[42px] bg-[linear-gradient(145deg,#333b33,#080c08_42%,#1a211a)] p-[9px] shadow-[0_50px_120px_rgba(0,0,0,0.6),0_0_60px_rgba(215,255,104,0.08),0_0_0_1px_rgba(255,255,255,0.18)] xl:left-[260px]">
+      <span className="absolute -left-1 top-24 h-14 w-1 rounded-l-full bg-white/24" />
+      <span className="absolute -left-1 top-44 h-20 w-1 rounded-l-full bg-white/20" />
+      <span className="absolute -right-1 top-36 h-24 w-1 rounded-r-full bg-black/45" />
+      <div className="pointer-events-none absolute inset-[9px] z-20 rounded-[33px] bg-[linear-gradient(115deg,rgba(255,255,255,0.22),transparent_28%,transparent_68%,rgba(255,255,255,0.10))]" />
+
+      <div className="relative h-full overflow-hidden rounded-[33px] bg-[#f8f8f3] text-[#101510]">
+        <div className="absolute left-1/2 top-3 z-30 h-7 w-[92px] -translate-x-1/2 rounded-full bg-[#090d09] shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]" />
+        <div className="absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-between bg-[linear-gradient(180deg,rgba(16,21,16,0.72),rgba(16,21,16,0))] px-5 pt-2 text-[10px] font-bold text-white">
+          <span>9:41</span>
+          <span className="flex items-center gap-1">
+            <span className="h-1.5 w-4 rounded-full border border-white/80" />
+            <span className="h-1.5 w-1 rounded-full bg-white/80" />
+          </span>
+        </div>
+
+        <div className="relative h-[184px] overflow-hidden">
+          <img src={phoneImage} alt="Healthy meal ingredients" className="h-full w-full object-cover saturate-[1.12] contrast-[1.04]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.05),rgba(0,0,0,0.28))]" />
+          <div className="absolute bottom-3 left-4 flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1.5 text-[10px] font-bold text-[#173c2b] shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-md">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#16a34a]" />
+            Analyzed
           </div>
-          <h3 className="mt-2 text-[21px] font-semibold">Greek bowl</h3>
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            {[
-              ["612", "kcal"],
-              ["42g", "protein"],
-              ["58g", "carbs"],
-              ["19g", "fat"],
-            ].map(([value, label]) => (
-              <div key={label} className="rounded-md border border-black/10 bg-white p-2.5">
-                <p className="text-[19px] font-semibold">{value}</p>
-                <p className="text-[11px] text-[#5f675f]">{label}</p>
+        </div>
+
+        <div className="p-4">
+          <div className="rounded-[18px] bg-white p-4 shadow-[0_14px_36px_rgba(16,21,16,0.10)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#6f796f]">Lunch analysis</p>
+                <h3 className="mt-1 text-[20px] font-semibold leading-tight">Greek bowl</h3>
               </div>
-            ))}
+              <span className="rounded-full bg-[#d7ff68] px-2.5 py-1 text-[10px] font-bold text-[#101510] shadow-[0_8px_18px_rgba(215,255,104,0.30)]">
+                92% sure
+              </span>
+            </div>
+
+            <div className="mt-4 rounded-[16px] bg-[#101510] p-3 text-white shadow-[0_16px_34px_rgba(16,21,16,0.18)]">
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-[11px] text-white/55">Estimated calories</p>
+                  <p className="mt-0.5 text-[30px] font-semibold leading-none">612</p>
+                </div>
+                <p className="pb-1 text-[12px] font-semibold text-[#d7ff68]">kcal</p>
+              </div>
+              <div className="mt-3 h-1.5 rounded-full bg-white/16">
+                <div className="h-full w-[68%] rounded-full bg-[#d7ff68] shadow-[0_0_18px_rgba(215,255,104,0.42)]" />
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {[
+                ["42g", "Protein"],
+                ["58g", "Carbs"],
+                ["19g", "Fat"],
+              ].map(([value, label]) => (
+                <div key={label} className="rounded-[14px] bg-[#f1f5ef] p-2.5 text-center">
+                  <p className="text-[15px] font-semibold">{value}</p>
+                  <p className="mt-0.5 text-[9px] font-semibold text-[#6f796f]">{label}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="mt-4 rounded-md bg-[#eef5f2] p-3">
-            <p className="text-[12px] font-semibold text-[#173c2b]">Saved to today</p>
-            <p className="mt-1 text-[12px] text-[#5f675f]">Dinner recommendation updated.</p>
+
+          <div className="mt-3 rounded-[18px] bg-[#eef5f2] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold text-[#173c2b]">Saved to today</p>
+              <Check size={15} weight="bold" className="text-[#16a34a]" />
+            </div>
+            <p className="mt-1 text-[12px] leading-5 text-[#5f675f]">Dinner recommendation updated.</p>
           </div>
-          <button className="mt-4 w-full rounded-md bg-[#173c2b] py-3 text-[13px] font-semibold text-white">
+
+          <button className="mt-3 w-full rounded-[16px] bg-[#173c2b] py-3 text-[13px] font-semibold text-white shadow-[0_14px_28px_rgba(23,60,43,0.24)]">
             Confirm meal
           </button>
+          <div className="mx-auto mt-3 h-1 w-24 rounded-full bg-[#101510]/22" />
         </div>
       </div>
     </div>
@@ -321,7 +369,7 @@ function FloatingPhone() {
 
 function NutritionHUD() {
   return (
-    <div className="float-fast absolute left-0 top-7 z-20 w-[258px] rounded-lg border border-white/20 bg-white/14 p-5 text-white shadow-[0_30px_80px_rgba(0,0,0,0.26)] backdrop-blur-xl">
+    <div className="float-fast absolute -left-5 top-14 z-20 w-[258px] rounded-xl border border-white/[0.15] bg-white/[0.12] p-5 text-white shadow-[0_30px_90px_rgba(0,0,0,0.4),0_0_40px_rgba(215,255,104,0.06)] backdrop-blur-2xl">
       <div className="mb-4 flex items-center justify-between">
         <p className="font-semibold">Today&apos;s targets</p>
         <span className="rounded-full bg-[#d7ff68] px-3 py-1 text-[12px] font-bold text-[#101510]">86%</span>
@@ -347,7 +395,7 @@ function NutritionHUD() {
 
 function CoachBubble() {
   return (
-    <div className="pulse-card absolute bottom-24 left-[565px] z-40 w-[235px] rounded-lg border border-white/20 bg-[#101510]/84 p-4 text-white shadow-[0_30px_80px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+    <div className="pulse-card absolute bottom-[180px] left-[470px] z-40 w-[250px] rotate-2 rounded-xl border border-white/[0.15] bg-[#101510]/80 p-4 text-white shadow-[0_30px_90px_rgba(0,0,0,0.45),0_0_50px_rgba(215,255,104,0.12)] backdrop-blur-2xl xl:left-[570px]">
       <div className="mb-3 flex items-center gap-3">
         <span className="grid h-9 w-9 place-items-center rounded-md bg-[#d7ff68] text-[#101510]">
           <Sparkle size={18} weight="fill" />
@@ -366,7 +414,7 @@ function CoachBubble() {
 
 function StreakCard() {
   return (
-    <div className="absolute bottom-10 left-10 z-10 w-[220px] rounded-lg border border-white/18 bg-[#d7ff68] p-4 text-[#101510] shadow-[0_28px_70px_rgba(0,0,0,0.28)]">
+    <div className="absolute -bottom-3 left-6 z-10 w-[220px] -rotate-3 rounded-xl border border-white/18 bg-[#d7ff68] p-4 text-[#101510] shadow-[0_34px_90px_rgba(0,0,0,0.35),0_0_40px_rgba(215,255,104,0.18)] xl:-bottom-6">
       <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Consistency</p>
       <div className="mt-3 flex items-end justify-between">
         <div>
@@ -382,10 +430,10 @@ function StreakCard() {
 function ProofStrip() {
   return (
     <section className="relative z-10 -mt-12 px-5 lg:px-8">
-      <div className="mx-auto grid max-w-7xl gap-2 rounded-lg border border-black/10 bg-white p-3 shadow-[0_24px_70px_rgba(16,21,16,0.14)] md:grid-cols-4">
+      <div className="mx-auto grid max-w-7xl gap-1 rounded-xl border border-black/8 bg-white p-2 shadow-[0_24px_70px_rgba(16,21,16,0.14)] md:grid-cols-4">
         {proof.map(({ title, body, icon: Icon }) => (
-          <div key={title} className="rounded-lg p-4 transition hover:bg-[#f0f6ef]">
-            <div className="mb-4 grid h-10 w-10 place-items-center rounded-md bg-[#eef5f2] text-[#173c2b]">
+          <div key={title} className="group/card rounded-xl p-5 transition-all hover:bg-[#f0f6ef] hover:shadow-[0_8px_30px_rgba(16,21,16,0.06)]">
+            <div className="mb-4 grid h-10 w-10 place-items-center rounded-lg bg-[#eef5f2] text-[#173c2b] transition-colors group-hover/card:bg-[#d7ff68] group-hover/card:text-[#101510]">
               <Icon size={20} weight="duotone" />
             </div>
             <p className="text-[14px] font-semibold">{title}</p>
@@ -404,7 +452,7 @@ function ProductMoments() {
         <Header eyebrow="Product proof" title="The landing page should feel like using the app." />
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {productMoments.map(({ kicker, title, copy, image, icon: Icon }) => (
-            <article key={title} className="story-tile group relative min-h-[380px] overflow-hidden rounded-lg border border-black/10 bg-[#101510] p-6 text-white">
+            <article key={title} className="story-tile group relative min-h-[400px] overflow-hidden rounded-xl border border-white/10 bg-[#101510] p-7 text-white">
               <div className="absolute inset-0 opacity-34 transition group-hover:scale-105 group-hover:opacity-48">
                 <img src={image} alt="" className="h-full w-full object-cover" />
               </div>
@@ -440,9 +488,9 @@ function ImmersiveProduct() {
             <p className="mt-6 text-[17px] leading-8 text-white/70">
               A customer wants an answer fast: what happened, what is left, and what should I eat next? This visual ties the backend features into one paid-product experience.
             </p>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <div className="mt-8 grid gap-2 sm:grid-cols-2">
               {["Meal verification", "Daily macro dashboard", "Coach context", "Weight trends", "Challenges", "Weekly digest"].map((item) => (
-                <div key={item} className="flex items-center gap-2 text-[14px] font-semibold">
+                <div key={item} className="flex items-center gap-2 rounded-lg px-3 py-2 text-[14px] font-semibold transition hover:bg-white/8">
                   <Check size={16} weight="bold" className="text-[#d7ff68]" />
                   {item}
                 </div>
@@ -451,7 +499,7 @@ function ImmersiveProduct() {
           </div>
           <div className="relative min-h-[650px]">
             <div className="spin-ring absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />
-            <div className="absolute left-0 top-20 w-[430px] rotate-[-4deg] rounded-lg border border-white/16 bg-white p-5 text-[#101510] shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
+            <div className="absolute left-0 top-20 w-[430px] rotate-[-4deg] rounded-xl border border-white/16 bg-white p-5 text-[#101510] shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
               <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#5f675f]">Saved meal</p>
               <h3 className="mt-2 text-[26px] font-semibold">Paneer rice bowl</h3>
               <div className="mt-5 grid grid-cols-4 gap-2">
@@ -463,7 +511,7 @@ function ImmersiveProduct() {
                 ))}
               </div>
             </div>
-            <div className="absolute bottom-16 right-0 w-[430px] rotate-[3deg] rounded-lg border border-white/16 bg-[#d7ff68] p-5 text-[#101510] shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
+            <div className="absolute bottom-16 right-0 w-[430px] rotate-[3deg] rounded-xl border border-white/16 bg-[#d7ff68] p-5 text-[#101510] shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
               <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Next action</p>
               <h3 className="mt-2 text-[26px] font-semibold">Dinner should be protein-led.</h3>
               <p className="mt-4 text-[14px] leading-6 opacity-76">You have enough carbs today. Add lean protein and vegetables, keep oils light.</p>
@@ -471,7 +519,7 @@ function ImmersiveProduct() {
             <div className="absolute right-24 top-0 h-[220px] w-[220px] overflow-hidden rounded-full border-[10px] border-white/10 shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
               <img src={mealImage} alt="Vegetable salad bowl" className="h-full w-full object-cover" />
             </div>
-            <div className="absolute bottom-0 left-24 w-[280px] rounded-lg border border-white/16 bg-white/12 p-5 backdrop-blur-xl">
+            <div className="absolute bottom-0 left-24 w-[280px] rounded-xl border border-white/16 bg-white/12 p-5 backdrop-blur-xl">
               <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#d7ff68]">Weight trend</p>
               <p className="mt-2 text-[30px] font-semibold">-1.8 kg</p>
               <p className="mt-1 text-[13px] text-white/64">Logged across 21 days with weekly digest.</p>
@@ -497,7 +545,7 @@ function DailyLoop() {
               NutriAI becomes more valuable after every saved meal because the coach, analytics, recommendations, challenges, and digests get more context.
             </p>
           </div>
-          <div className="relative min-h-[520px] overflow-hidden rounded-lg bg-[#eef5f2] p-5">
+          <div className="relative min-h-[520px] overflow-hidden rounded-xl bg-[#eef5f2] p-5">
             <img src={mealImage} alt="Healthy vegetables and grains" className="absolute inset-0 h-full w-full object-cover opacity-30" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#eef5f2] via-[#eef5f2]/90 to-[#eef5f2]/40" />
             <div className="relative z-10 grid h-full gap-4 md:grid-cols-2">
@@ -507,11 +555,14 @@ function DailyLoop() {
                 ["17:40", "Coach check-in", "Protein short by 24g", "Next meal"],
                 ["21:10", "Day closed", "86% calorie target", "Streak saved"],
               ].map(([time, title, body, tag]) => (
-                <div key={title} className="routine-card rounded-lg border border-black/10 bg-white/78 p-5 shadow-[0_18px_50px_rgba(16,21,16,0.08)] backdrop-blur-md">
-                  <p className="font-mono text-[12px] text-[#0f8b8d]">{time}</p>
-                  <h3 className="mt-4 text-[22px] font-semibold">{title}</h3>
+                <div key={title} className="routine-card rounded-xl border border-black/8 bg-white/82 p-5 shadow-[0_18px_50px_rgba(16,21,16,0.08)] backdrop-blur-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-[#0f8b8d]" />
+                    <p className="font-mono text-[12px] font-semibold text-[#0f8b8d]">{time}</p>
+                  </div>
+                  <h3 className="mt-3 text-[20px] font-semibold">{title}</h3>
                   <p className="mt-2 text-[14px] leading-6 text-[#5f675f]">{body}</p>
-                  <span className="mt-5 inline-flex rounded-full bg-[#d7ff68] px-3 py-1 text-[12px] font-bold text-[#101510]">{tag}</span>
+                  <span className="mt-4 inline-flex rounded-full bg-[#d7ff68] px-3 py-1 text-[12px] font-bold text-[#101510]">{tag}</span>
                 </div>
               ))}
             </div>
@@ -526,7 +577,7 @@ function Personalization() {
   return (
     <section id="personal" className="px-5 py-24 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_1fr] lg:items-center">
-        <div className="relative min-h-[560px] overflow-hidden rounded-lg bg-[#173c2b] text-white">
+        <div className="relative min-h-[560px] overflow-hidden rounded-xl bg-[#173c2b] text-white">
           <img src={phoneImage} alt="Ingredients for a personalized meal plan" className="absolute inset-0 h-full w-full object-cover opacity-34" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(23,60,43,0.20),rgba(23,60,43,0.96))]" />
           <div className="relative z-10 flex min-h-[560px] flex-col justify-end p-8">
@@ -543,8 +594,8 @@ function Personalization() {
           <Header eyebrow="Why it feels premium" title="Specific advice beats generic diet content." />
           <div className="mt-10 grid gap-3 sm:grid-cols-2">
             {personalization.map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-lg border border-black/10 bg-white p-4">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#eef5f2] text-[#173c2b]">
+              <div key={item} className="group/item flex items-center gap-3 rounded-xl border border-black/8 bg-white p-4 transition-all hover:border-[#173c2b]/20 hover:shadow-[0_8px_24px_rgba(16,21,16,0.06)]">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#eef5f2] text-[#173c2b] transition-colors group-hover/item:bg-[#d7ff68] group-hover/item:text-[#101510]">
                   <Check size={16} weight="bold" />
                 </span>
                 <p className="text-[14px] font-semibold">{item}</p>
@@ -564,7 +615,8 @@ function Pricing() {
         <Header eyebrow="Pricing" title="Simple plans that match the product today." />
         <div className="mt-12 grid gap-4 lg:grid-cols-3">
           {pricing.map(({ name, price, subtitle, items, featured }) => (
-            <div key={name} className={`pricing-tile rounded-lg border p-6 ${featured ? "border-[#101510] bg-[#101510] text-white" : "border-black/10 bg-white"}`}>
+            <div key={name} className={`pricing-tile relative rounded-xl border p-7 ${featured ? "border-[#101510] bg-[#101510] text-white shadow-[0_30px_80px_rgba(16,21,16,0.24)]" : "border-black/10 bg-white"}`}>
+              {featured && <span className="absolute -top-3 left-6 rounded-full bg-[#d7ff68] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[#101510]">Popular</span>}
               <p className="text-[18px] font-semibold">{name}</p>
               <p className={featured ? "mt-2 text-[14px] text-white/62" : "mt-2 text-[14px] text-[#5f675f]"}>{subtitle}</p>
               <p className="mt-8 text-[48px] font-semibold">{price}</p>
@@ -576,6 +628,13 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
+              <Link
+                href="/signup"
+                className={`mt-8 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition ${featured ? "bg-[#d7ff68] text-[#101510] hover:bg-white" : "bg-[#101510] text-white hover:bg-[#173c2b]"}`}
+              >
+                {price === "Talk" ? "Contact us" : "Get started"}
+                <ArrowRight size={14} weight="bold" />
+              </Link>
             </div>
           ))}
         </div>
@@ -595,13 +654,13 @@ function PlatformProof() {
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {["Private image uploads", "API key management", "Public calories endpoint", "AI cost tracking", "Admin user operations", "Provider/cache telemetry"].map((item) => (
-              <div key={item} className="rounded-lg border border-black/10 bg-[#f8f8f3] p-4">
+              <div key={item} className="rounded-xl border border-black/8 bg-[#f8f8f3] p-4 transition-all hover:border-black/16 hover:shadow-[0_6px_20px_rgba(16,21,16,0.06)]">
                 <p className="text-[14px] font-semibold">{item}</p>
               </div>
             ))}
           </div>
         </div>
-        <div className="rounded-lg bg-[#101510] p-5 text-white shadow-[0_28px_90px_rgba(16,21,16,0.18)]">
+        <div className="rounded-xl bg-[#101510] p-6 text-white shadow-[0_28px_90px_rgba(16,21,16,0.22)]">
           <div className="grid gap-3 md:grid-cols-2">
             {[
               ["AI spend today", "$2.18", "1,105 requests"],
@@ -609,14 +668,14 @@ function PlatformProof() {
               ["Active API keys", "9", "scoped and revocable"],
               ["Failed calls", "2", "watchlist signal"],
             ].map(([label, value, sub]) => (
-              <div key={label} className="rounded-lg border border-white/12 bg-white/10 p-4">
+              <div key={label} className="rounded-xl border border-white/10 bg-white/8 p-4 transition hover:bg-white/12">
                 <p className="text-[12px] font-semibold text-white/58">{label}</p>
                 <p className="mt-2 text-[32px] font-semibold">{value}</p>
                 <p className="mt-1 text-[12px] text-white/58">{sub}</p>
               </div>
             ))}
           </div>
-          <div className="mt-4 rounded-lg bg-[#d7ff68] p-4 text-[#101510]">
+          <div className="mt-4 rounded-xl bg-[#d7ff68] p-5 text-[#101510]">
             <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Admin activity</p>
             <p className="mt-2 text-[18px] font-semibold">Meal analysis completed · 640 kcal saved to today</p>
             <p className="mt-1 text-[13px] opacity-70">The operating layer should feel reliable without exposing internal system details.</p>
@@ -641,16 +700,16 @@ function FAQ() {
           {faqs.map(({ question, answer }, index) => (
             <details
               key={question}
-              className="faq-item group rounded-lg border border-black/10 bg-white p-5 shadow-[0_16px_42px_rgba(16,21,16,0.06)]"
+              className="faq-item group rounded-xl border border-black/8 bg-white p-6 shadow-[0_12px_36px_rgba(16,21,16,0.04)]"
               open={index === 0}
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-5 text-[18px] font-semibold">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-5 text-[17px] font-semibold leading-snug">
                 <span>{question}</span>
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#eef5f2] text-[#173c2b] transition group-open:rotate-180">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#eef5f2] text-[#173c2b] transition-all group-open:rotate-180 group-open:bg-[#d7ff68] group-open:text-[#101510]">
                   <CaretDown size={16} weight="bold" />
                 </span>
               </summary>
-              <p className="mt-4 max-w-3xl text-[15px] leading-7 text-[#5f675f]">{answer}</p>
+              <p className="mt-4 max-w-3xl border-t border-black/6 pt-4 text-[15px] leading-7 text-[#5f675f]">{answer}</p>
             </details>
           ))}
         </div>
@@ -661,16 +720,18 @@ function FAQ() {
 
 function Final() {
   return (
-    <section className="relative overflow-hidden bg-[#d7ff68] px-5 py-24 text-[#101510] lg:px-8">
+    <section className="relative overflow-hidden bg-[#d7ff68] px-5 py-28 text-[#101510] lg:px-8 lg:py-32">
       <div className="absolute right-[-90px] top-[-120px] h-[360px] w-[360px] rounded-full border-[50px] border-[#101510]/10" />
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
+      <div className="absolute bottom-[-80px] left-[-60px] h-[260px] w-[260px] rounded-full border-[40px] border-[#101510]/6" />
+      <div className="relative mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-[13px] font-bold uppercase tracking-[0.18em] opacity-70">NutriAI</p>
           <h2 className="display-heading mt-4 max-w-3xl text-[50px] font-semibold leading-[0.98] md:text-[54px]">
             Turn the next meal into the next right decision.
           </h2>
+          <p className="mt-5 max-w-xl text-[16px] leading-7 opacity-70">Start tracking meals, get coached by Ria, and build a nutrition habit that lasts.</p>
         </div>
-        <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-md bg-[#101510] px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-[#173c2b]">
+        <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#101510] px-8 py-4 text-[15px] font-semibold text-white shadow-[0_16px_40px_rgba(16,21,16,0.18)] transition hover:bg-[#173c2b] hover:shadow-[0_20px_50px_rgba(16,21,16,0.24)]">
           Log your first meal
           <ArrowRight size={16} weight="bold" />
         </Link>

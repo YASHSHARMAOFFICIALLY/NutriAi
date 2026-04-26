@@ -6,6 +6,7 @@ import {
   adminAiSettingsHandler,
   adminOverviewHandler,
   adminRuntimeHandler,
+  adminUserDetailHandler,
   updateAdminAiSettingsHandler,
   adminUsageHandler,
   adminUsersHandler,
@@ -17,6 +18,7 @@ adminRouter.use(requireAuth, requireRole('ADMIN'));
 adminRouter.get('/overview', adminOverviewHandler);
 adminRouter.get('/runtime', adminRuntimeHandler);
 adminRouter.get('/users', adminUsersHandler);
+adminRouter.get('/users/:id', adminUserDetailHandler);
 adminRouter.get('/usage', adminUsageHandler);
 adminRouter.get('/activity', adminActivityHandler);
 adminRouter.get('/ai-settings', adminAiSettingsHandler);
