@@ -2,8 +2,9 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install --no-audit --no-fund
-COPY tsconfig.json ./
+COPY prisma.config.ts tsconfig.json ./
 COPY prisma ./prisma
+RUN npx prisma generate
 COPY src ./src
 RUN npm run build
 RUN npm prune --omit=dev
