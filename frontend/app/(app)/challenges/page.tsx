@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, Flag, XCircle } from "@phosphor-icons/react/dist/ssr";
+import { CheckCircle, Flag, MinusCircle } from "@phosphor-icons/react/dist/ssr";
 import { abandonChallenge, checkInToday, listMyChallenge, listPresets, startChallenge } from "@/lib/api/challenges";
 import type { ChallengePreset, UserChallengeDTO } from "@/lib/api/types";
 import { PageHeader, Panel, Skeleton, SourceBadge } from "../_components/ui";
@@ -188,7 +188,7 @@ export default function ChallengesPage() {
           <h2 className="mb-4 text-[22px] font-semibold">Past challenges</h2>
           <div className="space-y-3">
             {pastRows.map(({ title, status, progress, updated }) => {
-              const Icon = status === "COMPLETED" ? CheckCircle : XCircle;
+              const Icon = status === "COMPLETED" ? CheckCircle : MinusCircle;
               return (
                 <div key={title} className="flex items-center justify-between rounded-md border border-black/8 bg-[#f8f8f3] p-3">
                   <div>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ElementType } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, ChatCircleText, Star, Trophy } from "@phosphor-icons/react/dist/ssr";
+import { Camera, ChatCircleText, Medal, Star } from "@phosphor-icons/react/dist/ssr";
 import { getStreak } from "@/lib/api/analytics";
 import { listMyChallenge } from "@/lib/api/challenges";
 import { getDailySummary, listMeals } from "@/lib/api/meals";
@@ -75,7 +75,7 @@ export default function DashboardPage() {
     { href: "/snap", label: "Analyze food", icon: Camera },
     { href: "/recommendations", label: "Pick from history", icon: Star },
     { href: "/coach", label: "Ask Coach Ria", icon: ChatCircleText },
-    { href: "/challenges", label: "Check in challenge", icon: Trophy },
+    { href: "/challenges", label: "Check in challenge", icon: Medal },
   ];
 
   useEffect(() => {
@@ -285,7 +285,7 @@ export default function DashboardPage() {
                   <h2 className="mt-2 text-[20px] font-bold text-forest tracking-tight">{challengeTitle}</h2>
                 </div>
                 <div className="rounded-xl bg-forest p-2.5 text-white shadow-lg">
-                  <Trophy size={20} weight="fill" />
+                  <Medal size={20} weight="fill" />
                 </div>
               </div>
             </div>

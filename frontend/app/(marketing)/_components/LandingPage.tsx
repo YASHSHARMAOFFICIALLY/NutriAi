@@ -12,10 +12,10 @@ import {
   ChartLineUp,
   ChatCircleText,
   Check,
+  Crosshair,
   ForkKnife,
   ShieldCheck,
   Sparkle,
-  Target,
 } from "@phosphor-icons/react/dist/ssr";
 
 const heroImage =
@@ -63,7 +63,7 @@ const productMoments = [
     title: "See what is left before dinner.",
     copy: "The dashboard shows calories, protein, macro gaps, recent meals, recommendations, and the next useful action.",
     image: phoneImage,
-    icon: Target,
+    icon: Crosshair,
   },
   {
     kicker: "Long-term progress",
@@ -661,10 +661,10 @@ function Pricing() {
                 ))}
               </ul>
               <Link
-                href="/signup"
+                href={name === "Pro" ? "/pricing" : "/signup"}
                 className={`mt-8 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition ${featured ? "bg-[#d7ff68] text-[#101510] hover:bg-white" : "bg-[#101510] text-white hover:bg-[#173c2b]"}`}
               >
-                {price === "Talk" ? "Contact us" : "Get started"}
+                {price === "Talk" ? "Contact us" : name === "Pro" ? "Upgrade to Pro" : "Get started"}
                 <ArrowRight size={14} weight="bold" />
               </Link>
             </div>

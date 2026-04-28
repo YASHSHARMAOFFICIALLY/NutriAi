@@ -4,17 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
+  AddressBook,
   Barbell,
   Camera,
   ChartBar,
   ForkKnife,
   Gear,
   House,
+  Medal,
   SidebarSimple,
   Sparkle,
   Star,
-  Trophy,
-  UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
 import { getDailySummary } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
@@ -26,8 +26,8 @@ const nav = [
   { href: "/recommendations", label: "Recs", icon: Star },
   { href: "/meals", label: "Meals", icon: ForkKnife },
   { href: "/analytics", label: "Analytics", icon: ChartBar },
-  { href: "/family", label: "Family", icon: UsersThree },
-  { href: "/challenges", label: "Challenges", icon: Trophy },
+  { href: "/family", label: "Family", icon: AddressBook },
+  { href: "/challenges", label: "Challenges", icon: Medal },
   { href: "/weight", label: "Weight", icon: Barbell },
   { href: "/settings", label: "Settings", icon: Gear },
 ] as const;

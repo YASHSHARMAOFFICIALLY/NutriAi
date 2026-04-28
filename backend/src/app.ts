@@ -29,6 +29,7 @@ import { weightRouter } from './routes/weight.routes';
 import { adminRouter } from './routes/admin.routes';
 import { telegramRouter, telegramWebhookRouter } from './routes/telegram.routes';
 import { familyRouter } from './routes/family.routes';
+import { paymentRouter, paymentWebhookRouter } from './routes/payment.routes';
 
 export const createApp = () => {
   const app = express();
@@ -71,6 +72,19 @@ export const createApp = () => {
       credentials: true,
     }),
   );
+  // Dodo webhook needs raw body for signature verification.
+  app.use('/webhooks/dodo', express.raw({ type: 'application/json' }));
+  app.use('/webhooks/dodo', (req, _res, next) => {
+    (req as typeof req & { rawBody: string }).rawBody = Buffer.isBuffer(req.body)
+      ? req.body.toString('utf-8')
+      : typeof req.body === 'string'
+        ? req.body
+        : JSON.stringify(req.body);
+    if (Buffer.isBuffer(req.body)) req.body = JSON.parse(req.body.toString('utf-8'));
+    next();
+  });
+  app.use(paymentWebhookRouter);
+
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
@@ -103,6 +117,7 @@ export const createApp = () => {
   app.use(weightRouter);
   app.use(telegramRouter);
   app.use(familyRouter);
+  app.use(paymentRouter);
   app.use('/admin', adminRouter);
 
   app.use(notFoundHandler);

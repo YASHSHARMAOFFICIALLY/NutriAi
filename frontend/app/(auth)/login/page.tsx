@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Warning } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, Check, SealWarning } from "@phosphor-icons/react/dist/ssr";
 import { devLogin } from "@/lib/api/account";
 import { login } from "@/lib/api/emailAuth";
 import { ApiError } from "@/lib/api/client";
@@ -225,7 +225,7 @@ export default function LoginPage() {
 
             {error && (
               <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
-                <Warning size={13} weight="fill" className="mt-0.5 shrink-0" />
+                <SealWarning size={13} weight="fill" className="mt-0.5 shrink-0" />
                 {error}
               </p>
             )}
