@@ -8,6 +8,8 @@ import {
   Barbell,
   Camera,
   ChartBar,
+  CrownSimple,
+  DotsThree,
   ForkKnife,
   Gear,
   House,
@@ -15,9 +17,11 @@ import {
   SidebarSimple,
   Sparkle,
   Star,
+  X,
 } from "@phosphor-icons/react/dist/ssr";
 import { getDailySummary } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
+import { getMyPlan } from "@/lib/api/payments";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: House },
@@ -32,16 +36,22 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Gear },
 ] as const;
 
-const mobileNav = nav.slice(0, 5);
+const mobileNav = nav.slice(0, 4);
+const moreNav = nav.slice(4);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [totals, setTotals] = useState({ calories: 0, protein: 0 });
   const [targets, setTargets] = useState({ calories: 0, protein: 0 });
   const [expanded, setExpanded] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    getMyPlan()
+      .then((p) => { if (!cancelled) setIsPro(p.tier === "PRO" && (p.status === "ACTIVE" || p.status === "PAST_DUE")); })
+      .catch(() => {});
     Promise.all([
       getDailySummary(new Date().toISOString().slice(0, 10)),
       getProfile().catch(() => null),
@@ -84,7 +94,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
             <span className={`overflow-hidden transition-all duration-300 ${expanded ? "w-28 opacity-100" : "w-0 opacity-0"}`}>
               <span className="block whitespace-nowrap text-[17px] font-bold tracking-tight text-forest">NutriAI</span>
-              <span className="block whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.14em] text-teal/80">Workspace</span>
+              <span className="flex items-center gap-2 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.14em] text-teal/80">
+                {isPro ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#d7ff68] px-2 py-0.5 text-[9px] font-bold text-forest">
+                    <CrownSimple size={10} weight="fill" />
+                    PRO
+                  </span>
+                ) : "Workspace"}
+              </span>
             </span>
           </Link>
           {expanded ? (
@@ -142,10 +159,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-[20px] font-bold text-forest">{remaining.calories}</span>
               <span className={`text-[11px] font-bold uppercase text-muted transition-all ${expanded ? "w-auto opacity-100" : "w-0 overflow-hidden opacity-0"}`}>kcal left</span>
             </div>
-            <div className={`mt-4 flex flex-col gap-3 transition-all ${expanded ? "max-h-20 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
+            <div className={`mt-4 flex flex-col gap-3 transition-all ${expanded ? "max-h-32 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
               <Link href="/recommendations" className="rounded-xl bg-white py-3 text-center text-[12px] font-bold text-forest transition-colors hover:bg-forest hover:text-white">
                 View Recommendations
               </Link>
+              {!isPro && (
+                <Link href="/pricing" className="flex items-center justify-center gap-1.5 rounded-xl bg-[#d7ff68] py-3 text-center text-[12px] font-bold text-forest transition-colors hover:bg-[#c8f050]">
+                  <CrownSimple size={14} weight="fill" />
+                  Upgrade to Pro
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -156,6 +179,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      {moreOpen && (
+        <div className="fixed inset-0 z-[60] lg:hidden" onClick={() => setMoreOpen(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="absolute inset-x-3 bottom-20 rounded-2xl border border-border bg-white p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-muted">More</p>
+              <button onClick={() => setMoreOpen(false)} className="grid h-8 w-8 place-items-center rounded-xl bg-surface-alt text-muted">
+                <X size={16} weight="bold" />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[...moreNav, { href: "/pricing", label: "Pricing", icon: CrownSimple }].map(({ href, label, icon: Icon }) => {
+                const active = pathname === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMoreOpen(false)}
+                    className={[
+                      "flex flex-col items-center gap-2 rounded-xl p-3 text-[12px] font-bold transition-all",
+                      active ? "bg-forest text-white" : "bg-surface-alt text-muted hover:text-forest",
+                    ].join(" ")}
+                  >
+                    <Icon size={22} weight={active ? "fill" : "bold"} />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav className="fixed inset-x-0 bottom-0 z-50 glass border-t border-border px-3 py-3 lg:hidden">
         <div className="grid grid-cols-5 gap-2">
@@ -175,6 +234,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          <button
+            onClick={() => setMoreOpen((o) => !o)}
+            className={[
+              "flex h-12 flex-col items-center justify-center gap-1 rounded-xl transition-all",
+              moreOpen || moreNav.some((n) => pathname === n.href)
+                ? "bg-forest text-white shadow-premium"
+                : "text-muted",
+            ].join(" ")}
+          >
+            <DotsThree size={20} weight="bold" />
+            <span className="text-[10px] font-bold">More</span>
+          </button>
         </div>
       </nav>
     </div>

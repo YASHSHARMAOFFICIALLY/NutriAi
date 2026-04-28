@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowRight, Calculator, ForkKnife, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
 import { updateProfile } from "@/lib/api/profile";
+import { sexLabels, activityLabels, goalLabels } from "@/lib/enumLabels";
 
 type Form = {
   sex: string;
@@ -158,12 +159,36 @@ export default function OnboardingPage() {
                 <span className="rounded-full bg-[#eef5f2] px-3 py-1 text-[12px] font-bold text-[#173c2b]">required</span>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                {profileFields.map(([key, label]) => (
-                  <label key={key} className="block">
-                    <span className="text-[12px] font-semibold text-[#5f675f]">{label}</span>
-                    <input className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-bold outline-none" value={form[key]} onChange={(event) => updateField(key, event.target.value)} />
-                  </label>
-                ))}
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-[#5f675f]">Sex</span>
+                  <select className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-bold outline-none" value={form.sex} onChange={(e) => updateField("sex", e.target.value)}>
+                    {Object.entries(sexLabels).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-[#5f675f]">Birth year</span>
+                  <input type="number" className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-bold outline-none" value={form.birthYear} onChange={(e) => updateField("birthYear", e.target.value)} placeholder="1998" />
+                </label>
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-[#5f675f]">Height (cm)</span>
+                  <input type="number" className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-bold outline-none" value={form.heightCm} onChange={(e) => updateField("heightCm", e.target.value)} placeholder="178" />
+                </label>
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-[#5f675f]">Weight (kg)</span>
+                  <input type="number" step="0.1" className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-bold outline-none" value={form.weightKg} onChange={(e) => updateField("weightKg", e.target.value)} placeholder="72.4" />
+                </label>
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-[#5f675f]">Activity level</span>
+                  <select className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-bold outline-none" value={form.activityLevel} onChange={(e) => updateField("activityLevel", e.target.value)}>
+                    {Object.entries(activityLabels).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-[#5f675f]">Goal</span>
+                  <select className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-bold outline-none" value={form.goal} onChange={(e) => updateField("goal", e.target.value)}>
+                    {Object.entries(goalLabels).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+                  </select>
+                </label>
               </div>
             </section>
 

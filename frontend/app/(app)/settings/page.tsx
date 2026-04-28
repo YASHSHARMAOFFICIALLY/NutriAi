@@ -6,6 +6,7 @@ import { getApiUrl } from "@/lib/api/auth";
 import { deleteProfile, getProfile, updateProfile } from "@/lib/api/profile";
 import type { ActivityLevel, ApiKeyRow, Goal, IssuedApiKey, Sex, UserProfile } from "@/lib/api/types";
 import { CheckRow, PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
+import { sexLabels, activityLabels, goalLabels } from "@/lib/enumLabels";
 
 type ProfileForm = {
   sex: Sex | "";
@@ -260,12 +261,26 @@ export default function SettingsPage() {
         <Panel className="p-6">
           <h2 className="mb-6 text-[22px] font-bold text-forest tracking-tight">Profile inputs</h2>
           <div className="grid gap-4 md:grid-cols-2">
-            {fields.map(([key, label]) => (
-              <label key={key} className="block">
-                <span className="text-[12px] font-bold text-muted">{label}</span>
-                <input className="mt-2 w-full rounded-xl border border-border bg-surface-alt px-4 py-3 text-[14px] font-semibold outline-none transition-all focus:border-teal/40 focus:ring-2 focus:ring-teal/10" value={String(form[key])} onChange={(event) => updateField(key, event.target.value as ProfileForm[typeof key])} />
-              </label>
-            ))}
+            {fields.map(([key, label]) => {
+              const selectMap = key === "sex" ? sexLabels : key === "activityLevel" ? activityLabels : key === "goal" ? goalLabels : null;
+              if (selectMap) {
+                return (
+                  <label key={key} className="block">
+                    <span className="text-[12px] font-bold text-muted">{label}</span>
+                    <select className="mt-2 w-full rounded-xl border border-border bg-surface-alt px-4 py-3 text-[14px] font-semibold outline-none transition-all focus:border-teal/40 focus:ring-2 focus:ring-teal/10" value={String(form[key])} onChange={(event) => updateField(key, event.target.value as ProfileForm[typeof key])}>
+                      <option value="">Select...</option>
+                      {Object.entries(selectMap).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
+                    </select>
+                  </label>
+                );
+              }
+              return (
+                <label key={key} className="block">
+                  <span className="text-[12px] font-bold text-muted">{label}</span>
+                  <input className="mt-2 w-full rounded-xl border border-border bg-surface-alt px-4 py-3 text-[14px] font-semibold outline-none transition-all focus:border-teal/40 focus:ring-2 focus:ring-teal/10" value={String(form[key])} onChange={(event) => updateField(key, event.target.value as ProfileForm[typeof key])} />
+                </label>
+              );
+            })}
           </div>
           <button onClick={handleSave} disabled={saving} className="mt-6 rounded-xl bg-forest px-6 py-3 text-[14px] font-bold text-white transition-all hover:bg-forest-soft hover:shadow-md active:scale-[0.98] disabled:opacity-60">{saving ? "Saving..." : "Save profile"}</button>
         </Panel>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Check, ForkKnife } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, Check, ForkKnife, type Icon } from "@phosphor-icons/react/dist/ssr";
 
 export type Meal = {
   id: string;
@@ -211,5 +211,36 @@ export function StatSkeleton() {
       <Skeleton className="mt-4 h-10 w-32" />
       <Skeleton className="mt-3 h-3 w-24" />
     </Panel>
+  );
+}
+
+export function EmptyState({
+  icon: IconComponent,
+  title,
+  description,
+  action,
+}: {
+  icon: Icon;
+  title: string;
+  description: string;
+  action?: { label: string; href: string };
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-surface-alt/50 px-6 py-12 text-center">
+      <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-white text-muted shadow-sm">
+        <IconComponent size={28} weight="duotone" />
+      </div>
+      <h3 className="text-[16px] font-bold text-forest">{title}</h3>
+      <p className="mt-2 max-w-sm text-[13px] leading-6 text-muted">{description}</p>
+      {action && (
+        <Link
+          href={action.href}
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-forest px-5 py-2.5 text-[13px] font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+        >
+          {action.label}
+          <ArrowRight size={14} weight="bold" />
+        </Link>
+      )}
+    </div>
   );
 }
