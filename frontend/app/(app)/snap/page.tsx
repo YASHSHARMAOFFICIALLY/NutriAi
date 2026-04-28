@@ -8,7 +8,8 @@ import { ApiError } from "@/lib/api/client";
 import { createMeal, inferMealType } from "@/lib/api/meals";
 import { uploadFoodImage } from "@/lib/api/uploads";
 import type { AnalyzeFoodResponse, MealType } from "@/lib/api/types";
-import { PageHeader, Panel } from "../_components/ui";
+import { EmptyState, PageHeader, Panel } from "../_components/ui";
+import { useToast } from "@/lib/toast";
 
 type Candidate = {
   queryId: string;
@@ -65,6 +66,7 @@ import { AnalyzingState } from "./_components/AnalyzingState";
 // ... (helper functions and types remain same)
 
 export default function SnapPage() {
+  const { toast } = useToast();
   const [text, setText] = useState("");
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [status, setStatus] = useState<"ready" | "uploading" | "analyzing" | "saving" | "saved" | "error">("ready");
@@ -143,8 +145,10 @@ export default function SnapPage() {
         })),
       });
       setStatus("saved");
+      toast("success", "Meal saved to your diary.");
     } catch {
       setErrorMessage("Could not save this meal right now.");
+      toast("error", "Could not save this meal.");
       setStatus("error");
     }
   }
@@ -191,16 +195,20 @@ export default function SnapPage() {
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto max-w-7xl px-6 py-10 lg:px-10"
     >
-      <PageHeader eyebrow="Snap" title="Meal scanner" />
+      <PageHeader
+        eyebrow="Snap"
+        title="Meal scanner"
+        description="Upload a photo or type a quick description, then review the editable nutrition estimate before saving it to your diary."
+      />
 
       <section className="grid gap-8 xl:grid-cols-[400px_1fr]">
         <div className="space-y-6">
           <Panel className="p-6">
-            <div className="mb-6 grid grid-cols-2 rounded-xl bg-surface-alt p-1.5 border border-border">
+            <div className="mb-6 grid grid-cols-2 rounded-lg border border-border bg-surface-alt p-1">
               <button 
                 onClick={() => setInputMode("photo")}
-                className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all ${
-                  inputMode === "photo" ? "bg-forest text-white shadow-premium" : "text-muted hover:text-forest"
+                className={`flex items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
+                  inputMode === "photo" ? "bg-forest text-white" : "text-muted hover:text-forest"
                 }`}
               >
                 <Camera size={16} weight={inputMode === "photo" ? "fill" : "bold"} />
@@ -208,8 +216,8 @@ export default function SnapPage() {
               </button>
               <button 
                 onClick={() => setInputMode("text")}
-                className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all ${
-                  inputMode === "text" ? "bg-forest text-white shadow-premium" : "text-muted hover:text-forest"
+                className={`flex items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
+                  inputMode === "text" ? "bg-forest text-white" : "text-muted hover:text-forest"
                 }`}
               >
                 <PencilSimple size={16} weight="bold" />
@@ -224,11 +232,11 @@ export default function SnapPage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
-                  className="group relative flex h-[340px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-surface-alt/50 p-8 text-center transition-all hover:bg-surface-alt hover:border-teal/50"
+                  className="group relative flex h-[340px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-alt/60 p-8 text-center transition-colors hover:border-teal/50 hover:bg-surface-alt"
                 >
-                  <span className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-2xl bg-white text-forest shadow-md transition-transform group-hover:scale-110 group-hover:rotate-3">
+                  <span className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-lg bg-white text-forest shadow-sm">
                     {previewUrl ? (
-                      <Image src={previewUrl} alt="Selected meal" fill className="rounded-2xl object-cover" unoptimized />
+                      <Image src={previewUrl} alt="Selected meal" fill className="rounded-lg object-cover" unoptimized />
                     ) : (
                       <ImageSquare size={32} weight="duotone" />
                     )}
@@ -252,7 +260,7 @@ export default function SnapPage() {
                         event.preventDefault();
                         handleFileChange(null);
                       }}
-                      className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white text-forest shadow-md"
+                      className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-lg bg-white text-forest shadow-sm"
                       aria-label="Remove selected photo"
                     >
                       <Prohibit size={16} weight="bold" />
@@ -265,11 +273,11 @@ export default function SnapPage() {
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
-                  className="rounded-2xl border border-border bg-surface-alt/50 p-6"
+                  className="rounded-lg border border-border bg-surface-alt/60 p-6"
                 >
                   <p className="text-[12px] font-bold uppercase tracking-wider text-muted mb-3">What are you eating?</p>
                   <textarea
-                    className="h-40 w-full resize-none rounded-xl border border-border bg-white p-4 text-[15px] font-medium text-forest outline-none transition-all focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                    className="h-40 w-full resize-none rounded-lg border border-border bg-white p-4 text-[15px] font-medium text-forest outline-none transition-colors focus:border-teal"
                     placeholder="e.g., Two scrambled eggs with avocado toast and a side of blueberries..."
                     value={text}
                     onChange={(event) => setText(event.target.value)}
@@ -281,19 +289,19 @@ export default function SnapPage() {
             <button
               onClick={handleAnalyze}
               disabled={status === "analyzing" || status === "uploading" || (!text.trim() && !selectedFile && !assetId)}
-              className="mt-6 w-full rounded-xl bg-forest py-4 text-[15px] font-bold text-white shadow-premium transition-all hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 w-full rounded-lg bg-forest py-4 text-[15px] font-bold text-white transition-colors hover:bg-forest-soft disabled:cursor-not-allowed disabled:opacity-50"
             >
               {status === "uploading" ? "Uploading photo..." : status === "analyzing" ? "Estimating nutrition..." : "Estimate nutrition"}
             </button>
             
             {status === "error" && (
-              <p className="mt-4 rounded-lg bg-amber-50 p-3 text-center text-[12px] font-bold text-amber-700 border border-amber-100">
+              <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 p-3 text-center text-[12px] font-bold text-amber-700">
                 {errorMessage || "Could not analyze this meal. Check your connection and try again."}
               </p>
             )}
           </Panel>
 
-          <Panel className="p-6 bg-forest text-white border-none shadow-premium overflow-hidden relative">
+          <Panel className="relative overflow-hidden border-none bg-forest p-6 text-white">
              <div className="relative z-10">
                <h3 className="text-[13px] font-bold uppercase tracking-[0.2em] text-lime mb-2">Tip</h3>
                <p className="text-[14px] leading-relaxed text-white/80">
@@ -312,7 +320,7 @@ export default function SnapPage() {
                 animate={{ opacity: 1 }} 
                 exit={{ opacity: 0 }}
               >
-                <Panel className="h-full flex items-center justify-center p-12 min-h-[500px]">
+                <Panel className="flex min-h-[500px] h-full items-center justify-center p-12">
                   <AnalyzingState />
                 </Panel>
               </motion.div>
@@ -355,7 +363,7 @@ export default function SnapPage() {
                         { val: `${candidate.totals.carbs}g`, unit: "", label: "Carbs" },
                         { val: `${candidate.totals.fat}g`, unit: "", label: "Fat" },
                       ].map((macro) => (
-                        <div key={macro.label} className="rounded-2xl bg-surface-alt p-4 border border-border text-center">
+                        <div key={macro.label} className="rounded-lg border border-border bg-surface-alt p-4 text-center">
                           <p className="text-[20px] font-bold text-forest leading-none">{macro.val}</p>
                           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-muted opacity-70">{macro.label}</p>
                         </div>
@@ -365,7 +373,7 @@ export default function SnapPage() {
 
                   <div className="mt-8 grid gap-4 md:grid-cols-3">
                     {sourceSteps.map((step, i) => (
-                      <div key={i} className="flex items-center gap-4 rounded-xl border border-border bg-surface-alt/30 p-4">
+                      <div key={i} className="flex items-center gap-4 rounded-lg border border-border bg-surface-alt/30 p-4">
                         <span className="grid h-10 w-10 place-items-center rounded-lg bg-white text-forest shadow-sm">
                           <step.icon size={18} weight="bold" />
                         </span>
@@ -375,10 +383,10 @@ export default function SnapPage() {
                   </div>
                 </Panel>
 
-                <Panel className="overflow-hidden border-none shadow-premium">
+                <Panel className="overflow-hidden">
                   <div className="flex items-center justify-between bg-surface-alt p-6 border-b border-border">
                     <h2 className="text-[20px] font-bold text-forest tracking-tight">Verified Line Items</h2>
-                    <button onClick={addItem} className="flex items-center gap-2 rounded-xl bg-white border border-border px-4 py-2 text-[13px] font-bold text-forest shadow-sm hover:shadow-md transition-shadow">
+                    <button onClick={addItem} className="flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-[13px] font-bold text-forest transition-colors hover:bg-surface-alt">
                       <PencilSimple size={16} weight="bold" />
                       Add row
                     </button>
@@ -445,13 +453,13 @@ export default function SnapPage() {
                   <div className="flex flex-col gap-6 bg-surface-alt p-8 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <p className="text-[14px] font-medium text-muted leading-relaxed">
-                        Saving this meal adds the reviewed totals to your diary.
+                        Saving this meal adds the reviewed totals to your diary and updates today's dashboard.
                       </p>
                     </div>
                     <button
                       onClick={handleSave}
                       disabled={status === "saving"}
-                      className="flex h-14 items-center justify-center gap-3 rounded-2xl bg-lime px-10 text-[16px] font-bold text-forest shadow-premium transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                      className="flex h-14 items-center justify-center gap-3 rounded-lg bg-lime px-10 text-[16px] font-bold text-forest transition-colors hover:bg-white disabled:opacity-50"
                     >
                       <CheckCircle size={20} weight="fill" />
                       {status === "saving" ? "Saving meal..." : status === "saved" ? "Meal saved" : "Confirm and save"}
@@ -460,11 +468,12 @@ export default function SnapPage() {
                 </Panel>
               </motion.div>
             ) : (
-              <Panel className="flex min-h-[500px] items-center justify-center p-12 text-center">
-                <div>
-                  <p className="text-[22px] font-bold text-forest">No analysis yet</p>
-                  <p className="mt-2 text-[13px] text-muted">Enter a meal description or upload a photo to estimate nutrition.</p>
-                </div>
+              <Panel className="flex min-h-[500px] items-center justify-center p-8">
+                <EmptyState
+                  icon={ImageSquare}
+                  title="No analysis yet"
+                  description="Add a meal photo or description from the left panel. Results appear here for review before anything is saved."
+                />
               </Panel>
             )}
           </AnimatePresence>

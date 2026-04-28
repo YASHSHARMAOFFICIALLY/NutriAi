@@ -9,9 +9,10 @@ import { listMyChallenge } from "@/lib/api/challenges";
 import { getDailySummary, listMeals } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import { getMealRecommendations } from "@/lib/api/recommendations";
-import type { MealDTO, MealRecommendation, UserChallengeDTO } from "@/lib/api/types";
-import { BudgetBar, MealLine, PageHeader, Panel, Stat } from "../_components/ui";
+import type { Goal, MealDTO, MealRecommendation, UserChallengeDTO } from "@/lib/api/types";
+import { BudgetBar, EmptyState, MealLine, PageHeader, Panel, Stat } from "../_components/ui";
 import type { Meal } from "../_components/ui";
+import { goalLabels } from "@/lib/enumLabels";
 
 function safeNumber(value: number, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -66,6 +67,7 @@ export default function DashboardPage() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
   const [targets, setTargets] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [goal, setGoal] = useState<Goal | null>(null);
   const [streak, setStreak] = useState(0);
   const [activeChallenge, setActiveChallenge] = useState<UserChallengeDTO | null>(null);
   const [liveRec, setLiveRec] = useState<MealRecommendation | null>(null);
@@ -98,6 +100,7 @@ export default function DashboardPage() {
         });
         setMeals(apiMeals.map(mealFromApi));
         if (apiProfile) {
+          setGoal(apiProfile.goal);
           setTargets({
             calories: apiProfile.dailyCalorieTarget ?? 0,
             protein: apiProfile.proteinTargetG ?? 0,
@@ -140,6 +143,14 @@ export default function DashboardPage() {
     safeNumber(targets.calories) > 0
       ? Math.round((safeNumber(totals.calories) / safeNumber(targets.calories)) * 100)
       : 0;
+  const proteinShort = targets.protein > 0 ? remaining.protein : 0;
+  const dailyInsight = hasTargets
+    ? proteinShort > 25
+      ? `Prioritize protein next. You still have ${proteinShort}g left for today.`
+      : remaining.calories < 250
+        ? "Keep the next meal light; your calorie budget is nearly used."
+        : `You have ${remaining.calories} kcal to work with for the next meal.`
+    : "Set targets in Account to unlock clearer daily guidance.";
 
   if (status === "loading") {
     return (
@@ -183,6 +194,7 @@ export default function DashboardPage() {
       <PageHeader 
         eyebrow={`${greeting} · ${hasMeals ? "Today is in progress" : "Start today's log"}`}
         title="Today's nutrition"
+        description={`${goal ? `${goalLabels[goal]} goal. ` : ""}${dailyInsight}`}
         action={{ label: "Scan meal", href: "/snap" }}
       />
 
@@ -202,7 +214,7 @@ export default function DashboardPage() {
       <section className="grid gap-8 xl:grid-cols-[1fr_380px]">
         <div className="space-y-8">
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}>
-            <Panel className="overflow-hidden border-none shadow-premium">
+            <Panel className="overflow-hidden border-forest/10">
               <div className="grid lg:grid-cols-[380px_1fr]">
                 <div className="relative overflow-hidden bg-forest p-8 text-white">
                   <div className="relative z-10">
@@ -210,10 +222,10 @@ export default function DashboardPage() {
                     <h2 className="mt-4 text-[32px] font-bold leading-tight tracking-tight">{recommendationTitle}</h2>
                     <p className="mt-4 text-[15px] leading-relaxed text-white/80">{recommendationReason}</p>
                     <div className="mt-8 flex flex-wrap gap-3">
-                      <Link href={liveRec ? "/recommendations" : "/snap"} className="rounded-xl bg-lime px-6 py-3 text-[14px] font-bold text-forest shadow-lg transition-transform hover:scale-105 active:scale-95">
+                      <Link href={liveRec ? "/recommendations" : "/snap"} className="rounded-lg bg-lime px-6 py-3 text-[14px] font-bold text-forest transition-colors hover:bg-white">
                         {liveRec ? "Open suggestion" : "Scan meal"}
                       </Link>
-                      <Link href={hasMeals ? "/coach" : "/meals"} className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-[14px] font-bold backdrop-blur-sm transition-colors hover:bg-white/10">
+                      <Link href={hasMeals ? "/coach" : "/meals"} className="rounded-lg border border-white/20 bg-white/5 px-6 py-3 text-[14px] font-bold backdrop-blur-sm transition-colors hover:bg-white/10">
                         {hasMeals ? "Ask Ria" : "Open diary"}
                       </Link>
                     </div>
@@ -221,7 +233,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="bg-surface p-8">
                   <div className="mb-8 flex items-center justify-between">
-                    <h2 className="text-[24px] font-bold text-forest tracking-tight">Eaten vs Target</h2>
+                    <h2 className="text-[22px] font-bold tracking-tight text-forest">Eaten vs target</h2>
                   </div>
                   <div className="space-y-6">
                     <BudgetBar label="Total Calories" value={totals.calories} target={targets.calories} unit="kcal" />
@@ -236,7 +248,7 @@ export default function DashboardPage() {
 
           <Panel className="p-8">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-[24px] font-bold text-forest tracking-tight">Recent Logs</h2>
+              <h2 className="text-[22px] font-bold tracking-tight text-forest">Recent logs</h2>
               <Link href="/meals" className="text-[14px] font-bold text-teal hover:underline underline-offset-4 decoration-2">
                 Open full diary
               </Link>
@@ -249,14 +261,12 @@ export default function DashboardPage() {
                   </motion.div>
                 ))
               ) : (
-                <div className="rounded-2xl border-2 border-dashed border-border bg-surface-alt p-8 text-center">
-                  <p className="text-[15px] font-bold text-forest">No meals logged today</p>
-                  <p className="mt-2 text-[13px] text-muted">Use a photo scan or add a meal manually to fill this timeline.</p>
-                  <div className="mt-5 flex flex-wrap justify-center gap-3">
-                    <Link href="/snap" className="rounded-xl bg-forest px-4 py-3 text-[13px] font-bold text-white">Scan meal</Link>
-                    <Link href="/meals" className="rounded-xl border border-border bg-white px-4 py-3 text-[13px] font-bold text-forest">Open diary</Link>
-                  </div>
-                </div>
+                <EmptyState
+                  icon={Camera}
+                  title="No meals logged today"
+                  description="Start with a photo scan or type a short meal description. Your diary and daily progress update immediately after saving."
+                  action={{ label: "Log first meal", href: "/snap" }}
+                />
               )}
             </div>
           </Panel>
@@ -264,11 +274,11 @@ export default function DashboardPage() {
 
         <aside className="space-y-8">
           <Panel className="p-6">
-            <h2 className="mb-5 text-[20px] font-bold text-forest tracking-tight">Quick Actions</h2>
+              <h2 className="mb-5 text-[20px] font-bold tracking-tight text-forest">Quick actions</h2>
             <div className="grid gap-3">
               {actions.map(({ href, label, icon: Icon }) => (
-                <Link key={href} href={href} className="group flex items-center gap-4 rounded-xl border border-border bg-surface-alt p-4 transition-all hover:bg-white hover:shadow-md hover:border-teal/30">
-                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-white text-forest shadow-sm group-hover:bg-forest group-hover:text-white transition-colors">
+                <Link key={href} href={href} className="group flex items-center gap-4 rounded-lg border border-border bg-surface-alt p-4 transition-colors hover:border-teal/30 hover:bg-white">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-white text-forest shadow-sm transition-colors group-hover:bg-forest group-hover:text-white">
                     <Icon size={20} weight="bold" />
                   </span>
                   <span className="text-[14px] font-bold text-forest">{label}</span>
@@ -306,7 +316,7 @@ export default function DashboardPage() {
                   />
                 )) : <p className="col-span-7 text-[13px] font-semibold text-muted">Start a challenge to track progress.</p>}
               </div>
-              <Link href="/challenges" className="mt-6 block rounded-xl bg-forest py-3.5 text-center text-[14px] font-bold text-white shadow-premium transition-transform hover:scale-[1.02] active:scale-[0.98]">
+              <Link href="/challenges" className="mt-6 block rounded-lg bg-forest py-3.5 text-center text-[14px] font-bold text-white transition-colors hover:bg-forest-soft">
                 {activeChallenge ? "Check in now" : "Start challenge"}
               </Link>
             </div>

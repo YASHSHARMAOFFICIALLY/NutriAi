@@ -126,6 +126,14 @@ export default function OnboardingPage() {
             <p className="mt-5 text-[15px] leading-7 text-white/72">
               This setup uses your body data, goal, activity, preferences, allergies, budget, timezone, and notification choices to personalize your plan.
             </p>
+            <div className="mt-6 grid gap-2">
+              {["Body and goal", "Food rules", "Notifications", "First meal"].map((step, index) => (
+                <div key={step} className="flex items-center gap-3 rounded-md bg-white/10 px-3 py-2">
+                  <span className="grid h-7 w-7 place-items-center rounded-md bg-[#d7ff68] text-[12px] font-bold text-[#173c2b]">{index + 1}</span>
+                  <span className="text-[13px] font-semibold text-white/82">{step}</span>
+                </div>
+              ))}
+            </div>
             <div className="mt-8 rounded-lg border border-white/14 bg-white/10 p-5">
               <div className="mb-4 flex items-center gap-3">
                 <Calculator size={24} weight="duotone" className="text-[#d7ff68]" />
@@ -224,9 +232,25 @@ export default function OnboardingPage() {
                 </div>
                 {status === "error" ? <p className="mt-4 text-[12px] font-semibold text-[#b7791f]">Could not save profile. Sign in and try again.</p> : null}
                 <button onClick={handleSave} disabled={status === "saving"} className="mt-6 flex w-full items-center justify-center gap-2 rounded-md bg-[#173c2b] py-3 text-[14px] font-bold text-white disabled:opacity-60">
-                  {status === "saving" ? "Saving..." : "Save profile"}
+                  {status === "saving" ? "Saving..." : "Save and open dashboard"}
                   <ArrowRight size={15} weight="bold" />
                 </button>
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-black/10 bg-white p-5 shadow-[0_16px_48px_rgba(16,21,16,0.07)]">
+              <div className="grid gap-4 md:grid-cols-[1fr_260px] md:items-center">
+                <div>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#0f8b8d]">Step 4</p>
+                  <h2 className="mt-1 text-[26px] font-semibold">Start with one real meal</h2>
+                  <p className="mt-2 text-[14px] leading-6 text-[#5f675f]">
+                    Once the profile is saved, log a first meal so your dashboard, recommendations, and coach have real context.
+                  </p>
+                </div>
+                <Link href="/snap" className="inline-flex items-center justify-center gap-2 rounded-md border border-black/10 bg-[#f8f8f3] px-5 py-3 text-[14px] font-bold text-[#173c2b]">
+                  Preview meal logger
+                  <ArrowRight size={15} weight="bold" />
+                </Link>
               </div>
             </section>
           </div>

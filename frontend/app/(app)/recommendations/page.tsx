@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { FunnelSimple, Star } from "@phosphor-icons/react/dist/ssr";
+import { CrownSimple, FunnelSimple, Lock, Star } from "@phosphor-icons/react/dist/ssr";
 import { getDailySummary } from "@/lib/api/meals";
+import { getMyPlan } from "@/lib/api/payments";
 import { getProfile } from "@/lib/api/profile";
 import { getMealRecommendations } from "@/lib/api/recommendations";
 import type { MealRecommendation, MealType } from "@/lib/api/types";
@@ -22,6 +23,7 @@ export default function RecommendationsPage() {
   const [remaining, setRemaining] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
   const [allergies, setAllergies] = useState<string[]>([]);
   const [mealType, setMealType] = useState<MealType>("DINNER");
+  const [isPro, setIsPro] = useState(false);
   const [source, setSource] = useState<"loading" | "live" | "error">("loading");
 
   useEffect(() => {
@@ -29,9 +31,11 @@ export default function RecommendationsPage() {
     Promise.all([
       getProfile().catch(() => null),
       getDailySummary(todayISO()).catch(() => null),
+      getMyPlan().catch(() => null),
     ])
-      .then(async ([apiProfile, daily]) => {
+      .then(async ([apiProfile, daily, apiPlan]) => {
         if (cancelled) return;
+        setIsPro(apiPlan?.tier === "PRO" && (apiPlan.status === "ACTIVE" || apiPlan.status === "PAST_DUE"));
         const targets = {
           calories: apiProfile?.dailyCalorieTarget ?? 0,
           protein: apiProfile?.proteinTargetG ?? 0,
@@ -91,7 +95,12 @@ export default function RecommendationsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
-      <PageHeader eyebrow="Recommendations" title="Meals from your own history" action={{ label: "Ask Ria", href: "/coach" }} />
+      <PageHeader
+        eyebrow="Next meal"
+        title="Ideas from your own history"
+        description="Suggestions are ranked against what is left today, your saved profile, and meals you already like."
+        action={{ label: "Ask Ria", href: "/coach" }}
+      />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
           <p className="text-[13px] font-semibold text-[#b7791f]">Could not load recommendations. Sign in and try again.</p>
@@ -120,19 +129,46 @@ export default function RecommendationsPage() {
         </div>
       </Panel>
 
+      {!isPro && source !== "loading" ? (
+        <Panel className="mb-5 overflow-hidden border-[#d7ff68]/50">
+          <div className="grid gap-0 lg:grid-cols-[1fr_340px]">
+            <div className="p-5">
+              <div className="mb-3 flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.14em] text-teal">
+                <Lock size={15} weight="bold" />
+                Pro preview
+              </div>
+              <h2 className="text-[22px] font-bold text-forest">Unlock ranked meal ideas when your diary has enough signal.</h2>
+              <p className="mt-2 text-[13px] leading-6 text-muted">
+                Free users can still log meals and view the diary. Pro adds personalized ranking, larger history matching, coach context, and family-aware progress.
+              </p>
+            </div>
+            <div className="border-t border-border bg-forest p-5 text-white lg:border-l lg:border-t-0">
+              <div className="mb-3 flex items-center gap-2 text-[#d7ff68]">
+                <CrownSimple size={18} weight="fill" />
+                <span className="text-[12px] font-bold uppercase tracking-[0.14em]">Sample insight</span>
+              </div>
+              <p className="text-[15px] font-bold">Dinner should bias protein and keep calories moderate.</p>
+              <Link href="/pricing" className="mt-5 inline-flex rounded-lg bg-[#d7ff68] px-4 py-2.5 text-[13px] font-bold text-forest">
+                Upgrade to Pro
+              </Link>
+            </div>
+          </div>
+        </Panel>
+      ) : null}
+
       <div className="mb-5 flex flex-wrap gap-2">
         {(["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const).map((filter) => (
           <button
             key={filter}
             onClick={() => handleMealTypeChange(filter)}
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-bold ${mealType === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f]"}`}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[12px] font-bold transition-colors ${mealType === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f] hover:border-teal/30 hover:text-forest"}`}
           >
             {mealType === filter ? <FunnelSimple size={13} weight="fill" /> : null}
             {filter.toLowerCase()}
           </button>
         ))}
         {["Fits calories", "Protein gap", "Not eaten recently", allergies[0] ? `Avoids ${allergies[0]}` : "Uses saved profile"].map((filter) => (
-          <span key={filter} className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-[12px] font-bold text-[#5f675f]">
+          <span key={filter} className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-[12px] font-bold text-[#5f675f]">
             {filter}
           </span>
         ))}
@@ -148,7 +184,7 @@ export default function RecommendationsPage() {
         ) : null}
         {source !== "loading" && !rows.length ? (
           <Panel className="p-8 text-center">
-            <h2 className="text-[26px] font-semibold">Log more {mealType.toLowerCase()} meals to unlock recommendations.</h2>
+            <h2 className="text-[24px] font-bold text-forest">Log more {mealType.toLowerCase()} meals to unlock recommendations.</h2>
             <p className="mx-auto mt-3 max-w-xl text-[14px] leading-6 text-[#5f675f]">
               Saved meals help NutriAI rank familiar options, respect your profile, and match the remaining budget for today.
             </p>
