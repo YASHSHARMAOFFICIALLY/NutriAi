@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, Check, ForkKnife, type Icon } from "@phosphor-icons/react/dist/ssr";
+import type { ComponentType } from "react";
+import { ArrowRight, Check, ForkKnife } from "@phosphor-icons/react/dist/ssr";
 
 export type Meal = {
   id: string;
@@ -29,22 +30,25 @@ function safeNumber(value: number, fallback = 0) {
 export function PageHeader({
   eyebrow,
   title,
+  description,
   action,
 }: {
   eyebrow: string;
   title: string;
+  description?: string;
   action?: { label: string; href: string };
 }) {
   return (
-    <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div>
-        <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-teal">{eyebrow}</p>
-        <h1 className="mt-2 text-[38px] font-bold tracking-tight text-forest md:text-[48px] leading-[1.1]">{title}</h1>
+    <header className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="max-w-2xl">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-teal">{eyebrow}</p>
+        <h1 className="mt-2 text-[32px] font-bold leading-[1.08] tracking-tight text-forest md:text-[42px]">{title}</h1>
+        {description ? <p className="mt-3 text-[14px] leading-6 text-muted">{description}</p> : null}
       </div>
       {action ? (
         <Link
           href={action.href}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-forest px-6 py-3 text-[14px] font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-forest px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-forest-soft"
         >
           {action.label}
           <ArrowRight size={16} weight="bold" />
@@ -62,7 +66,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`rounded-2xl border border-border bg-surface shadow-md transition-shadow hover:shadow-lg ${className}`}>
+    <section className={`rounded-lg border border-border bg-surface shadow-sm ${className}`}>
       {children}
     </section>
   );
@@ -70,10 +74,10 @@ export function Panel({
 
 export function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <Panel className="p-6">
+    <Panel className="p-5">
       <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p>
       <div className="mt-3 flex items-baseline gap-1">
-        <p className="text-[34px] font-bold tracking-tight text-forest leading-none">{value}</p>
+        <p className="text-[30px] font-bold leading-none tracking-tight text-forest">{value}</p>
       </div>
       {sub ? <p className="mt-2 text-[12px] font-medium text-muted/80">{sub}</p> : null}
     </Panel>
@@ -114,7 +118,7 @@ export function BudgetBar({
           {unit}
         </span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-surface-alt">
+      <div className="h-2 overflow-hidden rounded-full bg-surface-alt">
         <div 
           className={`h-full rounded-full transition-all duration-1000 ease-out ${colors[tone]}`} 
           style={{ width: `${pct}%` }} 
@@ -126,10 +130,10 @@ export function BudgetBar({
 
 export function MealLine({ meal, expanded = false, action }: { meal: Meal; expanded?: boolean; action?: React.ReactNode }) {
   return (
-    <div className="group/meal rounded-xl border border-border bg-surface-alt transition-all hover:border-teal/20 hover:shadow-md">
+    <div className="group/meal rounded-lg border border-border bg-surface-alt transition-colors hover:border-teal/25">
       <div className="flex items-center justify-between gap-4 p-4">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-forest shadow-sm transition-colors group-hover/meal:bg-forest group-hover/meal:text-white">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-forest shadow-sm transition-colors group-hover/meal:bg-forest group-hover/meal:text-white">
             <ForkKnife size={17} weight="bold" />
           </span>
           <div className="min-w-0">
@@ -140,7 +144,7 @@ export function MealLine({ meal, expanded = false, action }: { meal: Meal; expan
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <div className="grid grid-cols-4 gap-3 text-right text-[12px]">
+            <div className="grid grid-cols-2 gap-3 text-right text-[12px] sm:grid-cols-4">
             <span><b className="block text-[14px] text-[#101510]">{meal.totals.calories}</b>kcal</span>
             <span><b className="block text-[14px] text-[#101510]">{meal.totals.protein}g</b>pro</span>
             <span className="hidden sm:block"><b className="block text-[14px] text-[#101510]">{meal.totals.carbs}g</b>carb</span>
@@ -151,7 +155,7 @@ export function MealLine({ meal, expanded = false, action }: { meal: Meal; expan
       </div>
       {expanded ? (
         <div className="border-t border-border px-4 pb-4">
-          <div className="mt-3 overflow-hidden rounded-xl border border-border bg-white">
+          <div className="mt-3 overflow-hidden rounded-lg border border-border bg-white">
             <table className="w-full text-left text-[12px]">
               <thead className="bg-surface-alt text-muted">
                 <tr>
@@ -189,8 +193,8 @@ export function SourceBadge({ label }: { label: string }) {
 
 export function CheckRow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-alt p-3.5 transition-all hover:border-teal/20 hover:shadow-sm">
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-lime shadow-sm">
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-alt p-3.5 transition-colors hover:border-teal/25">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-lime shadow-sm">
         <Check size={14} weight="bold" />
       </span>
       <p className="text-[13px] font-semibold">{children}</p>
@@ -220,14 +224,14 @@ export function EmptyState({
   description,
   action,
 }: {
-  icon: Icon;
+  icon: ComponentType<{ size?: number; weight?: "thin" | "light" | "regular" | "bold" | "fill" | "duotone" }>;
   title: string;
   description: string;
   action?: { label: string; href: string };
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-surface-alt/50 px-6 py-12 text-center">
-      <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-white text-muted shadow-sm">
+    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-alt/60 px-6 py-12 text-center">
+      <div className="mb-4 grid h-14 w-14 place-items-center rounded-lg bg-white text-muted shadow-sm">
         <IconComponent size={28} weight="duotone" />
       </div>
       <h3 className="text-[16px] font-bold text-forest">{title}</h3>
@@ -235,7 +239,7 @@ export function EmptyState({
       {action && (
         <Link
           href={action.href}
-          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-forest px-5 py-2.5 text-[13px] font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-forest px-5 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-forest-soft"
         >
           {action.label}
           <ArrowRight size={14} weight="bold" />

@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Camera } from "@phosphor-icons/react/dist/ssr";
 import { listHistory } from "@/lib/api/history";
 import { deleteMeal, listMeals } from "@/lib/api/meals";
 import type { HistoryEntry, MealDTO } from "@/lib/api/types";
-import { PageHeader, MealLine, Panel, Skeleton, SourceBadge, Stat } from "../_components/ui";
+import { EmptyState, PageHeader, MealLine, Panel, Skeleton, SourceBadge, Stat } from "../_components/ui";
 import type { Meal } from "../_components/ui";
+import { useToast } from "@/lib/toast";
 
 type DiaryMeal = Meal & { loggedDate: string };
 
@@ -52,6 +54,7 @@ function formatDiaryDate(value: string) {
 }
 
 export default function MealsPage() {
+  const { toast } = useToast();
   const [meals, setMeals] = useState<DiaryMeal[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [activeFilter, setActiveFilter] = useState("Today");
@@ -126,16 +129,23 @@ export default function MealsPage() {
     setMeals((current) => current.filter((meal) => meal.id !== id));
     try {
       await deleteMeal(id);
+      toast("success", "Meal deleted.");
       setSource("live");
     } catch {
       setMeals(previous);
+      toast("error", "Could not delete meal.");
       setSource("error");
     }
   }
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
-      <PageHeader eyebrow="Meals" title="Food diary" action={{ label: "Log meal", href: "/snap" }} />
+      <PageHeader
+        eyebrow="Meals"
+        title="Food diary"
+        description="Review saved meals, filter by time or meal type, and use analysis history to keep the diary accurate."
+        action={{ label: "Log meal", href: "/snap" }}
+      />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
           <p className="text-[13px] font-semibold text-[#b7791f]">Could not load meal data. Sign in and try again.</p>
@@ -144,7 +154,7 @@ export default function MealsPage() {
 
       <div className="mb-5 flex flex-wrap gap-2">
         {["Today", "7 days", "30 days", "Breakfast", "Lunch", "Dinner", "Photo source"].map((filter) => (
-          <button key={filter} onClick={() => setActiveFilter(filter)} className={`rounded-full border px-3 py-1.5 text-[12px] font-bold ${activeFilter === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f]"}`}>
+          <button key={filter} onClick={() => setActiveFilter(filter)} className={`rounded-lg border px-3 py-1.5 text-[12px] font-bold transition-colors ${activeFilter === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f] hover:border-teal/30 hover:text-forest"}`}>
             {filter}
           </button>
         ))}
@@ -212,19 +222,23 @@ export default function MealsPage() {
           );
         })}
         {source !== "loading" && !days.length ? (
-          <Panel className="p-8 text-center">
-            <p className="text-[16px] font-bold text-[#173c2b]">{meals.length ? "No meals match this filter" : "No meals logged yet"}</p>
-            <p className="mx-auto mt-2 max-w-md text-[13px] leading-6 text-[#5f675f]">
-              {meals.length ? "Try a wider date range or clear the meal type filter." : "Start with a photo scan or add a meal from the diary flow to build your history."}
-            </p>
-            <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <button onClick={() => setActiveFilter("Today")} className="rounded-xl border border-black/10 bg-white px-4 py-3 text-[13px] font-bold text-[#173c2b]">
+          <Panel className="p-6">
+            <EmptyState
+              icon={Camera}
+              title={meals.length ? "No meals match this filter" : "No meals logged yet"}
+              description={meals.length ? "Try a wider date range or clear the meal type filter." : "Start with a photo scan or text description to build your diary history."}
+              action={meals.length ? undefined : { label: "Scan meal", href: "/snap" }}
+            />
+            {meals.length ? (
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <button onClick={() => setActiveFilter("Today")} className="rounded-lg border border-black/10 bg-white px-4 py-3 text-[13px] font-bold text-[#173c2b]">
                 Show today
               </button>
-              <Link href="/snap" className="rounded-xl bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white">
+              <Link href="/snap" className="rounded-lg bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white">
                 Scan meal
               </Link>
             </div>
+            ) : null}
           </Panel>
         ) : null}
       </section>

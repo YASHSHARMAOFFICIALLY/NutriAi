@@ -14,10 +14,10 @@ import {
   Gear,
   House,
   Medal,
+  Prohibit,
   SidebarSimple,
   Sparkle,
   Star,
-  X,
 } from "@phosphor-icons/react/dist/ssr";
 import { getDailySummary } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
@@ -27,13 +27,13 @@ const nav = [
   { href: "/dashboard", label: "Dashboard", icon: House },
   { href: "/snap", label: "Log Meal", icon: Camera },
   { href: "/coach", label: "Coach", icon: Sparkle },
-  { href: "/recommendations", label: "Recs", icon: Star },
+  { href: "/recommendations", label: "Next Meal", icon: Star },
   { href: "/meals", label: "Meals", icon: ForkKnife },
-  { href: "/analytics", label: "Analytics", icon: ChartBar },
+  { href: "/analytics", label: "Progress", icon: ChartBar },
   { href: "/family", label: "Family", icon: AddressBook },
   { href: "/challenges", label: "Challenges", icon: Medal },
   { href: "/weight", label: "Weight", icon: Barbell },
-  { href: "/settings", label: "Settings", icon: Gear },
+  { href: "/settings", label: "Account", icon: Gear },
 ] as const;
 
 const mobileNav = nav.slice(0, 4);
@@ -190,7 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="mb-3 flex items-center justify-between">
               <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-muted">More</p>
               <button onClick={() => setMoreOpen(false)} className="grid h-8 w-8 place-items-center rounded-xl bg-surface-alt text-muted">
-                <X size={16} weight="bold" />
+                <Prohibit size={16} weight="bold" />
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
