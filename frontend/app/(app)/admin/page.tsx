@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Gauge, Key, MagnifyingGlass, Pulse, Sparkle, Users, Warning } from "@phosphor-icons/react";
+import { AddressBook, Gauge, Key, MagnifyingGlass, Pulse, SealWarning, Sparkle } from "@phosphor-icons/react";
 import { getAdminActivity, getAdminAiSettings, getAdminOverview, getAdminRuntime, getAdminUsage, getAdminUserDetail, listAdminUsers, updateAdminAiSettings } from "@/lib/api/admin";
 import type { AdminActivityItem, AdminAiSettings, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserDetail, AdminUserRow, UserRole } from "@/lib/api/types";
 import { PageHeader, Panel, Stat } from "../_components/ui";
@@ -221,7 +221,7 @@ export default function AdminPage() {
         <Panel className="overflow-hidden">
           <div className="flex flex-col gap-4 border-b border-black/10 p-5 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
-              <Users size={22} className="text-[#173c2b]" />
+              <AddressBook size={22} className="text-[#173c2b]" />
               <h2 className="text-[22px] font-semibold">User table</h2>
             </div>
             <label className="flex items-center gap-2 rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[13px]">
@@ -302,7 +302,7 @@ export default function AdminPage() {
         <div className="space-y-5">
           <Panel className="p-5">
             <div className="mb-4 flex items-center gap-3">
-              <Warning size={22} className="text-[#b7791f]" />
+              <SealWarning size={22} className="text-[#b7791f]" />
               <h2 className="text-[20px] font-semibold">Watchlist</h2>
             </div>
             <div className="space-y-3">

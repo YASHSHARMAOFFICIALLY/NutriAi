@@ -10,11 +10,13 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 FROM node:22-alpine AS runner
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
+USER appuser
 EXPOSE 4000
 CMD ["node", "dist/server.js"]

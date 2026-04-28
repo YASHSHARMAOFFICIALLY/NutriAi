@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, LinkSimple, Trash, UserPlus, UsersThree, X } from "@phosphor-icons/react/dist/ssr";
+import { AddressBook, Check, LinkSimple, MinusCircle, Prohibit } from "@phosphor-icons/react/dist/ssr";
 import {
   acceptFamilyInvite,
   createFamilyInvite,
@@ -141,7 +141,7 @@ export default function FamilyPage() {
               <p className="mt-1 text-[13px] text-[#5f675f]">Members can view shared nutrition summaries, not raw meal notes or photos.</p>
             </div>
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#eef5f2] text-[#173c2b]">
-              <UsersThree size={20} weight="bold" />
+              <AddressBook size={20} weight="bold" />
             </span>
           </div>
 
@@ -169,7 +169,7 @@ export default function FamilyPage() {
                       disabled={status === "saving"}
                       className="inline-flex items-center gap-1 rounded-md border border-black/10 bg-white px-3 py-1.5 text-[12px] font-bold text-[#b7791f] disabled:opacity-50"
                     >
-                      <Trash size={13} weight="bold" />
+                      <MinusCircle size={13} weight="bold" />
                       Remove
                     </button>
                   ) : null}
@@ -200,7 +200,7 @@ export default function FamilyPage() {
                 disabled={status === "saving" || !email.trim()}
                 className="inline-flex items-center gap-2 rounded-md bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white disabled:opacity-50"
               >
-                <UserPlus size={15} weight="bold" />
+                <AddressBook size={15} weight="bold" />
                 Invite
               </button>
             </div>
@@ -248,7 +248,7 @@ export default function FamilyPage() {
                     className="grid h-8 w-8 place-items-center rounded-md border border-black/10 bg-white text-[#b7791f] disabled:opacity-50"
                     aria-label="Cancel invite"
                   >
-                    <X size={14} weight="bold" />
+                    <Prohibit size={14} weight="bold" />
                   </button>
                 </div>
               ))}

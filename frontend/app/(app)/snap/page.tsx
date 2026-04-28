@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, CheckCircle, ImageSquare, ListChecks, PencilSimple, Sparkle, TextT, X } from "@phosphor-icons/react/dist/ssr";
+import { Camera, CheckCircle, ImageSquare, ListChecks, PencilSimple, Prohibit, Sparkle } from "@phosphor-icons/react/dist/ssr";
 import { analyzeFood } from "@/lib/api/food";
 import { ApiError } from "@/lib/api/client";
 import { createMeal, inferMealType } from "@/lib/api/meals";
@@ -212,7 +212,7 @@ export default function SnapPage() {
                   inputMode === "text" ? "bg-forest text-white shadow-premium" : "text-muted hover:text-forest"
                 }`}
               >
-                <TextT size={16} weight={inputMode === "text" ? "bold" : "bold"} />
+                <PencilSimple size={16} weight="bold" />
                 Text Description
               </button>
             </div>
@@ -255,7 +255,7 @@ export default function SnapPage() {
                       className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white text-forest shadow-md"
                       aria-label="Remove selected photo"
                     >
-                      <X size={16} weight="bold" />
+                      <Prohibit size={16} weight="bold" />
                     </button>
                   ) : null}
                 </motion.label>

@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Sparkle, Warning } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, SealWarning, Sparkle } from "@phosphor-icons/react/dist/ssr";
 import { register } from "@/lib/api/emailAuth";
 import { ApiError } from "@/lib/api/client";
 
@@ -120,7 +120,7 @@ export default function SignupPage() {
 
         {error && (
           <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
-            <Warning size={14} weight="fill" className="mt-0.5 shrink-0" />
+            <SealWarning size={14} weight="fill" className="mt-0.5 shrink-0" />
             {error}
           </p>
         )}
@@ -134,7 +134,7 @@ export default function SignupPage() {
         </button>
       </form>
 
-      <style jsx>{`
+      <style>{`
         .input {
           width: 100%;
           border: 1px solid rgba(18, 20, 16, 0.12);

@@ -115,6 +115,12 @@ const EnvSchema = z.object({
   AI_QUEUE_TIMEOUT_MS: z.coerce.number().int().positive().default(2_000),
   ENABLE_DIGEST_JOBS: BooleanSchema.default(false),
 
+  DODO_PAYMENTS_API_KEY: z.string().optional(),
+  DODO_WEBHOOK_SECRET: z.string().optional(),
+  DODO_PRODUCT_PRO_MONTHLY: z.string().optional(),
+  DODO_PRODUCT_PRO_LIFETIME: z.string().optional(),
+  DODO_ENVIRONMENT: z.enum(['test_mode', 'live_mode']).default('test_mode'),
+
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_BOT_USERNAME: z.string().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
