@@ -3,7 +3,7 @@ import { ArrowRight, Check, ForkKnife } from "@phosphor-icons/react/dist/ssr";
 import type { SeoPage } from "../seoPages";
 import { PublicMealEstimator } from "./PublicMealEstimator";
 
-export function SeoArticlePage({ page }: { page: SeoPage }) {
+export function SeoArticlePage({ page, relatedPages = [] }: { page: SeoPage; relatedPages?: SeoPage[] }) {
   return (
     <main className="min-h-screen bg-[#f8f8f3] text-[#101510]">
       <header className="border-b border-black/10 bg-white">
@@ -75,6 +75,7 @@ export function SeoArticlePage({ page }: { page: SeoPage }) {
                   <a href="#use-cases" className="hover:text-[#173c2b]">Use cases</a>
                   <a href="#workflow" className="hover:text-[#173c2b]">Workflow</a>
                   <a href="#faq" className="hover:text-[#173c2b]">FAQ</a>
+                  {relatedPages.length ? <a href="#related" className="hover:text-[#173c2b]">Related guides</a> : null}
                 </nav>
               </div>
             </aside>
@@ -128,6 +129,25 @@ export function SeoArticlePage({ page }: { page: SeoPage }) {
                   ))}
                 </div>
               </section>
+
+              {relatedPages.length ? (
+                <section id="related">
+                  <h2 className="text-[34px] font-semibold leading-tight text-[#173c2b]">Related nutrition guides</h2>
+                  <div className="mt-7 grid gap-4 md:grid-cols-2">
+                    {relatedPages.map((related) => (
+                      <Link
+                        key={related.slug}
+                        href={`/${related.slug}`}
+                        className="rounded-lg border border-black/10 bg-white p-5 transition hover:border-[#0f8b8d]/40 hover:shadow-[0_14px_36px_rgba(16,21,16,0.08)]"
+                      >
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#0f8b8d]">{related.eyebrow}</p>
+                        <h3 className="mt-2 text-[20px] font-bold leading-snug text-[#173c2b]">{related.title}</h3>
+                        <p className="mt-3 text-[14px] leading-6 text-[#5f675f]">{related.description}</p>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               <section className="rounded-xl bg-[#d7ff68] p-8">
                 <h2 className="max-w-2xl text-[34px] font-semibold leading-tight text-[#101510]">

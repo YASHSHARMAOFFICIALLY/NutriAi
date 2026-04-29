@@ -1,8 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { JsonLd } from "../../JsonLd";
 import { SeoArticlePage } from "../_components/SeoArticlePage";
 import { getSeoPage, seoPages } from "../seoPages";
-import { siteName, siteUrl } from "../../seo";
+import {
+  articleJsonLd,
+  breadcrumbJsonLd,
+  faqJsonLd,
+  howToJsonLd,
+  siteName,
+  siteOgImage,
+  siteUrl,
+} from "../../seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -37,7 +46,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: "article",
       images: [
         {
-          url: "/screenshot.png",
+          url: `${url}/opengraph-image`,
           width: 1200,
           height: 630,
           alt: `${siteName} ${page.primaryKeyword}`,
@@ -48,7 +57,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: "summary_large_image",
       title: page.title,
       description: page.description,
-      images: ["/screenshot.png"],
+      images: [`${url}/opengraph-image`, siteOgImage],
     },
   };
 }
@@ -63,61 +72,38 @@ export default async function SeoPageRoute({ params }: PageProps) {
 
   const url = `${siteUrl}/${page.slug}`;
   const structuredData = [
-    {
-      "@context": "https://schema.org",
-      "@type": "Article",
-      headline: page.title,
+    articleJsonLd({
+      title: page.title,
       description: page.description,
       url,
-      author: {
-        "@type": "Organization",
-        name: siteName,
-      },
-      publisher: {
-        "@type": "Organization",
-        name: siteName,
-      },
-      mainEntityOfPage: url,
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "NutriAI",
-          item: siteUrl,
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: page.primaryKeyword,
-          item: url,
-        },
-      ],
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      mainEntity: page.faqs.map((faq) => ({
-        "@type": "Question",
-        name: faq.question,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: faq.answer,
-        },
-      })),
-    },
+      keywords: [page.primaryKeyword, ...page.secondaryKeywords],
+    }),
+    breadcrumbJsonLd([
+      { name: "myNutriAI", url: "/" },
+      { name: page.primaryKeyword, url: `/${page.slug}` },
+    ]),
+    faqJsonLd(page.faqs),
+    howToJsonLd({
+      name: `How to use myNutriAI for ${page.primaryKeyword}`,
+      description: page.description,
+      steps: page.steps,
+    }),
   ];
+  const relatedPages = seoPages
+    .filter((candidate) => candidate.slug !== page.slug)
+    .filter((candidate) =>
+      [candidate.primaryKeyword, ...candidate.secondaryKeywords].some((keyword) =>
+        [page.primaryKeyword, ...page.secondaryKeywords].some(
+          (current) => keyword.includes(current.split(" ")[0]) || current.includes(keyword.split(" ")[0])
+        )
+      )
+    )
+    .slice(0, 4);
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-      <SeoArticlePage page={page} />
+      <JsonLd data={structuredData} />
+      <SeoArticlePage page={page} relatedPages={relatedPages} />
     </>
   );
 }

@@ -2,19 +2,19 @@ import type { MetadataRoute } from "next";
 import { siteUrl } from "./seo";
 import { seoPages } from "./(marketing)/seoPages";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
+const BUILD_DATE = new Date("2026-04-30");
 
+export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: siteUrl,
-      lastModified: now,
+      lastModified: BUILD_DATE,
       changeFrequency: "weekly",
       priority: 1,
     },
     ...seoPages.map((page) => ({
       url: `${siteUrl}/${page.slug}`,
-      lastModified: now,
+      lastModified: BUILD_DATE,
       changeFrequency: "monthly" as const,
       priority: 0.82,
     })),
