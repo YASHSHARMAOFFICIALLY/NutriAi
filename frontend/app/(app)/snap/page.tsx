@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, CheckCircle, ImageSquare, ListChecks, PencilSimple, Prohibit, Sparkle } from "@phosphor-icons/react/dist/ssr";
+import { Camera, CheckCircle, ImageSquare, ListChecks, PencilSimple, Sparkle } from "@phosphor-icons/react/dist/ssr";
 import { analyzeFood } from "@/lib/api/food";
 import { ApiError } from "@/lib/api/client";
 import { createMeal, inferMealType } from "@/lib/api/meals";
@@ -204,9 +204,10 @@ export default function SnapPage() {
       <section className="grid gap-8 xl:grid-cols-[400px_1fr]">
         <div className="space-y-6">
           <Panel className="p-6">
-            <div className="mb-6 grid grid-cols-2 rounded-lg border border-border bg-surface-alt p-1">
+            <div className="mb-6 grid grid-cols-2 rounded-lg border border-border bg-surface-alt p-1" role="tablist" aria-label="Meal input mode">
               <button 
                 onClick={() => setInputMode("photo")}
+                aria-pressed={inputMode === "photo"}
                 className={`flex items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
                   inputMode === "photo" ? "bg-forest text-white" : "text-muted hover:text-forest"
                 }`}
@@ -216,6 +217,7 @@ export default function SnapPage() {
               </button>
               <button 
                 onClick={() => setInputMode("text")}
+                aria-pressed={inputMode === "text"}
                 className={`flex items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
                   inputMode === "text" ? "bg-forest text-white" : "text-muted hover:text-forest"
                 }`}
@@ -260,10 +262,10 @@ export default function SnapPage() {
                         event.preventDefault();
                         handleFileChange(null);
                       }}
-                      className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-lg bg-white text-forest shadow-sm"
+                      className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-lg bg-white text-[20px] font-bold leading-none text-forest shadow-sm transition-colors hover:bg-surface-alt"
                       aria-label="Remove selected photo"
                     >
-                      <Prohibit size={16} weight="bold" />
+                      &times;
                     </button>
                   ) : null}
                 </motion.label>
@@ -392,7 +394,7 @@ export default function SnapPage() {
                     </button>
                   </div>
                   
-                  <div className="overflow-x-auto">
+                  <div className="hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[700px] text-left text-[14px]">
                       <thead className="bg-surface-alt/50 text-muted">
                         <tr>
@@ -408,23 +410,26 @@ export default function SnapPage() {
                           <tr key={index} className="group hover:bg-surface-alt/20 transition-colors">
                             <td className="px-6 py-4">
                               <input 
-                                className="w-full bg-transparent font-bold text-forest outline-none group-focus-within:text-teal" 
+                                className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 font-bold text-forest outline-none transition-colors group-focus-within:border-teal/30 group-focus-within:bg-white group-focus-within:text-teal" 
                                 value={item.name} 
                                 onChange={(event) => updateItem(index, "name", event.target.value)} 
+                                aria-label={`Food item ${index + 1} name`}
                               />
                             </td>
                             <td className="px-6 py-4">
                               <input 
-                                className="w-full bg-transparent text-muted outline-none" 
+                                className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-muted outline-none transition-colors focus:border-teal/30 focus:bg-white" 
                                 value={item.quantity || ""} 
                                 onChange={(event) => updateItem(index, "quantity", event.target.value)} 
+                                aria-label={`Food item ${index + 1} amount`}
                               />
                             </td>
                             <td className="px-6 py-4 text-right">
                               <input 
-                                className="w-20 bg-transparent text-right font-bold text-forest outline-none" 
+                                className="w-20 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-forest outline-none transition-colors focus:border-teal/30 focus:bg-white" 
                                 value={item.calories} 
                                 onChange={(event) => updateItem(index, "calories", event.target.value)} 
+                                aria-label={`Food item ${index + 1} calories`}
                               />
                             </td>
                             <td className="px-6 py-4 text-right">
@@ -450,10 +455,53 @@ export default function SnapPage() {
                     </table>
                   </div>
 
-                  <div className="flex flex-col gap-6 bg-surface-alt p-8 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="grid gap-3 bg-white p-4 md:hidden">
+                    {candidate.items.map((item, index) => (
+                      <div key={index} className="rounded-lg border border-border bg-surface-alt p-4">
+                        <div className="grid gap-3">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                            Food item
+                            <input
+                              className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-forest outline-none focus:border-teal"
+                              value={item.name}
+                              onChange={(event) => updateItem(index, "name", event.target.value)}
+                            />
+                          </label>
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                            Amount
+                            <input
+                              className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-foreground outline-none focus:border-teal"
+                              value={item.quantity || ""}
+                              onChange={(event) => updateItem(index, "quantity", event.target.value)}
+                            />
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                              kcal
+                              <input
+                                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-forest outline-none focus:border-teal"
+                                value={item.calories}
+                                onChange={(event) => updateItem(index, "calories", event.target.value)}
+                              />
+                            </label>
+                            <div className="rounded-lg bg-white p-3">
+                              <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Protein</p>
+                              <p className="mt-1 text-[14px] font-bold text-teal">{item.protein}g</p>
+                            </div>
+                            <div className="rounded-lg bg-white p-3">
+                              <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Certainty</p>
+                              <p className="mt-1 text-[14px] font-bold text-forest">{Math.round(item.confidence * 100)}%</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="sticky bottom-[76px] z-20 flex flex-col gap-6 border-t border-border bg-surface-alt p-5 shadow-[0_-12px_32px_rgba(16,21,16,0.08)] lg:static lg:flex-row lg:items-center lg:justify-between lg:p-8 lg:shadow-none">
                     <div>
                       <p className="text-[14px] font-medium text-muted leading-relaxed">
-                        Saving this meal adds the reviewed totals to your diary and updates today's dashboard.
+                        Saving this meal adds the reviewed totals to your diary and updates today&apos;s dashboard.
                       </p>
                     </div>
                     <button

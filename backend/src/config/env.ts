@@ -159,6 +159,17 @@ const EnvSchema = z.object({
       message: 'JWT_ACCESS_SECRET must be at least 32 characters in production',
     });
   }
+  if (value.DODO_PAYMENTS_API_KEY) {
+    for (const key of ['DODO_WEBHOOK_SECRET', 'DODO_PRODUCT_PRO_MONTHLY', 'DODO_PRODUCT_PRO_LIFETIME'] as const) {
+      if (!value[key]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} is required when DODO_PAYMENTS_API_KEY is configured`,
+        });
+      }
+    }
+  }
 });
 
 export type Env = z.infer<typeof EnvSchema>;

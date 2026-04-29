@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { seoKeywords, siteDescription, siteName, siteUrl } from "./seo";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -13,8 +14,53 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NutriAI - AI nutrition tracking",
-  description: "Track meals, macros, progress, and AI nutrition coaching in one product-led SaaS experience.",
+  metadataBase: new URL(siteUrl),
+  applicationName: siteName,
+  title: {
+    default: "myNutriAI - AI Meal Scanner for US and Indian Meals",
+    template: `%s | ${siteName}`,
+  },
+  description: siteDescription,
+  keywords: seoKeywords,
+  authors: [{ name: "NutriAI" }],
+  creator: "NutriAI",
+  publisher: "NutriAI",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: siteUrl,
+    siteName,
+    title: "myNutriAI - AI Meal Scanner for US and Indian Meals",
+    description: siteDescription,
+    images: [
+      {
+        url: "/screenshot.png",
+        width: 1200,
+        height: 630,
+        alt: "myNutriAI AI nutrition tracker dashboard",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "myNutriAI - AI Meal Scanner for US and Indian Meals",
+    description: siteDescription,
+    images: ["/screenshot.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function RootLayout({

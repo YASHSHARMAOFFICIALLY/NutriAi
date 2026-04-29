@@ -18,6 +18,11 @@ export interface TelegramAccountDTO {
 
 const linkToken = () => randomBytes(24).toString('base64url');
 const hashToken = (token: string) => sha256Hex(token);
+const telegramEmail = (telegramUserId: string) => `telegram+${telegramUserId}@users.nutriai.local`;
+const telegramDisplayName = (firstName?: string | null, lastName?: string | null, username?: string | null) => {
+  const name = [firstName, lastName].filter(Boolean).join(' ').trim();
+  return name || (username ? `@${username}` : 'Telegram user');
+};
 
 export const getTelegramStatus = async (userId: string): Promise<TelegramAccountDTO> => {
   const account = await prisma.telegramAccount.findUnique({ where: { userId } });
@@ -120,6 +125,56 @@ export const linkTelegramAccount = async ({
     return tx.user.findUniqueOrThrow({
       where: { id: link.userId },
       select: { id: true, email: true, name: true },
+    });
+  });
+};
+
+export const getOrCreateTelegramUserAccount = async (input: {
+  telegramUserId: string;
+  chatId: string;
+  username?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}) => {
+  const existing = await prisma.telegramAccount.findUnique({
+    where: { telegramUserId: input.telegramUserId },
+    include: { user: true },
+  });
+  if (existing) {
+    await prisma.telegramAccount.update({
+      where: { id: existing.id },
+      data: {
+        chatId: input.chatId,
+        username: input.username ?? existing.username,
+        firstName: input.firstName ?? existing.firstName,
+        lastName: input.lastName ?? existing.lastName,
+        lastSeenAt: new Date(),
+      },
+    });
+    return existing;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email: telegramEmail(input.telegramUserId),
+        name: telegramDisplayName(input.firstName, input.lastName, input.username),
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
+
+    return tx.telegramAccount.create({
+      data: {
+        userId: user.id,
+        telegramUserId: input.telegramUserId,
+        chatId: input.chatId,
+        username: input.username ?? null,
+        firstName: input.firstName ?? null,
+        lastName: input.lastName ?? null,
+        lastSeenAt: new Date(),
+      },
+      include: { user: true },
     });
   });
 };

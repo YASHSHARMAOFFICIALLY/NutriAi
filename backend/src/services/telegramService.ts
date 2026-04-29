@@ -8,7 +8,11 @@ import { BadRequestError } from '../utils/errors';
 import { analyzeFood } from './foodService';
 import { createMeal, dailySummary } from './mealService';
 import { dailyAnalytics, macroAnalytics, streakAnalytics } from './analyticsService';
-import { linkTelegramAccount, requireLinkedTelegramAccount } from './telegramAccountService';
+import {
+  getOrCreateTelegramUserAccount,
+  linkTelegramAccount,
+  requireLinkedTelegramAccount,
+} from './telegramAccountService';
 
 type TelegramUser = {
   id: number;
@@ -121,11 +125,11 @@ const helpText =
   '/streak - logging streak\n' +
   '/log chicken rice - analyze text quickly';
 
-const linkRequiredText =
-  'Connect Telegram from NutriAI settings first. Open the website, go to Settings, then choose Connect Telegram.';
-
 const startText = (name: string | null) =>
   `Connected to NutriAI${name ? ` for ${escapeHtml(name)}` : ''}.\n\nSend a food photo or text like "2 eggs and toast" to check calories.`;
+
+const telegramAccountText = (name: string | null) =>
+  `NutriAI Telegram is ready${name ? ` for ${escapeHtml(name)}` : ''}.\n\nSend a meal photo or text like "2 eggs and toast" to estimate and log food. You can also connect this Telegram account from website settings later.`;
 
 const formatAnalysis = (
   title: string,
@@ -199,8 +203,13 @@ const handleMessage = async (message: TelegramMessage) => {
   try {
     account = await requireLinkedTelegramAccount(telegramUserId);
   } catch {
-    await sendMessage(chatId, linkRequiredText);
-    return;
+    account = await getOrCreateTelegramUserAccount({
+      telegramUserId,
+      chatId: String(chatId),
+      username: from.username ?? null,
+      firstName: from.first_name ?? null,
+      lastName: from.last_name ?? null,
+    });
   }
 
   if (text?.startsWith('/')) {
@@ -228,7 +237,14 @@ const handleStart = async (message: TelegramMessage, text: string) => {
 
   const [, token] = text.split(/\s+/, 2);
   if (!token) {
-    await sendMessage(chatId, linkRequiredText);
+    const account = await getOrCreateTelegramUserAccount({
+      telegramUserId: String(from.id),
+      chatId: String(chatId),
+      username: from.username ?? null,
+      firstName: from.first_name ?? null,
+      lastName: from.last_name ?? null,
+    });
+    await sendMessage(chatId, telegramAccountText(account.user.name ?? account.user.email));
     return;
   }
 

@@ -61,6 +61,64 @@ export async function createCheckoutSession(
 
   const returnUrl = `${env.FRONTEND_URL}/checkout/success`;
 
+  if (plan === 'monthly') {
+    const subscription = await client.subscriptions.create({
+      billing: {
+        city: 'NA',
+        country: 'US',
+        state: 'NA',
+        street: 'NA',
+        zipcode: '00000',
+      },
+      customer: { email, name: email },
+      product_id: productId,
+      quantity: 1,
+      payment_link: true,
+      return_url: returnUrl,
+      metadata: { userId, plan },
+    });
+
+    if (!subscription.payment_link) {
+      throw new BadRequestError('Payment provider did not return a checkout link');
+    }
+
+    await prisma.payment.upsert({
+      where: { dodoPaymentId: subscription.payment_id },
+      create: {
+        userId,
+        dodoPaymentId: subscription.payment_id,
+        type: 'SUBSCRIPTION',
+        status: 'PENDING',
+        amountCents: subscription.recurring_pre_tax_amount,
+        currency: 'USD',
+        productId,
+      },
+      update: {
+        status: 'PENDING',
+        amountCents: subscription.recurring_pre_tax_amount,
+        currency: 'USD',
+        productId,
+      },
+    });
+
+    await prisma.subscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        tier: 'FREE',
+        status: 'ACTIVE',
+        dodoSubscriptionId: subscription.subscription_id,
+        dodoCustomerId: subscription.customer.customer_id,
+      },
+      update: {
+        dodoSubscriptionId: subscription.subscription_id,
+        dodoCustomerId: subscription.customer.customer_id,
+      },
+    });
+
+    return { paymentLink: subscription.payment_link, paymentId: subscription.payment_id };
+  }
+
   const payment = await client.payments.create({
     billing: {
       city: 'NA',
@@ -74,6 +132,29 @@ export async function createCheckoutSession(
     payment_link: true,
     return_url: returnUrl,
     metadata: { userId, plan },
+  });
+
+  if (!payment.payment_link) {
+    throw new BadRequestError('Payment provider did not return a checkout link');
+  }
+
+  await prisma.payment.upsert({
+    where: { dodoPaymentId: payment.payment_id },
+    create: {
+      userId,
+      dodoPaymentId: payment.payment_id,
+      type: 'ONE_TIME',
+      status: 'PENDING',
+      amountCents: payment.total_amount,
+      currency: 'USD',
+      productId,
+    },
+    update: {
+      status: 'PENDING',
+      amountCents: payment.total_amount,
+      currency: 'USD',
+      productId,
+    },
   });
 
   return { paymentLink: payment.payment_link, paymentId: payment.payment_id };
@@ -100,13 +181,16 @@ interface DodoWebhookPayload {
   data: {
     payment_id?: string;
     subscription_id?: string;
-    customer?: { email?: string };
+    customer?: { customer_id?: string; email?: string };
     status?: string;
     metadata?: { userId?: string; plan?: string };
     product_cart?: Array<{ product_id: string; quantity: number }>;
-    // subscription fields
-    current_period_start?: string;
-    current_period_end?: string;
+    product_id?: string;
+    total_amount?: number;
+    currency?: string;
+    recurring_pre_tax_amount?: number;
+    previous_billing_date?: string;
+    next_billing_date?: string;
     cancelled_at?: string;
   };
 }
@@ -123,11 +207,17 @@ export async function handleWebhookEvent(payload: DodoWebhookPayload) {
       await handlePaymentFailed(data);
       break;
     case 'subscription.active':
+    case 'subscription.renewed':
+    case 'subscription.updated':
       await handleSubscriptionActive(data);
+      break;
+    case 'subscription.failed':
+    case 'subscription.on_hold':
+      await handleSubscriptionPastDue(data);
       break;
     case 'subscription.cancelled':
     case 'subscription.expired':
-      await handleSubscriptionEnded(data);
+      await handleSubscriptionEnded(data, type === 'subscription.expired' ? 'EXPIRED' : 'CANCELLED');
       break;
     case 'refund.succeeded':
       await handleRefund(data);
@@ -149,10 +239,16 @@ async function handlePaymentSucceeded(data: DodoWebhookPayload['data']) {
       dodoPaymentId: data.payment_id,
       type: plan === 'lifetime' ? 'ONE_TIME' : 'SUBSCRIPTION',
       status: 'SUCCEEDED',
-      amountCents: 0, // Dodo manages pricing
-      productId: data.product_cart?.[0]?.product_id ?? '',
+      amountCents: data.total_amount ?? 0,
+      currency: data.currency ?? 'USD',
+      productId: data.product_cart?.[0]?.product_id ?? data.product_id ?? '',
     },
-    update: { status: 'SUCCEEDED' },
+    update: {
+      status: 'SUCCEEDED',
+      amountCents: data.total_amount ?? undefined,
+      currency: data.currency ?? undefined,
+      productId: data.product_cart?.[0]?.product_id ?? data.product_id ?? undefined,
+    },
   });
 
   // Activate Pro for lifetime purchases immediately
@@ -163,7 +259,7 @@ async function handlePaymentSucceeded(data: DodoWebhookPayload['data']) {
         userId,
         tier: 'PRO',
         status: 'ACTIVE',
-        dodoCustomerId: data.customer?.email ?? null,
+        dodoCustomerId: data.customer?.customer_id ?? data.customer?.email ?? null,
       },
       update: {
         tier: 'PRO',
@@ -192,28 +288,38 @@ async function handleSubscriptionActive(data: DodoWebhookPayload['data']) {
       tier: 'PRO',
       status: 'ACTIVE',
       dodoSubscriptionId: data.subscription_id ?? null,
-      dodoCustomerId: data.customer?.email ?? null,
-      currentPeriodStart: data.current_period_start ? new Date(data.current_period_start) : null,
-      currentPeriodEnd: data.current_period_end ? new Date(data.current_period_end) : null,
+      dodoCustomerId: data.customer?.customer_id ?? data.customer?.email ?? null,
+      currentPeriodStart: data.previous_billing_date ? new Date(data.previous_billing_date) : null,
+      currentPeriodEnd: data.next_billing_date ? new Date(data.next_billing_date) : null,
     },
     update: {
       tier: 'PRO',
       status: 'ACTIVE',
       dodoSubscriptionId: data.subscription_id ?? null,
-      currentPeriodStart: data.current_period_start ? new Date(data.current_period_start) : null,
-      currentPeriodEnd: data.current_period_end ? new Date(data.current_period_end) : null,
+      dodoCustomerId: data.customer?.customer_id ?? data.customer?.email ?? undefined,
+      currentPeriodStart: data.previous_billing_date ? new Date(data.previous_billing_date) : null,
+      currentPeriodEnd: data.next_billing_date ? new Date(data.next_billing_date) : null,
       cancelledAt: null,
     },
   });
 }
 
-async function handleSubscriptionEnded(data: DodoWebhookPayload['data']) {
+async function handleSubscriptionPastDue(data: DodoWebhookPayload['data']) {
+  if (!data.subscription_id) return;
+  await prisma.subscription.updateMany({
+    where: { dodoSubscriptionId: data.subscription_id },
+    data: { status: 'PAST_DUE' },
+  });
+}
+
+async function handleSubscriptionEnded(data: DodoWebhookPayload['data'], status: 'CANCELLED' | 'EXPIRED') {
   if (!data.subscription_id) return;
   await prisma.subscription.updateMany({
     where: { dodoSubscriptionId: data.subscription_id },
     data: {
-      status: 'CANCELLED',
-      cancelledAt: new Date(),
+      tier: 'FREE',
+      status,
+      cancelledAt: data.cancelled_at ? new Date(data.cancelled_at) : new Date(),
     },
   });
 }

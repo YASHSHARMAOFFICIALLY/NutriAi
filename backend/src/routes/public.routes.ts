@@ -13,6 +13,14 @@ import {
 
 export const publicRouter = Router();
 
+// Public no-account teaser used by SEO landing pages. It is still protected by
+// the app-level rate limiter and AI budget guard.
+publicRouter.post(
+  '/public/estimate',
+  validate(publicAnalyzeSchema),
+  publicCaloriesHandler,
+);
+
 // All /v1/public/* endpoints are gated by an API key, per-key rate limited,
 // and usage-metered into ApiUsage.
 publicRouter.use('/v1/public', requireApiKey, apiKeyRateLimit, meterApiUsage);
