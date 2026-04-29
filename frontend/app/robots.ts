@@ -29,7 +29,33 @@ export default function robots(): MetadataRoute.Robots {
           "/verify-email",
           "/verify-pending",
           "/weight",
+          "/api",
         ],
+      },
+      {
+        userAgent: "GPTBot",
+        allow: "/",
+        disallow: ["/api"],
+      },
+      {
+        userAgent: "ChatGPT-User",
+        allow: "/",
+      },
+      {
+        userAgent: "Google-Extended",
+        allow: "/",
+      },
+      {
+        userAgent: "Applebot-Extended",
+        allow: "/",
+      },
+      {
+        userAgent: "PerplexityBot",
+        allow: "/",
+      },
+      {
+        userAgent: "ClaudeBot",
+        allow: "/",
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,

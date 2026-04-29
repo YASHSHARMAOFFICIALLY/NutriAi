@@ -451,6 +451,166 @@ export const seoPages: SeoPage[] = [
       },
     ],
   },
+  {
+    slug: "food-photo-calorie-counter",
+    eyebrow: "Food photo calories",
+    title: "Food Photo Calorie Counter with Editable Meal Estimates",
+    description:
+      "Use myNutriAI as a food photo calorie counter for mixed plates, restaurant meals, homemade food, protein goals, and daily macro tracking.",
+    primaryKeyword: "food photo calorie counter",
+    secondaryKeywords: [
+      "photo calorie counter",
+      "AI calorie counter",
+      "food image calorie app",
+      "meal photo macro tracker",
+    ],
+    exampleMeal: "restaurant plate with grilled chicken, rice, vegetables and sauce",
+    intro:
+      "A food photo calorie counter is useful only when the result is reviewable. myNutriAI scans the meal, separates likely ingredients, estimates calories and macros, and lets users edit before saving.",
+    useCases: [
+      { title: "Restaurant meals", body: "Estimate plates that do not match a single database item." },
+      { title: "Home cooking", body: "Review mixed homemade meals with flexible portions and sides." },
+      { title: "Macro awareness", body: "See protein, carbs, and fat alongside calories from the same scan." },
+    ],
+    steps: [
+      { title: "Take a clear photo", body: "Capture the full plate with visible sides, sauces, and drinks." },
+      { title: "Review the estimate", body: "Check item names, portions, calories, protein, carbs, and fat." },
+      { title: "Save only after edits", body: "Correct the estimate before it updates your daily dashboard." },
+    ],
+    faqs: [
+      { question: "Can a photo calorie counter be exact?", answer: "No photo estimate is exact. myNutriAI is designed for review and correction before logging." },
+      { question: "Can it estimate multiple foods in one image?", answer: "Yes. Mixed plates are split into editable line items when possible." },
+      { question: "Does it work without a photo?", answer: "Yes. You can also type a meal description." },
+    ],
+  },
+  {
+    slug: "protein-tracker",
+    eyebrow: "Protein goals",
+    title: "Protein Tracker for Daily Targets, Meals, and Macro Planning",
+    description:
+      "Track protein from meals, see remaining daily protein, and use myNutriAI to plan higher-protein breakfasts, lunches, dinners, and snacks.",
+    primaryKeyword: "protein tracker",
+    secondaryKeywords: [
+      "daily protein tracker",
+      "protein goal app",
+      "high protein meal tracker",
+      "macro protein tracker",
+    ],
+    exampleMeal: "paneer bhurji with two rotis and curd",
+    intro:
+      "Protein goals are hard to hit when meals are logged late or estimated roughly. myNutriAI shows protein per meal, protein remaining, and next-meal guidance based on what you already ate.",
+    useCases: [
+      { title: "Muscle gain", body: "Track whether meals are supporting a higher daily protein target." },
+      { title: "Weight loss", body: "Keep protein visible while managing calories." },
+      { title: "Vegetarian meals", body: "Estimate paneer, tofu, dal, curd, beans, eggs, and other protein sources." },
+    ],
+    steps: [
+      { title: "Set a protein target", body: "Add daily protein goals in your nutrition profile." },
+      { title: "Log meals", body: "Scan or type meals and review protein estimates before saving." },
+      { title: "Plan the gap", body: "Use the dashboard to see how much protein remains for the day." },
+    ],
+    faqs: [
+      { question: "Does myNutriAI track protein separately from calories?", answer: "Yes. Protein, carbs, and fat are tracked alongside calories." },
+      { question: "Can vegetarian meals be protein tracked?", answer: "Yes. Include paneer, tofu, dal, beans, curd, eggs, or other protein sources in the meal." },
+      { question: "Can I edit protein estimates?", answer: "Yes. You can edit meal items before saving." },
+    ],
+  },
+  {
+    slug: "weight-loss-calorie-tracker",
+    eyebrow: "Weight loss tracking",
+    title: "Weight Loss Calorie Tracker with AI Meal Logging and Protein Goals",
+    description:
+      "Use myNutriAI to track calories for weight loss, review meals before saving, monitor protein, follow trends, and plan the rest of the day.",
+    primaryKeyword: "weight loss calorie tracker",
+    secondaryKeywords: [
+      "calorie deficit tracker",
+      "weight loss nutrition app",
+      "AI weight loss meal tracker",
+      "protein calorie tracker",
+    ],
+    exampleMeal: "egg white omelette with toast, fruit and coffee",
+    intro:
+      "Weight loss tracking works best when logging is consistent and meals stay editable. myNutriAI helps users estimate real meals quickly, keep protein visible, and watch daily calorie progress without forcing rigid meal plans.",
+    useCases: [
+      { title: "Calorie deficit", body: "Track eaten versus target and plan lighter meals when needed." },
+      { title: "Protein consistency", body: "Avoid cutting calories so far that protein disappears." },
+      { title: "Trend awareness", body: "Use weight entries and dashboard progress to see patterns over time." },
+    ],
+    steps: [
+      { title: "Set your target", body: "Use profile inputs to save daily calorie and macro targets." },
+      { title: "Log each meal", body: "Scan photos or type meals, then correct estimates before saving." },
+      { title: "Adjust the next meal", body: "Use remaining calories and protein gap to choose the next meal." },
+    ],
+    faqs: [
+      { question: "Is myNutriAI a diet plan?", answer: "No. It is a tracking and guidance tool that helps users log real meals and understand daily targets." },
+      { question: "Can I track weight too?", answer: "Yes. myNutriAI includes weight entries and trends." },
+      { question: "Can I use it for maintenance?", answer: "Yes. Targets can support weight loss, maintenance, or gain." },
+    ],
+  },
+  {
+    slug: "restaurant-calorie-tracker",
+    eyebrow: "Restaurant calories",
+    title: "Restaurant Calorie Tracker for Takeout, Fast Casual, and Mixed Plates",
+    description:
+      "Estimate restaurant meal calories and macros with myNutriAI for bowls, salads, sandwiches, biryani, pasta, burgers, sides, and drinks.",
+    primaryKeyword: "restaurant calorie tracker",
+    secondaryKeywords: [
+      "takeout calorie tracker",
+      "fast casual calorie tracker",
+      "restaurant macro tracker",
+      "eating out calorie app",
+    ],
+    exampleMeal: "pasta with chicken, cream sauce, garlic bread and iced tea",
+    intro:
+      "Restaurant meals are difficult to log because portions are larger, sauces are hidden, and sides are easy to miss. myNutriAI lets users describe the whole order and correct the estimate before saving.",
+    useCases: [
+      { title: "Fast casual meals", body: "Estimate burrito bowls, sandwiches, salads, wraps, and pasta bowls." },
+      { title: "Indian restaurants", body: "Track biryani, paneer dishes, roti, dal, rice, raita, and snacks." },
+      { title: "Full orders", body: "Include drinks, sauces, fries, dessert, and sides in one meal log." },
+    ],
+    steps: [
+      { title: "Describe the order", body: "List main dish, sides, sauces, drinks, and portion clues." },
+      { title: "Edit high-impact items", body: "Adjust oil, cheese, sauce, rice, bread, and dessert portions." },
+      { title: "Use daily guidance", body: "See what still fits for the rest of the day." },
+    ],
+    faqs: [
+      { question: "Can I estimate takeout calories?", answer: "Yes. Describe the order and edit the result before saving." },
+      { question: "Should I include sauces and drinks?", answer: "Yes. These can change calories significantly." },
+      { question: "Can it track restaurant macros?", answer: "Yes. myNutriAI estimates protein, carbs, and fat as well as calories." },
+    ],
+  },
+  {
+    slug: "telegram-calorie-tracker",
+    eyebrow: "Telegram logging",
+    title: "Telegram Calorie Tracker for Fast Meal Logging",
+    description:
+      "Use myNutriAI from Telegram to send food text or photos, estimate calories and macros, and log meals without opening the website.",
+    primaryKeyword: "Telegram calorie tracker",
+    secondaryKeywords: [
+      "Telegram meal logger",
+      "Telegram nutrition bot",
+      "AI calorie tracker bot",
+      "food photo Telegram bot",
+    ],
+    exampleMeal: "2 rotis, dal, paneer sabzi and salad",
+    intro:
+      "Some users log more consistently when tracking happens inside the app they already use. myNutriAI supports Telegram meal logging for quick food descriptions, photo estimates, and one-tap meal confirmation.",
+    useCases: [
+      { title: "Quick text logging", body: "Send meals like chicken rice bowl or dal rice directly to the bot." },
+      { title: "Photo estimates", body: "Send a food photo and review calories and macros in Telegram." },
+      { title: "Website sync", body: "Meals logged through Telegram connect back to the NutriAI account and dashboard." },
+    ],
+    steps: [
+      { title: "Start the bot", body: "Open the myNutriAI Telegram bot and send /start." },
+      { title: "Send food", body: "Send a meal photo or short text description." },
+      { title: "Choose meal type", body: "Confirm breakfast, lunch, dinner, or snack from Telegram buttons." },
+    ],
+    faqs: [
+      { question: "Can Telegram users start without the website?", answer: "Yes. Telegram-first users can start from the bot and log meals there." },
+      { question: "Can website users connect Telegram?", answer: "Yes. Website users can connect Telegram from Settings." },
+      { question: "Does Telegram support photos?", answer: "Yes, when backend image upload and AI analysis are configured." },
+    ],
+  },
 ];
 
 export function getSeoPage(slug: string) {

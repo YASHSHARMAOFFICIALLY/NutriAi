@@ -1,7 +1,17 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { seoKeywords, siteDescription, siteName, siteUrl } from "./seo";
+import { JsonLd } from "./JsonLd";
+import {
+  organizationJsonLd,
+  seoKeywords,
+  siteDescription,
+  siteName,
+  siteNavigationJsonLd,
+  siteOgImage,
+  siteUrl,
+  websiteJsonLd,
+} from "./seo";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -48,7 +58,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "myNutriAI - AI Meal Scanner for US and Indian Meals",
     description: siteDescription,
-    images: ["/screenshot.png"],
+    images: [siteOgImage],
   },
   robots: {
     index: true,
@@ -70,6 +80,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <head>
+        <JsonLd data={[websiteJsonLd(), organizationJsonLd(), siteNavigationJsonLd()]} />
+      </head>
       <body>{children}</body>
     </html>
   );
