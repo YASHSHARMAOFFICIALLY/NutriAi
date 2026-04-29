@@ -1,7 +1,7 @@
 import { apiFetch } from "./client";
-import type { MealRecommendation, RecommendationsQuery } from "./types";
+import type { MealRecommendationsResponse, RecommendationsQuery } from "./types";
 
-export function getMealRecommendations(q: RecommendationsQuery = {}): Promise<MealRecommendation[]> {
+export function getMealRecommendations(q: RecommendationsQuery = {}): Promise<MealRecommendationsResponse> {
   const parts: string[] = [];
   if (q.mealType) parts.push(`mealType=${q.mealType}`);
   if (q.limit != null) parts.push(`limit=${q.limit}`);
@@ -10,5 +10,5 @@ export function getMealRecommendations(q: RecommendationsQuery = {}): Promise<Me
   if (q.remainingCarbs != null) parts.push(`remainingCarbs=${q.remainingCarbs}`);
   if (q.remainingFat != null) parts.push(`remainingFat=${q.remainingFat}`);
   const query = parts.length ? `?${parts.join("&")}` : "";
-  return apiFetch<MealRecommendation[]>(`/recommendations/meals${query}`);
+  return apiFetch<MealRecommendationsResponse>(`/recommendations/meals${query}`);
 }

@@ -3,12 +3,14 @@ import { z } from 'zod';
 import {
   getAdminActivity,
   getAdminAiSettings,
+  getAdminUserDetail,
   getAdminOverview,
   getAdminRuntime,
   getAdminUsage,
   listAdminUsers,
   saveAdminAiSettings,
 } from '../services/adminService';
+import { NotFoundError } from '../utils/errors';
 
 export const adminUsersQuerySchema = z.object({
   search: z.string().trim().min(1).max(120).optional(),
@@ -24,6 +26,10 @@ export const adminUsageQuerySchema = z.object({
 
 export const adminActivityQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const adminUserParamsSchema = z.object({
+  id: z.string().uuid(),
 });
 
 export const adminAiSettingsSchema = z.object({
@@ -56,6 +62,13 @@ export const updateAdminAiSettingsHandler: RequestHandler = async (req, res) => 
 export const adminUsersHandler: RequestHandler = async (req, res) => {
   const query = adminUsersQuerySchema.parse(req.query);
   res.json(await listAdminUsers(query));
+};
+
+export const adminUserDetailHandler: RequestHandler = async (req, res) => {
+  const params = adminUserParamsSchema.parse(req.params);
+  const detail = await getAdminUserDetail(params.id);
+  if (!detail) throw new NotFoundError('User not found');
+  res.json(detail);
 };
 
 export const adminUsageHandler: RequestHandler = async (req, res) => {

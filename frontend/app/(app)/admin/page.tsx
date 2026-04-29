@@ -1,405 +1,678 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Pulse,
-  ChartBar,
-  Clock,
-  CurrencyDollar,
-  Database,
-  ForkKnife,
-  Key,
-  MagnifyingGlass,
-  Sparkle,
-  Users,
-  Warning,
-} from "@phosphor-icons/react/dist/ssr";
-import {
-  getAdminActivity,
-  getAdminOverview,
-  getAdminUsage,
-  listAdminUsers,
-} from "@/lib/api/admin";
-import { ApiError } from "@/lib/api/client";
-import type {
-  AdminActivityItem,
-  AdminOverview,
-  AdminUsageResponse,
-  AdminUserRow,
-  AdminUsersResponse,
-  UserRole,
-} from "@/lib/api/types";
-import { EmptyState, ErrorState, LoadingState } from "../_components/AppState";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { AddressBook, Gauge, Key, MagnifyingGlass, Pulse, SealWarning, Sparkle } from "@phosphor-icons/react";
+import { getAdminActivity, getAdminAiSettings, getAdminOverview, getAdminRuntime, getAdminUsage, getAdminUserDetail, listAdminUsers, updateAdminAiSettings } from "@/lib/api/admin";
+import type { AdminActivityItem, AdminAiSettings, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserDetail, AdminUserRow, UserRole } from "@/lib/api/types";
+import { PageHeader, Panel, Stat } from "../_components/ui";
 
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const emptyOverview: AdminOverview = {
+  users: { total: 0, newThisWeek: 0 },
+  meals: { today: 0, thisWeek: 0 },
+  ai: { requestsToday: 0, tokensToday: 0, costTodayUsd: 0, costThisWeekUsd: 0 },
+  api: { activeKeys: 0, failedCallsToday: 0 },
+};
 
-type Tab = "overview" | "users" | "usage" | "activity";
+const emptyUsage: AdminUsageResponse = {
+  summary: { requests: 0, promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0, avgLatencyMs: 0, cacheHitRate: 0 },
+  byProvider: [],
+  byModel: [],
+  byEndpoint: [],
+};
 
-const TABS: Array<{ id: Tab; label: string; icon: typeof ChartBar }> = [
-  { id: "overview", label: "Overview", icon: ChartBar },
-  { id: "users", label: "Users", icon: Users },
-  { id: "usage", label: "Usage", icon: Sparkle },
-  { id: "activity", label: "Activity", icon: Pulse },
-];
+const emptyRuntime: AdminRuntimeResponse = {
+  runtime: {
+    process: { uptimeSec: 0, memoryMb: 0, nodeEnv: "unknown" },
+    http: { totalRequests: 0, total5xx: 0, requestsLastMinute: 0, errorsLastMinute: 0, avgLatencyMsLastMinute: 0 },
+    ai: {
+      callsLastFiveMinutes: 0,
+      freshCallsLastFiveMinutes: 0,
+      cachedCallsLastFiveMinutes: 0,
+      avgLatencyMsLastFiveMinutes: 0,
+      costUsdLastFiveMinutes: 0,
+      tokensLastFiveMinutes: 0,
+      timeouts: 0,
+      queueRejects: 0,
+    },
+    resilience: { rateLimitBypass: 0 },
+  },
+  aiGuard: { active: 0, waiting: 0, maxConcurrent: 20, queueTimeoutMs: 2000, requestTimeoutMs: 25000 },
+  today: { slowAiCalls: 0, cacheHitRate: 0 },
+  slowAiCalls: [],
+};
 
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 4,
-});
+const emptyAiSettings: AdminAiSettings = {
+  aiDailyBudgetUsd: 2,
+  aiChatDailyMessageLimit: 5,
+  aiChatMaxWords: 100,
+  aiChatHistoryWindow: 8,
+  aiChatMaxOutputTokens: 220,
+  aiFoodTextMaxWords: 40,
+  aiImageDailyLimit: 3,
+};
 
-const number = new Intl.NumberFormat("en-US");
-
-function relDate(iso: string | null): string {
-  if (!iso) return "Never";
-  const diff = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(diff / 86_400_000);
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 30) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+function timeAgo(value: string | null) {
+  if (!value) return "Never";
+  const diff = Date.now() - new Date(value).getTime();
+  const minutes = Math.max(1, Math.round(diff / 60000));
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 }
 
-function MetricCard({
-  label,
-  value,
-  sub,
-  icon: Icon,
+function formatDateTime(value: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString();
+}
+
+function Field({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-md bg-[#f8f8f3] p-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5f675f]">{label}</p>
+      <div className="mt-1 break-words text-[13px] font-semibold">{value ?? "-"}</div>
+    </div>
+  );
+}
+
+function DetailList({
+  title,
+  empty,
+  children,
 }: {
-  label: string;
-  value: string;
-  sub: string;
-  icon: typeof ChartBar;
+  title: string;
+  empty: boolean;
+  children: ReactNode;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: EASE }}
-      className="rounded-3xl border border-white/70 bg-white/60 p-5 shadow-[0_10px_40px_rgba(31,59,45,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-sm"
-    >
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-muted">{label}</p>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sage/10 text-sage-600">
-          <Icon size={16} weight="duotone" />
-        </span>
-      </div>
-      <p className="font-display text-[30px] font-bold leading-none text-ink">{value}</p>
-      <p className="mt-2 text-[12px] text-ink-muted">{sub}</p>
-    </motion.div>
+    <section>
+      <h3 className="mb-3 text-[18px] font-semibold">{title}</h3>
+      {empty ? <p className="rounded-md bg-[#f8f8f3] p-3 text-[13px] font-semibold text-[#5f675f]">No records yet.</p> : children}
+    </section>
   );
 }
 
-function RoleBadge({ role }: { role: UserRole }) {
-  return (
-    <span
-      className={[
-        "rounded-full px-2.5 py-1 text-[11px] font-semibold",
-        role === "ADMIN" ? "bg-forest/10 text-forest" : "bg-ink/[0.06] text-ink-muted",
-      ].join(" ")}
-    >
-      {role}
-    </span>
-  );
-}
-
-function ActivityBadge({ type }: { type: AdminActivityItem["type"] }) {
-  const label = type.replace("_", " ");
-  const color =
-    type === "meal"
-      ? "bg-forest/10 text-forest"
-      : type === "analysis"
-        ? "bg-sage/10 text-sage-600"
-        : type === "ai_usage"
-          ? "bg-violet-50 text-violet-700"
-          : "bg-sky-50 text-sky-700";
-
-  return <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${color}`}>{label}</span>;
+function formatFeatureName(value: string) {
+  return value
+    .replace(/^\/v\d+\//, "")
+    .replace(/[._/-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<Tab>("overview");
-  const [overview, setOverview] = useState<AdminOverview | null>(null);
-  const [users, setUsers] = useState<AdminUsersResponse | null>(null);
-  const [usage, setUsage] = useState<AdminUsageResponse | null>(null);
+  const [overview, setOverview] = useState(emptyOverview);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [usage, setUsage] = useState(emptyUsage);
+  const [runtime, setRuntime] = useState(emptyRuntime);
   const [activity, setActivity] = useState<AdminActivityItem[]>([]);
+  const [aiSettings, setAiSettings] = useState<AdminAiSettings>(emptyAiSettings);
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState<UserRole | "">("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [overviewData, usersData, usageData, activityData] = await Promise.all([
-        getAdminOverview(),
-        listAdminUsers({ search, role: role || undefined, limit: 12 }),
-        getAdminUsage(),
-        getAdminActivity(18),
-      ]);
-      setOverview(overviewData);
-      setUsers(usersData);
-      setUsage(usageData);
-      setActivity(activityData.items);
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 403) {
-        setError("Your account does not have admin access.");
-      } else {
-        setError(e instanceof Error ? e.message : "Couldn't load admin data.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [role, search]);
+  const [role, setRole] = useState<"ALL" | "USER" | "ADMIN">("ALL");
+  const [usageFrom, setUsageFrom] = useState("");
+  const [usageTo, setUsageTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
+  const [savingAiSettings, setSavingAiSettings] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUserDetail | null>(null);
+  const [userDetailsById, setUserDetailsById] = useState<Record<string, AdminUserDetail>>({});
+  const [tableDetailsLoading, setTableDetailsLoading] = useState(false);
+  const [userDetailStatus, setUserDetailStatus] = useState<"idle" | "loading" | "error">("idle");
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void load();
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [load]);
+    let cancelled = false;
+    Promise.all([
+      getAdminOverview(),
+      listAdminUsers({ search, role: role === "ALL" ? undefined : role as UserRole, page, limit: 10 }),
+      getAdminUsage({ from: usageFrom || undefined, to: usageTo || undefined }),
+      getAdminActivity(10),
+      getAdminRuntime(),
+      getAdminAiSettings(),
+    ])
+      .then(async ([apiOverview, apiUsers, apiUsage, apiActivity, apiRuntime, apiAiSettings]) => {
+        if (cancelled) return;
+        setOverview(apiOverview);
+        setUsers(apiUsers.items);
+        setTotalPages(apiUsers.totalPages);
+        setUsage(apiUsage);
+        setActivity(apiActivity.items);
+        setRuntime(apiRuntime);
+        setAiSettings(apiAiSettings);
+        setSource("live");
+        if (!apiUsers.items.length) {
+          setSelectedUser(null);
+          setUserDetailsById({});
+          setUserDetailStatus("idle");
+          return;
+        }
+        setTableDetailsLoading(true);
+        const detailResults = await Promise.allSettled(apiUsers.items.map((user) => getAdminUserDetail(user.id)));
+        if (cancelled) return;
+        const details = detailResults.reduce<Record<string, AdminUserDetail>>((acc, result) => {
+          if (result.status === "fulfilled") acc[result.value.id] = result.value;
+          return acc;
+        }, {});
+        setUserDetailsById(details);
+        setSelectedUser(details[apiUsers.items[0].id] ?? null);
+        setUserDetailStatus(Object.keys(details).length ? "idle" : "error");
+        setTableDetailsLoading(false);
+      })
+      .catch(() => {
+        setSource("error");
+        setTableDetailsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [page, role, search, usageFrom, usageTo]);
 
-  const expensiveModels = useMemo(() => usage?.byModel.slice(0, 5) ?? [], [usage]);
+  const filteredUsers = useMemo(() => users, [users]);
 
-  return (
-    <div className="min-h-screen p-8 lg:p-12">
-      <header className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-[13px] text-ink-muted">Internal operations</p>
-          <h1 className="mt-1 font-display text-[32px] font-bold tracking-[-0.02em] text-ink">
-            Admin
-          </h1>
-          <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-muted">
-            Monitor users, nutrition activity, AI spend, and API usage without touching the database.
-          </p>
-        </div>
-        <div className="flex w-full rounded-full border border-ink/[0.08] bg-white/60 p-1 backdrop-blur-sm lg:w-auto">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={[
-                "flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-all lg:flex-none",
-                tab === id ? "bg-forest text-cream shadow-[0_2px_8px_rgba(31,59,45,0.2)]" : "text-ink-muted hover:text-ink",
-              ].join(" ")}
-            >
-              <Icon size={14} weight={tab === id ? "fill" : "regular"} />
-              {label}
-            </button>
-          ))}
-        </div>
-      </header>
+  function updateAiField<K extends keyof AdminAiSettings>(key: K, value: string) {
+    const numeric = Number(value);
+    setAiSettings((current) => ({
+      ...current,
+      [key]: Number.isFinite(numeric) ? numeric : current[key],
+    }));
+  }
 
-      {loading && !overview ? <LoadingState /> : null}
-      {error ? (
-        <ErrorState
-          title="Admin data unavailable"
-          message={error}
-          onRetry={load}
-        />
-      ) : null}
+  async function handleSaveAiSettings() {
+    setSavingAiSettings(true);
+    try {
+      const next = await updateAdminAiSettings(aiSettings);
+      setAiSettings(next);
+      setSource("live");
+    } catch {
+      setSource("error");
+    } finally {
+      setSavingAiSettings(false);
+    }
+  }
 
-      {!loading && !error && overview && usage && users ? (
-        <div className="space-y-8">
-          {tab === "overview" ? (
-            <>
-              <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <MetricCard label="Users" value={number.format(overview.users.total)} sub={`+${overview.users.newThisWeek} this week`} icon={Users} />
-                <MetricCard label="Meals today" value={number.format(overview.meals.today)} sub={`${number.format(overview.meals.thisWeek)} meals this week`} icon={ForkKnife} />
-                <MetricCard label="AI spend today" value={currency.format(overview.ai.costTodayUsd)} sub={`${number.format(overview.ai.requestsToday)} requests today`} icon={CurrencyDollar} />
-                <MetricCard label="API health" value={number.format(overview.api.activeKeys)} sub={`${overview.api.failedCallsToday} failed calls today`} icon={Key} />
-              </section>
-
-              <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-3xl border border-white/70 bg-white/60 p-6 backdrop-blur-sm">
-                  <div className="mb-5 flex items-center justify-between">
-                    <h2 className="font-display text-[20px] font-bold text-ink">AI Cost By Model</h2>
-                    <Sparkle size={18} weight="duotone" className="text-sage-600" />
-                  </div>
-                  {expensiveModels.length === 0 ? (
-                    <EmptyState title="No AI usage yet" message="Model cost will appear once users analyze meals or chat." />
-                  ) : (
-                    <div className="space-y-3">
-                      {expensiveModels.map((model) => {
-                        const pct = usage.summary.costUsd > 0 ? Math.min((model.costUsd / usage.summary.costUsd) * 100, 100) : 0;
-                        return (
-                          <div key={model.model}>
-                            <div className="mb-1.5 flex items-center justify-between text-[13px]">
-                              <span className="font-medium text-ink">{model.model}</span>
-                              <span className="text-ink-muted">{currency.format(model.costUsd)}</span>
-                            </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-ink/[0.06]">
-                              <div className="h-full rounded-full bg-sage" style={{ width: `${pct}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <ActivityPanel items={activity.slice(0, 6)} />
-              </section>
-            </>
-          ) : null}
-
-          {tab === "users" ? (
-            <section className="rounded-3xl border border-white/70 bg-white/60 p-6 backdrop-blur-sm">
-              <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <h2 className="font-display text-[20px] font-bold text-ink">Users</h2>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <label className="flex items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-4 py-2 text-[13px] text-ink-muted">
-                    <MagnifyingGlass size={14} />
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search email or name"
-                      className="w-44 bg-transparent text-ink outline-none placeholder:text-ink-muted/60"
-                    />
-                  </label>
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as UserRole | "")}
-                    className="rounded-full border border-ink/10 bg-white/70 px-4 py-2 text-[13px] font-medium text-ink outline-none"
-                  >
-                    <option value="">All roles</option>
-                    <option value="USER">Users</option>
-                    <option value="ADMIN">Admins</option>
-                  </select>
-                </div>
-              </div>
-              <UsersTable users={users.items} />
-            </section>
-          ) : null}
-
-          {tab === "usage" ? (
-            <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                <MetricCard label="AI requests" value={number.format(usage.summary.requests)} sub={`${usage.summary.cacheHitRate}% cache hit rate`} icon={Sparkle} />
-                <MetricCard label="AI cost" value={currency.format(usage.summary.costUsd)} sub={`${number.format(usage.summary.totalTokens)} total tokens`} icon={CurrencyDollar} />
-                <MetricCard label="Latency" value={`${usage.summary.avgLatencyMs}ms`} sub="average provider latency" icon={Clock} />
-              </div>
-              <div className="rounded-3xl border border-white/70 bg-white/60 p-6 backdrop-blur-sm">
-                <h2 className="mb-5 font-display text-[20px] font-bold text-ink">Usage Breakdown</h2>
-                <Breakdown title="By Provider" rows={usage.byProvider.map((r) => ({ label: r.provider, value: r.requests, meta: currency.format(r.costUsd) }))} />
-                <Breakdown title="By Endpoint" rows={usage.byEndpoint.map((r) => ({ label: r.endpoint, value: r.requests, meta: currency.format(r.costUsd) }))} />
-              </div>
-            </section>
-          ) : null}
-
-          {tab === "activity" ? <ActivityPanel items={activity} large /> : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function UsersTable({ users }: { users: AdminUserRow[] }) {
-  if (users.length === 0) {
-    return <EmptyState title="No users found" message="Try a different search or role filter." />;
+  async function handleOpenUser(id: string) {
+    setUserDetailStatus("loading");
+    try {
+      const detail = await getAdminUserDetail(id);
+      setSelectedUser(detail);
+      setUserDetailsById((current) => ({ ...current, [detail.id]: detail }));
+      setUserDetailStatus("idle");
+    } catch {
+      setUserDetailStatus("error");
+    }
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-[980px] w-full border-separate border-spacing-y-2 text-left">
-        <thead>
-          <tr className="text-[11px] uppercase tracking-[0.14em] text-ink-muted">
-            <th className="px-4 py-2 font-semibold">User</th>
-            <th className="px-4 py-2 font-semibold">Role</th>
-            <th className="px-4 py-2 font-semibold">Meals</th>
-            <th className="px-4 py-2 font-semibold">AI Cost</th>
-            <th className="px-4 py-2 font-semibold">API Keys</th>
-            <th className="px-4 py-2 font-semibold">Last Meal</th>
-            <th className="px-4 py-2 font-semibold">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id} className="rounded-2xl bg-white/55 text-[13px] text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)_inset]">
-              <td className="rounded-l-2xl px-4 py-3">
-                <p className="font-semibold">{user.name ?? "Unnamed user"}</p>
-                <p className="mt-0.5 text-[12px] text-ink-muted">{user.email}</p>
-              </td>
-              <td className="px-4 py-3"><RoleBadge role={user.role} /></td>
-              <td className="px-4 py-3">{number.format(user.counts.meals)}</td>
-              <td className="px-4 py-3">{currency.format(user.ai.costUsd)}</td>
-              <td className="px-4 py-3">{number.format(user.counts.apiKeys)}</td>
-              <td className="px-4 py-3">{relDate(user.lastMealAt)}</td>
-              <td className="rounded-r-2xl px-4 py-3">
-                <span className={user.emailVerified ? "text-forest" : "text-amber-700"}>
-                  {user.emailVerified ? "Verified" : "Unverified"}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function Breakdown({ title, rows }: { title: string; rows: Array<{ label: string; value: number; meta: string }> }) {
-  const max = Math.max(1, ...rows.map((r) => r.value));
-
-  return (
-    <div className="mb-7 last:mb-0">
-      <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-ink-muted">{title}</h3>
-      {rows.length === 0 ? (
-        <p className="text-[13px] text-ink-muted">No data yet.</p>
-      ) : (
-        <div className="space-y-3">
-          {rows.map((row) => (
-            <div key={row.label}>
-              <div className="mb-1 flex items-center justify-between text-[13px]">
-                <span className="font-medium text-ink">{row.label}</span>
-                <span className="text-ink-muted">{number.format(row.value)} · {row.meta}</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-ink/[0.06]">
-                <div className="h-full rounded-full bg-forest" style={{ width: `${(row.value / max) * 100}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ActivityPanel({ items, large = false }: { items: AdminActivityItem[]; large?: boolean }) {
-  return (
-    <div className="rounded-3xl border border-white/70 bg-white/60 p-6 backdrop-blur-sm">
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="font-display text-[20px] font-bold text-ink">Recent Activity</h2>
-        <Database size={18} weight="duotone" className="text-sage-600" />
-      </div>
-      {items.length === 0 ? (
-        <EmptyState title="No activity yet" message="Meals, analyses, API calls, and AI usage will appear here." />
-      ) : (
-        <div className={large ? "grid grid-cols-1 gap-3 xl:grid-cols-2" : "space-y-3"}>
-          {items.map((item) => (
-            <div key={item.id} className="rounded-2xl border border-white/60 bg-white/50 px-4 py-3">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <ActivityBadge type={item.type} />
-                <span className="text-[11px] text-ink-muted">{relDate(item.createdAt)}</span>
-              </div>
-              <p className="text-[14px] font-semibold text-ink">{item.title}</p>
-              <p className="mt-0.5 text-[12px] text-ink-muted">{item.detail}</p>
-              <p className="mt-2 text-[11px] text-ink-muted">
-                {item.user ? item.user.email : "Anonymous/system"}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-      {!large && items.length > 0 ? (
-        <button type="button" className="mt-4 flex items-center gap-2 text-[12px] font-semibold text-sage-600">
-          <Warning size={13} weight="fill" />
-          Review unusual spikes in usage first
-        </button>
+    <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+      <PageHeader eyebrow={`Admin · ${source}`} title="Operations, users, usage" />
+      {source === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load admin data. Sign in with an admin account and try again.</p>
+        </Panel>
       ) : null}
+
+      <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <Stat label="Users" value={`${overview.users.total}`} sub={`+${overview.users.newThisWeek} this week`} />
+        <Stat label="Meals today" value={`${overview.meals.today}`} sub={`${overview.meals.thisWeek} this week`} />
+        <Stat label="Usage today" value={`$${overview.ai.costTodayUsd.toFixed(2)}`} sub={`${overview.ai.requestsToday} requests`} />
+        <Stat label="API keys" value={`${overview.api.activeKeys}`} sub={`${overview.api.failedCallsToday} failed calls today`} />
+      </section>
+
+      <section className="mb-5 grid gap-5 xl:grid-cols-[1fr_380px]">
+        <Panel className="overflow-hidden">
+          <div className="flex flex-col gap-4 border-b border-black/10 p-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <AddressBook size={22} className="text-[#173c2b]" />
+              <h2 className="text-[22px] font-semibold">User table</h2>
+            </div>
+            <label className="flex items-center gap-2 rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[13px]">
+              <MagnifyingGlass size={15} className="text-[#5f675f]" />
+              <input className="bg-transparent outline-none" placeholder="Search user" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} />
+            </label>
+            <div className="flex rounded-md border border-black/10 bg-[#f8f8f3] p-1">
+              {(["ALL", "USER", "ADMIN"] as const).map((item) => (
+                <button key={item} onClick={() => { setRole(item); setPage(1); }} className={`rounded px-3 py-1.5 text-[12px] font-bold ${role === item ? "bg-[#173c2b] text-white" : "text-[#5f675f]"}`}>{item}</button>
+              ))}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1320px] text-left text-[13px]">
+              <thead className="bg-[#eef5f2] text-[#5f675f]">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">Email</th>
+                  <th className="px-5 py-3 font-semibold">Role</th>
+                  <th className="px-5 py-3 font-semibold">Verified</th>
+                  <th className="px-5 py-3 font-semibold">Location</th>
+                  <th className="px-5 py-3 font-semibold">IP</th>
+                  <th className="px-5 py-3 font-semibold">Device</th>
+                  <th className="px-5 py-3 font-semibold">Last session</th>
+                  <th className="px-5 py-3 text-right font-semibold">Sessions</th>
+                  <th className="px-5 py-3 text-right font-semibold">Meals</th>
+                  <th className="px-5 py-3 text-right font-semibold">API keys</th>
+                  <th className="px-5 py-3 text-right font-semibold">Weight</th>
+                  <th className="px-5 py-3 text-right font-semibold">Challenges</th>
+                  <th className="px-5 py-3 font-semibold">Last meal</th>
+                  <th className="px-5 py-3 text-right font-semibold">Usage</th>
+                  <th className="px-5 py-3 text-right font-semibold">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => {
+                  const detail = userDetailsById[user.id];
+                  const latestSession = detail?.sessions[0];
+                  const device = [latestSession?.deviceModel, latestSession?.os, latestSession?.browser].filter(Boolean).join(" · ");
+                  return (
+                    <tr key={user.id} className={`border-t border-black/8 ${selectedUser?.id === user.id ? "bg-[#eef5f2]" : ""}`}>
+                      <td className="px-5 py-4 font-semibold">{user.email}</td>
+                      <td className="px-5 py-4">{user.role}</td>
+                      <td className="px-5 py-4">{user.emailVerified ? "Yes" : "No"}</td>
+                      <td className="max-w-[180px] px-5 py-4">
+                        <span className="line-clamp-2">{latestSession?.location || (tableDetailsLoading ? "Loading..." : "-")}</span>
+                      </td>
+                      <td className="px-5 py-4 font-mono text-[12px]">{latestSession?.ipAddress || "-"}</td>
+                      <td className="max-w-[210px] px-5 py-4">
+                        <span className="line-clamp-2">{device || "-"}</span>
+                      </td>
+                      <td className="px-5 py-4">{latestSession ? timeAgo(latestSession.lastSeenAt) : "-"}</td>
+                      <td className="px-5 py-4 text-right">{detail?._count.sessions ?? "-"}</td>
+                      <td className="px-5 py-4 text-right">{user.counts.meals}</td>
+                      <td className="px-5 py-4 text-right">{user.counts.apiKeys}</td>
+                      <td className="px-5 py-4 text-right">{user.counts.weightEntries}</td>
+                      <td className="px-5 py-4 text-right">{user.counts.challenges}</td>
+                      <td className="px-5 py-4">{timeAgo(user.lastMealAt)}</td>
+                      <td className="px-5 py-4 text-right">${user.ai.costUsd.toFixed(3)}</td>
+                      <td className="px-5 py-4 text-right">
+                        <button onClick={() => handleOpenUser(user.id)} className="rounded-md bg-[#173c2b] px-3 py-2 text-[11px] font-bold text-white">
+                          Detail
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {!filteredUsers.length ? <div className="p-5 text-[13px] font-semibold text-[#5f675f]">No users match the current search and role filter.</div> : null}
+          <div className="flex items-center justify-between border-t border-black/10 p-4">
+            <button onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1} className="rounded-md border border-black/10 px-3 py-2 text-[12px] font-bold disabled:opacity-50">Previous</button>
+            <span className="text-[12px] font-bold text-[#5f675f]">Page {page} of {totalPages}</span>
+            <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages} className="rounded-md border border-black/10 px-3 py-2 text-[12px] font-bold disabled:opacity-50">Next</button>
+          </div>
+        </Panel>
+
+        <div className="space-y-5">
+          <Panel className="p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <SealWarning size={22} className="text-[#b7791f]" />
+              <h2 className="text-[20px] font-semibold">Watchlist</h2>
+            </div>
+            <div className="space-y-3">
+              {[
+                ["API failures", `${overview.api.failedCallsToday} failed public calls today`],
+                ["Unverified users", `${users.filter((user) => !user.emailVerified).length} accounts need email verification`],
+                ["Usage", `$${overview.ai.costThisWeekUsd.toFixed(2)} weekly total`],
+              ].map(([title, sub]) => (
+                <div key={title} className="rounded-md bg-[#f8f8f3] p-3">
+                  <p className="text-[13px] font-semibold">{title}</p>
+                  <p className="mt-1 text-[12px] text-[#5f675f]">{sub}</p>
+                </div>
+              ))}
+            </div>
+          </Panel>
+          <Panel className="p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <Pulse size={22} className="text-[#0f8b8d]" />
+              <h2 className="text-[20px] font-semibold">Activity</h2>
+            </div>
+            <div className="space-y-3">
+              {activity.length ? activity.map((item) => (
+                <div key={item.id} className="rounded-md border border-black/8 bg-[#f8f8f3] p-3">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-[#0f8b8d]">{item.type}</p>
+                  <p className="mt-1 text-[13px] font-semibold">{item.detail || item.title}</p>
+                  <p className="mt-1 text-[11px] text-[#5f675f]">{timeAgo(item.createdAt)}</p>
+                </div>
+              )) : <p className="text-[13px] font-semibold text-[#5f675f]">No recent activity.</p>}
+            </div>
+          </Panel>
+        </div>
+      </section>
+
+      {userDetailStatus === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load selected user details.</p>
+        </Panel>
+      ) : null}
+
+      {selectedUser ? (
+        <Panel className="mb-5 overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-black/10 bg-[#eef5f2] p-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#0f8b8d]">Full user record</p>
+              <h2 className="mt-1 text-[28px] font-semibold">{selectedUser.email}</h2>
+              <p className="mt-1 text-[13px] text-[#5f675f]">{selectedUser.id}</p>
+            </div>
+            <button onClick={() => setSelectedUser(null)} className="rounded-md border border-black/10 bg-white px-3 py-2 text-[12px] font-bold">Close</button>
+          </div>
+
+          <div className="grid gap-5 p-5 xl:grid-cols-[1fr_420px]">
+            <div className="space-y-5">
+              <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Field label="Sessions" value={selectedUser._count.sessions} />
+                <Field label="Meals" value={selectedUser._count.meals} />
+                <Field label="Weight logs" value={selectedUser._count.weightEntries} />
+                <Field label="Developer keys" value={selectedUser._count.apiKeys} />
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-[18px] font-semibold">Identity and permission</h3>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Field label="Name" value={selectedUser.name || "-"} />
+                  <Field label="Role" value={selectedUser.role} />
+                  <Field label="Verified" value={selectedUser.emailVerified ? "Yes" : "No"} />
+                  <Field label="Verified at" value={formatDateTime(selectedUser.emailVerifiedAt)} />
+                  <Field label="Google ID" value={selectedUser.googleId || "-"} />
+                  <Field label="Avatar" value={selectedUser.avatarUrl ? "Available" : "-"} />
+                  <Field label="Created" value={formatDateTime(selectedUser.createdAt)} />
+                  <Field label="Updated" value={formatDateTime(selectedUser.updatedAt)} />
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-[18px] font-semibold">Location, device, sessions</h3>
+                <div className="space-y-3">
+                  {selectedUser.sessions.map((session) => (
+                    <div key={session.id} className="rounded-md border border-black/8 bg-white p-4">
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <Field label="Location" value={session.location || "Not provided by edge headers"} />
+                        <Field label="IP address" value={session.ipAddress || "-"} />
+                        <Field label="Phone/model" value={session.deviceModel || "Unknown"} />
+                        <Field label="Device type" value={session.deviceType || "-"} />
+                        <Field label="OS" value={session.os || "-"} />
+                        <Field label="Browser" value={session.browser || "-"} />
+                        <Field label="First seen" value={formatDateTime(session.createdAt)} />
+                        <Field label="Last seen" value={formatDateTime(session.lastSeenAt)} />
+                        <Field label="Access expires" value={formatDateTime(session.refreshToken.expiresAt)} />
+                        <Field label="Session" value={session.revokedAt ? "Revoked" : "Active"} />
+                      </div>
+                      <details className="mt-3">
+                        <summary className="cursor-pointer text-[12px] font-bold text-[#0f8b8d]">User agent</summary>
+                        <p className="mt-2 break-all rounded-md bg-[#f8f8f3] p-3 text-[11px] text-[#5f675f]">{session.userAgent || "-"}</p>
+                      </details>
+                    </div>
+                  ))}
+                  {!selectedUser.sessions.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No tracked sessions yet. New logins/refreshes will populate this.</p> : null}
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-[18px] font-semibold">Nutrition profile</h3>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <Field label="Sex" value={selectedUser.profile?.sex || "-"} />
+                  <Field label="Birth year" value={selectedUser.profile?.birthYear || "-"} />
+                  <Field label="Height" value={selectedUser.profile?.heightCm ? `${selectedUser.profile.heightCm} cm` : "-"} />
+                  <Field label="Weight" value={selectedUser.profile?.weightKg ? `${selectedUser.profile.weightKg} kg` : "-"} />
+                  <Field label="Target weight" value={selectedUser.profile?.targetWeightKg ? `${selectedUser.profile.targetWeightKg} kg` : "-"} />
+                  <Field label="Goal" value={selectedUser.profile?.goal || "-"} />
+                  <Field label="Activity" value={selectedUser.profile?.activityLevel || "-"} />
+                  <Field label="Timezone" value={selectedUser.profile?.timezone || "-"} />
+                  <Field label="Budget" value={selectedUser.profile?.dailyBudgetUsd ?? "-"} />
+                  <Field label="Cal target" value={selectedUser.profile?.dailyCalorieTarget ?? "-"} />
+                  <Field label="Protein" value={selectedUser.profile?.proteinTargetG ?? "-"} />
+                  <Field label="Carbs" value={selectedUser.profile?.carbsTargetG ?? "-"} />
+                  <Field label="Fat" value={selectedUser.profile?.fatTargetG ?? "-"} />
+                  <Field label="Diet prefs" value={selectedUser.profile?.dietaryPrefs.length ? selectedUser.profile.dietaryPrefs.join(", ") : "-"} />
+                  <Field label="Allergies" value={selectedUser.profile?.allergies.length ? selectedUser.profile.allergies.join(", ") : "-"} />
+                  <Field label="Streak risk alert" value={selectedUser.profile?.notifyStreakRisk ? "On" : "Off"} />
+                  <Field label="Weekly digest" value={selectedUser.profile?.notifyWeeklyDigest ? "On" : "Off"} />
+                </div>
+              </section>
+
+              <DetailList title="Recent meals" empty={!selectedUser.meals.length}>
+                <div className="space-y-3">
+                  {selectedUser.meals.map((meal) => (
+                    <div key={meal.id} className="rounded-md border border-black/8 bg-white p-4">
+                      <div className="grid gap-3 md:grid-cols-4">
+                        <Field label="Meal" value={meal.mealType} />
+                        <Field label="Logged" value={formatDateTime(meal.loggedAt)} />
+                        <Field label="Calories" value={Math.round(meal.totalCalories)} />
+                        <Field label="Macros" value={`${Math.round(meal.totalProtein)}P · ${Math.round(meal.totalCarbs)}C · ${Math.round(meal.totalFat)}F`} />
+                      </div>
+                      <p className="mt-3 text-[12px] leading-5 text-[#5f675f]">{meal.items.map((item) => item.name).join(", ") || "No items recorded."}</p>
+                    </div>
+                  ))}
+                </div>
+              </DetailList>
+
+              <DetailList title="Weight history" empty={!selectedUser.weightEntries.length}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {selectedUser.weightEntries.map((entry) => (
+                    <Field key={entry.id} label={`${entry.weightKg} kg`} value={`${formatDateTime(entry.recordedAt)}${entry.note ? ` · ${entry.note}` : ""}`} />
+                  ))}
+                </div>
+              </DetailList>
+
+              <DetailList title="Food scan history" empty={!selectedUser.foodQueries.length}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {selectedUser.foodQueries.map((query) => (
+                    <Field
+                      key={query.id}
+                      label={`${query.inputType} · ${formatDateTime(query.createdAt)}`}
+                      value={`${Math.round(query.totals.calories)} cal · ${query.items.map((item) => item.name).join(", ") || query.inputText || "No item names"}`}
+                    />
+                  ))}
+                </div>
+              </DetailList>
+            </div>
+
+            <aside className="space-y-5">
+              <Panel className="p-5">
+                <h3 className="mb-3 text-[18px] font-semibold">Usage summary</h3>
+                <div className="grid gap-3">
+                  <Field label="Requests" value={selectedUser.aiSummary.requests} />
+                  <Field label="Cost" value={`$${selectedUser.aiSummary.costUsd.toFixed(4)}`} />
+                </div>
+              </Panel>
+              <Panel className="p-5">
+                <h3 className="mb-3 text-[18px] font-semibold">Account data</h3>
+                <div className="grid gap-3">
+                  <Field label="Saved chats" value={selectedUser._count.conversations} />
+                  <Field label="Uploaded files" value={selectedUser._count.assets} />
+                  <Field label="Challenges" value={selectedUser._count.userChallenges} />
+                  <Field label="Analysis records" value={selectedUser._count.foodQueries} />
+                </div>
+              </Panel>
+              <Panel className="p-5">
+                <h3 className="mb-3 text-[18px] font-semibold">Integrations</h3>
+                <div className="grid gap-3">
+                  <Field label="Telegram" value={selectedUser.telegramAccount ? "Linked" : "Not linked"} />
+                  <Field label="Families owned" value={selectedUser.ownedFamilies.length} />
+                  <Field label="Family memberships" value={selectedUser.familyMemberships.length} />
+                  <Field label="Invites sent" value={selectedUser.familyInvitesSent.length} />
+                </div>
+              </Panel>
+              <Panel className="p-5">
+                <DetailList title="Developer keys" empty={!selectedUser.apiKeys.length}>
+                  <div className="space-y-3">
+                    {selectedUser.apiKeys.map((key) => (
+                      <div key={key.id} className="rounded-md bg-[#f8f8f3] p-3">
+                        <p className="text-[13px] font-semibold">{key.name}</p>
+                        <p className="mt-1 text-[12px] text-[#5f675f]">{key.prefix} · {key.revokedAt ? "Revoked" : "Active"} · {key._count.usage} calls</p>
+                        <p className="mt-1 text-[11px] text-[#5f675f]">Last used {timeAgo(key.lastUsedAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </DetailList>
+              </Panel>
+              <Panel className="p-5">
+                <DetailList title="Recent chats" empty={!selectedUser.conversations.length}>
+                  <div className="space-y-3">
+                    {selectedUser.conversations.map((conversation) => (
+                      <div key={conversation.id} className="rounded-md bg-[#f8f8f3] p-3">
+                        <p className="text-[13px] font-semibold">{conversation.title || "Untitled chat"}</p>
+                        <p className="mt-1 text-[12px] text-[#5f675f]">{conversation.messages.length} messages · updated {timeAgo(conversation.updatedAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </DetailList>
+              </Panel>
+              <Panel className="p-5">
+                <DetailList title="Files" empty={!selectedUser.assets.length}>
+                  <div className="space-y-3">
+                    {selectedUser.assets.map((asset) => (
+                      <div key={asset.id} className="rounded-md bg-[#f8f8f3] p-3">
+                        <p className="text-[13px] font-semibold">{asset.contentType}</p>
+                        <p className="mt-1 text-[12px] text-[#5f675f]">{asset.status} · {asset.size ? `${Math.round(asset.size / 1024)} KB` : "size unknown"}</p>
+                        <p className="mt-1 text-[11px] text-[#5f675f]">Uploaded {formatDateTime(asset.uploadedAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </DetailList>
+              </Panel>
+              <Panel className="p-5">
+                <DetailList title="Challenges" empty={!selectedUser.userChallenges.length}>
+                  <div className="space-y-3">
+                    {selectedUser.userChallenges.map((challenge) => (
+                      <div key={challenge.id} className="rounded-md bg-[#f8f8f3] p-3">
+                        <p className="text-[13px] font-semibold">{challenge.title}</p>
+                        <p className="mt-1 text-[12px] text-[#5f675f]">{challenge.status} · {challenge.daysCheckedIn}/{challenge.durationDays} days</p>
+                      </div>
+                    ))}
+                  </div>
+                </DetailList>
+              </Panel>
+            </aside>
+          </div>
+
+        </Panel>
+      ) : null}
+
+      <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
+        <Panel className="overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-black/10 p-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <Sparkle size={22} className="text-[#0f8b8d]" />
+              <h2 className="text-[22px] font-semibold">Feature usage</h2>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <input type="date" value={usageFrom} onChange={(event) => setUsageFrom(event.target.value)} className="rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[12px] font-bold outline-none" />
+              <input type="date" value={usageTo} onChange={(event) => setUsageTo(event.target.value)} className="rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[12px] font-bold outline-none" />
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px] text-left text-[13px]">
+              <thead className="bg-[#eef5f2] text-[#5f675f]">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">Feature</th>
+                  <th className="px-5 py-3 text-right font-semibold">Requests</th>
+                  <th className="px-5 py-3 text-right font-semibold">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usage.byEndpoint.map((row) => (
+                  <tr key={row.endpoint} className="border-t border-black/8">
+                    <td className="px-5 py-4 font-semibold">{formatFeatureName(row.endpoint)}</td>
+                    <td className="px-5 py-4 text-right">{row.requests}</td>
+                    <td className="px-5 py-4 text-right">${row.costUsd.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+
+        <div className="space-y-5">
+        <Panel className="p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <Key size={22} className="text-[#173c2b]" />
+            <h2 className="text-[20px] font-semibold">Platform controls</h2>
+          </div>
+          <div className="space-y-3">
+            {[
+              ["Active keys", String(overview.api.activeKeys)],
+              ["Rate limit", "enabled"],
+              ["Public tool", "calorie lookup"],
+              ["Repeat savings", `${usage.summary.cacheHitRate}%`],
+              ["Average response", usage.summary.avgLatencyMs > 0 ? "tracked" : "not tracked"],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between rounded-md bg-[#f8f8f3] p-3">
+                <span className="text-[13px] font-semibold">{label}</span>
+                <span className="text-[13px] text-[#5f675f]">{value}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-5 rounded-md bg-[#eef5f2] p-3 text-[13px] leading-6 text-[#5f675f]">Admin views show users, activity, usage, and failed calls.</p>
+        </Panel>
+        <Panel className="p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <Sparkle size={22} className="text-[#173c2b]" />
+            <h2 className="text-[20px] font-semibold">Smart scan controls</h2>
+          </div>
+          <div className="grid gap-3">
+            {[
+              ["Daily budget USD", "aiDailyBudgetUsd"],
+              ["Chat messages/day", "aiChatDailyMessageLimit"],
+              ["Chat max words", "aiChatMaxWords"],
+              ["Chat history window", "aiChatHistoryWindow"],
+              ["Chat response size", "aiChatMaxOutputTokens"],
+              ["Food text max words", "aiFoodTextMaxWords"],
+              ["Image analyses/day", "aiImageDailyLimit"],
+            ].map(([label, key]) => (
+              <label key={key} className="flex items-center justify-between gap-3 rounded-md bg-[#f8f8f3] p-3">
+                <span className="text-[13px] font-semibold">{label}</span>
+                <input
+                  type="number"
+                  value={String(aiSettings[key as keyof AdminAiSettings])}
+                  onChange={(event) => updateAiField(key as keyof AdminAiSettings, event.target.value)}
+                  className="w-28 rounded-md border border-black/10 bg-white px-3 py-2 text-right text-[13px] font-semibold outline-none"
+                />
+              </label>
+            ))}
+          </div>
+          <button
+            onClick={handleSaveAiSettings}
+            disabled={savingAiSettings}
+            className="mt-4 rounded-md bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white disabled:opacity-50"
+          >
+            {savingAiSettings ? "Saving..." : "Save scan settings"}
+          </button>
+        </Panel>
+        <Panel className="p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <Gauge size={22} className="text-[#173c2b]" />
+            <h2 className="text-[20px] font-semibold">Runtime load</h2>
+          </div>
+          <div className="space-y-3">
+            {[
+              ["Requests/min", `${runtime.runtime.http.requestsLastMinute}`],
+              ["Response status", runtime.runtime.http.avgLatencyMsLastMinute > 0 ? "tracked" : "quiet"],
+              ["Active work", `${runtime.aiGuard.active}/${runtime.aiGuard.maxConcurrent}`],
+              ["Waiting work", `${runtime.aiGuard.waiting}`],
+              ["Timeouts", `${runtime.runtime.ai.timeouts}`],
+              ["Rate limit bypass", `${runtime.runtime.resilience.rateLimitBypass}`],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between rounded-md bg-[#f8f8f3] p-3">
+                <span className="text-[13px] font-semibold">{label}</span>
+                <span className="text-[13px] text-[#5f675f]">{value}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-[12px] leading-5 text-[#5f675f]">Operational limits are active.</p>
+        </Panel>
+        <Panel className="p-5">
+          <h2 className="mb-4 text-[20px] font-semibold">Usage mix</h2>
+          <div className="space-y-2">
+            {usage.byEndpoint.length ? usage.byEndpoint.map((row) => (
+              <div key={row.endpoint} className="rounded-md bg-[#f8f8f3] p-3">
+                <div className="flex justify-between text-[13px]">
+                  <span className="font-semibold">{formatFeatureName(row.endpoint)}</span>
+                  <span className="text-[#5f675f]">${row.costUsd.toFixed(2)}</span>
+                </div>
+                <p className="mt-1 text-[11px] text-[#5f675f]">{row.requests} requests</p>
+              </div>
+            )) : <p className="text-[13px] font-semibold text-[#5f675f]">No usage in this range.</p>}
+          </div>
+        </Panel>
+        </div>
+      </section>
     </div>
   );
 }

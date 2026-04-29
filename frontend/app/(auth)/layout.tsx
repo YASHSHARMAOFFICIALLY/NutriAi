@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign in — NutriAI",
-  description: "Sign in to NutriAI and start knowing exactly what you eat.",
+  title: "Sign in - NutriAI",
+  description: "Access your NutriAI nutrition workspace.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return children;
 }

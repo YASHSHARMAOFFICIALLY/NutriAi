@@ -1,84 +1,28 @@
-"use client";
-
 import { motion } from "framer-motion";
-
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-
-// 4 weeks × 7 days of mock data: 0 = missed, 1 = partial, 2 = full
-const WEEKS: number[][] = [
-  [2, 2, 1, 2, 2, 0, 2],
-  [2, 1, 2, 2, 0, 2, 2],
-  [2, 2, 2, 1, 2, 2, 0],
-  [2, 2, 1, 2, 2, 2, 1],
-];
-
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const COLOR: Record<number, string> = {
-  0: "bg-ink/[0.05]",
-  1: "bg-sage/40",
-  2: "bg-forest",
-};
-
-const LABEL: Record<number, string> = {
-  0: "No log",
-  1: "Partial",
-  2: "Fully logged",
-};
 
 export function LogHeatmap() {
   return (
-    <div className="rounded-3xl border border-white/70 bg-white/60 p-6 shadow-[0_4px_20px_rgba(31,59,45,0.05)] backdrop-blur-sm">
-      <div className="mb-5 flex items-start justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-muted">
-            Last 4 weeks
-          </p>
-          <h3 className="mt-1 font-display text-[20px] font-bold text-ink">Logging streak</h3>
-        </div>
-        <div className="flex items-center gap-2 text-[10px] text-ink-muted">
-          {[0, 1, 2].map((v) => (
-            <span key={v} className="flex items-center gap-1">
-              <span className={`h-2.5 w-2.5 rounded-sm ${COLOR[v]}`} />
-              {LABEL[v]}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Day labels */}
-      <div className="mb-2 grid grid-cols-7 gap-1.5">
-        {DAYS.map((d) => (
-          <p key={d} className="text-center text-[10px] text-ink-muted/60">{d}</p>
-        ))}
-      </div>
-
-      {/* Grid */}
-      <div className="flex flex-col gap-1.5">
-        {WEEKS.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 gap-1.5">
-            {week.map((val, di) => {
-              const idx = wi * 7 + di;
-              return (
-                <motion.div
-                  key={di}
-                  title={LABEL[val]}
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.3, ease: EASE, delay: 0.05 + idx * 0.012 }}
-                  className={`aspect-square rounded-md ${COLOR[val]}`}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* Summary */}
-      <div className="mt-4 flex items-center gap-1.5 text-[12px] text-ink-muted">
-        <span className="font-semibold text-forest">24 of 28 days</span>
-        logged this month — keep it up!
-      </div>
+    <div className="grid grid-cols-7 gap-2">
+      {Array.from({ length: 35 }, (_, index) => {
+        // Simulating activity levels
+        const level = (index * 7) % 10;
+        const opacity = level > 7 ? 1 : level > 4 ? 0.6 : 0.2;
+        
+        return (
+          <motion.div 
+            key={index}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.01 }}
+            className="group relative aspect-square rounded-md bg-forest transition-all hover:ring-2 hover:ring-teal hover:ring-offset-2"
+            style={{ opacity }}
+          >
+            <div className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-forest px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap">
+              Day {index + 1}: {level * 200} kcal
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }

@@ -1,26 +1,11 @@
-import { MealCard, type Meal } from "./MealCard";
+import type { Meal } from "../../_components/ui";
+import { MealCard } from "./MealCard";
 
-interface Props {
-  label: string;
-  meals: Meal[];
-  totalKcal: number;
-  startIndex: number;
-}
-
-export function DayGroup({ label, meals, totalKcal, startIndex }: Props) {
+export function DayGroup({ date, meals }: { date: string; meals: Meal[] }) {
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-[13px] font-semibold text-ink">{label}</p>
-        <p className="text-[12px] text-ink-muted">
-          <span className="font-semibold text-ink">{totalKcal}</span> kcal
-        </p>
-      </div>
-      <div className="flex flex-col gap-2">
-        {meals.map((meal, i) => (
-          <MealCard key={meal.id} meal={meal} index={startIndex + i} />
-        ))}
-      </div>
-    </div>
+    <section className="space-y-3">
+      <h2 className="text-[22px] font-semibold">{date}</h2>
+      {meals.map((meal) => <MealCard key={meal.id} meal={meal} />)}
+    </section>
   );
 }

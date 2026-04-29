@@ -1,15 +1,3 @@
-import type { ReactNode } from "react";
-
-type ContainerProps = {
-  children: ReactNode;
-  className?: string;
-  as?: "div" | "section" | "header" | "footer" | "main";
-};
-
-export function Container({ children, className = "", as: Tag = "div" }: ContainerProps) {
-  return (
-    <Tag className={`mx-auto w-full max-w-[1200px] px-6 md:px-10 ${className}`}>
-      {children}
-    </Tag>
-  );
+export function Container({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`mx-auto max-w-7xl px-5 lg:px-8 ${className}`}>{children}</div>;
 }

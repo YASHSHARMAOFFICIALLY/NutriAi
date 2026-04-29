@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { ConversationDTO, ConversationSummary } from "./types";
+import type { ConversationDTO, ConversationSummary, SendChatResponse } from "./types";
 
 export interface SendChatInput {
   message: string;
@@ -7,8 +7,8 @@ export interface SendChatInput {
   title?: string | null;
 }
 
-export function sendChatMessage(input: SendChatInput): Promise<ConversationDTO> {
-  return apiFetch<ConversationDTO>("/chat", { method: "POST", body: input });
+export function sendChatMessage(input: SendChatInput): Promise<SendChatResponse> {
+  return apiFetch<SendChatResponse>("/chat", { method: "POST", body: input });
 }
 
 export async function listConversations(): Promise<ConversationSummary[]> {

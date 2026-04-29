@@ -1,34 +1,26 @@
 "use client";
 
-import { useEffect } from "react";
 import Lenis from "lenis";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 
-type LenisProviderProps = {
-  children: ReactNode;
-};
-
-// Mounts a single Lenis instance for the marketing layout and drives its
-// rAF loop. Honors prefers-reduced-motion by bailing out entirely so
-// keyboard/AT users get native scroll.
-export function LenisProvider({ children }: LenisProviderProps) {
+export function LenisProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
-    const prefersReduced =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReduced) return;
-
     const lenis = new Lenis({
-      lerp: 0.1,
-      duration: 1.2,
+      duration: 1.05,
+      easing: (t) => Math.min(1, 1.001 - 2 ** (-10 * t)),
+      lerp: 0.09,
       smoothWheel: true,
+      wheelMultiplier: 0.9,
     });
 
-    let rafId: number;
-    const raf = (time: number) => {
+    let rafId = 0;
+
+    function raf(time: number) {
       lenis.raf(time);
       rafId = requestAnimationFrame(raf);
-    };
+    }
+
     rafId = requestAnimationFrame(raf);
 
     return () => {
@@ -37,5 +29,5 @@ export function LenisProvider({ children }: LenisProviderProps) {
     };
   }, []);
 
-  return <>{children}</>;
+  return children;
 }

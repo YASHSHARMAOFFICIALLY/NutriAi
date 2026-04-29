@@ -13,8 +13,8 @@ function qs(q: DateRangeQuery): string {
   return parts.length ? `?${parts.join("&")}` : "";
 }
 
-export function getDailyAnalytics(q: DateRangeQuery = {}): Promise<DailyAnalytics[]> {
-  return apiFetch<DailyAnalytics[]>(`/analytics/daily${qs(q)}`);
+export function getDailyAnalytics(q: DateRangeQuery = {}): Promise<DailyAnalytics> {
+  return apiFetch<DailyAnalytics>(`/analytics/daily${qs(q)}`);
 }
 
 export function getMacrosSummary(q: DateRangeQuery = {}): Promise<MacrosSummary> {

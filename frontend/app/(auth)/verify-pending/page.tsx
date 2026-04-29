@@ -1,61 +1,33 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
-import { AuthCard } from "../_components/AuthCard";
+import { Suspense, useState } from "react";
 import { resendVerification } from "@/lib/api/emailAuth";
+import { AuthCard } from "../_components/AuthCard";
 
-function Inner() {
+function VerifyPendingContent() {
   const params = useSearchParams();
-  const email = params.get("email") ?? "";
-  const [resending, setResending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState(params.get("email") ?? "");
+  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
 
-  const resend = async () => {
-    if (!email) return;
-    setResending(true);
-    setError(null);
+  async function handleResend() {
+    if (!email.trim()) return;
+    setStatus("loading");
     try {
-      await resendVerification(email);
-      setSent(true);
+      await resendVerification(email.trim());
+      setStatus("sent");
     } catch {
-      setError("Couldn't resend. Try again in a minute.");
-    } finally {
-      setResending(false);
+      setStatus("error");
     }
-  };
+  }
 
   return (
-    <AuthCard
-      title="Check your inbox"
-      subtitle={email ? `We sent a verification link to ${email}.` : "We sent you a verification link."}
-      footer={
-        <>
-          Already verified?{" "}
-          <Link href="/login" className="font-semibold text-sage-600 hover:underline">Sign in</Link>
-        </>
-      }
-    >
-      <div className="flex flex-col items-center gap-5 rounded-2xl border border-white/70 bg-white/60 px-6 py-7 text-center backdrop-blur-sm">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sage/15">
-          <EnvelopeSimple size={22} weight="regular" className="text-sage-600" />
-        </div>
-        <p className="text-[13px] leading-relaxed text-ink-muted">
-          Tap the link in the email to confirm this address. The link is valid for 24 hours.
-        </p>
-        <div className="flex flex-col items-center gap-1.5">
-          <button
-            onClick={resend}
-            disabled={resending || sent || !email}
-            className="text-[13px] font-medium text-sage-600 underline underline-offset-2 transition-colors hover:text-forest disabled:opacity-50"
-          >
-            {sent ? "Sent! Check your inbox again." : resending ? "Resending…" : "Didn't get it? Resend email."}
-          </button>
-          {error && <p className="text-[11px] text-red-600">{error}</p>}
-        </div>
+    <AuthCard title="Check your inbox" subtitle="We sent a verification link before you can use the app workspace.">
+      <div className="space-y-4">
+        <input className="w-full rounded-md border border-black/10 px-4 py-3 outline-none" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} />
+        {status === "sent" ? <p className="text-[12px] font-semibold text-[#173c2b]">Verification email sent.</p> : null}
+        {status === "error" ? <p className="text-[12px] font-semibold text-[#b7791f]">Could not resend verification email.</p> : null}
+        <button onClick={handleResend} disabled={status === "loading" || !email.trim()} className="w-full rounded-md border border-black/10 bg-[#f8f8f3] py-3 text-[14px] font-bold disabled:opacity-60">{status === "loading" ? "Sending..." : "Resend email"}</button>
       </div>
     </AuthCard>
   );
@@ -63,8 +35,8 @@ function Inner() {
 
 export default function VerifyPendingPage() {
   return (
-    <Suspense>
-      <Inner />
+    <Suspense fallback={<AuthCard title="Check your inbox" subtitle="Preparing verification controls."><div className="h-2 rounded-full bg-black/8" /></AuthCard>}>
+      <VerifyPendingContent />
     </Suspense>
   );
 }

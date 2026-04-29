@@ -3,13 +3,9 @@ import { presignSchema, confirmSchema } from '../src/controllers/uploadControlle
 import { analyzeFoodSchema } from '../src/controllers/foodController';
 
 describe('presignSchema', () => {
-  it('accepts a supported contentType', () => {
-    const parsed = presignSchema.parse({ contentType: 'image/jpeg' });
+  it('accepts a supported contentType and size', () => {
+    const parsed = presignSchema.parse({ contentType: 'image/jpeg', size: 12345 });
     expect(parsed.contentType).toBe('image/jpeg');
-  });
-
-  it('accepts an optional size', () => {
-    const parsed = presignSchema.parse({ contentType: 'image/png', size: 12345 });
     expect(parsed.size).toBe(12345);
   });
 
@@ -19,6 +15,10 @@ describe('presignSchema', () => {
 
   it('rejects a negative size', () => {
     expect(() => presignSchema.parse({ contentType: 'image/png', size: -1 })).toThrow();
+  });
+
+  it('rejects a missing size', () => {
+    expect(() => presignSchema.parse({ contentType: 'image/png' })).toThrow();
   });
 });
 

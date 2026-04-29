@@ -1,40 +1,78 @@
-"use client";
-
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Sparkle } from "@phosphor-icons/react/dist/ssr";
+import { ChartLineUp, ForkKnife, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr";
 
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-
-interface Props {
+export function AuthCard({
+  title,
+  subtitle,
+  children,
+  footer,
+}: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-}
-
-export function AuthCard({ title, subtitle, children, footer }: Props) {
+}) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-cream px-6 py-12">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: EASE }}
-        className="w-full max-w-[400px]"
-      >
-        <Link href="/" className="mb-8 flex items-center gap-2 font-display text-xl font-bold tracking-tight text-ink">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-sage/30 bg-sage/15">
-            <Sparkle size={14} weight="fill" className="text-sage-600" />
-          </span>
-          NutriAI
-        </Link>
-        <h1 className="font-display text-[30px] font-bold tracking-[-0.02em] text-ink">{title}</h1>
-        {subtitle && (
-          <p className="mt-2 text-[14px] leading-[1.55] text-ink-muted">{subtitle}</p>
-        )}
-        <div className="mt-8">{children}</div>
-        {footer && <div className="mt-8 text-center text-[13px] text-ink-muted">{footer}</div>}
-      </motion.div>
-    </div>
+    <main className="min-h-screen bg-[#f8f8f3] text-[#101510]">
+      <div className="grid min-h-screen lg:grid-cols-[minmax(520px,0.88fr)_1.12fr]">
+        <section className="flex items-center justify-center px-5 py-10">
+          <div className="w-full max-w-[430px]">
+            <Link href="/" className="mb-10 flex items-center gap-3 font-semibold">
+              <span className="grid h-9 w-9 place-items-center rounded-md bg-[#173c2b] text-white">
+                <ForkKnife size={18} weight="bold" />
+              </span>
+              <span>
+                <span className="block leading-none">NutriAI</span>
+                <span className="mt-1 block text-[11px] font-medium text-[#5f675f]">Meals · targets · coach</span>
+              </span>
+            </Link>
+            <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#0f8b8d]">Account</p>
+            <h1 className="mt-3 text-[40px] font-semibold leading-[1.02]">{title}</h1>
+            {subtitle ? <p className="mt-4 text-[15px] leading-7 text-[#5f675f]">{subtitle}</p> : null}
+            <div className="mt-8 rounded-lg border border-black/10 bg-white p-5 shadow-[0_16px_48px_rgba(16,21,16,0.07)]">
+              {children}
+            </div>
+            {footer ? <div className="mt-6 text-center text-[13px] text-[#5f675f]">{footer}</div> : null}
+          </div>
+        </section>
+
+        <section className="hidden bg-[#173c2b] p-6 lg:block">
+          <div className="flex h-full flex-col justify-between overflow-hidden rounded-xl border border-white/12 bg-[#101510]/28 p-8 text-white">
+            <div className="flex items-center justify-between">
+              <span className="rounded-full bg-[#d7ff68] px-3 py-1 text-[12px] font-bold text-[#101510]">private workspace</span>
+              <ShieldCheck size={24} weight="duotone" className="text-[#d7ff68]" />
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#d7ff68]">Today preview</p>
+              <h2 className="mt-4 max-w-xl text-[56px] font-semibold leading-[0.94]">
+                Your login returns to a live meal budget.
+              </h2>
+              <div className="mt-8 grid max-w-xl grid-cols-3 gap-3">
+                {[
+                  ["310", "kcal left"],
+                  ["70g", "protein gap"],
+                  ["12d", "streak"],
+                ].map(([value, label]) => (
+                  <div key={label} className="rounded-lg border border-white/14 bg-white/10 p-4">
+                    <p className="text-[30px] font-semibold">{value}</p>
+                    <p className="mt-1 text-[12px] text-white/58">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-lg bg-white p-5 text-[#101510]">
+                <Sparkle size={24} weight="duotone" className="text-[#0f8b8d]" />
+                <p className="mt-4 text-[14px] font-semibold">Coach uses saved meals, targets, allergies, and active challenge context.</p>
+              </div>
+              <div className="rounded-lg bg-[#d7ff68] p-5 text-[#101510]">
+                <ChartLineUp size={24} weight="duotone" />
+                <p className="mt-4 text-[14px] font-semibold">Recommendations rank meals by score, frequency, recency, and remaining macros.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }

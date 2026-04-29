@@ -1,223 +1,307 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { PaperPlaneTilt, Sparkle, Warning } from "@phosphor-icons/react/dist/ssr";
-import { ChatMessage, type Message } from "./_components/ChatMessage";
-import { NutritionContext } from "./_components/NutritionContext";
-import { sendChatMessage } from "@/lib/api/chat";
-import type { ChatMessageDTO } from "@/lib/api/types";
+import { useEffect, useMemo, useState } from "react";
+import { PaperPlaneTilt, Sparkle } from "@phosphor-icons/react/dist/ssr";
+import { getStreak } from "@/lib/api/analytics";
+import { listMyChallenge } from "@/lib/api/challenges";
+import { deleteConversation, getConversation, listConversations, sendChatMessage } from "@/lib/api/chat";
 import { ApiError } from "@/lib/api/client";
+import { getDailySummary, listMeals } from "@/lib/api/meals";
+import { getProfile } from "@/lib/api/profile";
+import { getMealRecommendations } from "@/lib/api/recommendations";
+import type { ConversationSummary, MealDTO, UserChallengeDTO } from "@/lib/api/types";
+import { BudgetBar, MealLine, PageHeader, Panel, Skeleton } from "../_components/ui";
+import type { Meal } from "../_components/ui";
 
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
 
-const SUGGESTIONS = [
-  "What should I eat for dinner?",
-  "Am I hitting my protein goals?",
-  "How many calories do I have left?",
-  "Give me a high-protein snack idea",
-];
-
-function toMessage(dto: ChatMessageDTO): Message {
+function mealFromApi(meal: MealDTO): Meal {
   return {
-    id: dto.id,
-    role: dto.role === "USER" ? "user" : "ria",
-    text: dto.content,
-    timestamp: new Date(dto.createdAt).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    }),
+    id: meal.id,
+    mealType: meal.mealType,
+    title: meal.notes || meal.items[0]?.name || meal.mealType.toLowerCase(),
+    loggedAt: new Date(meal.loggedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    source: meal.foodQueryId ? "IMAGE" : "TEXT",
+    provider: "db",
+    cached: false,
+    confidence: 1,
+    totals: {
+      calories: Math.round(meal.totalCalories),
+      protein: Math.round(meal.totalProtein),
+      carbs: Math.round(meal.totalCarbs),
+      fat: Math.round(meal.totalFat),
+    },
+    items: meal.items.map((item) => ({
+      name: item.name,
+      quantity: item.quantity ?? "",
+      calories: Math.round(item.calories),
+      protein: Math.round(item.protein),
+      carbs: Math.round(item.carbs),
+      fat: Math.round(item.fat),
+      confidence: 1,
+    })),
   };
 }
 
 export default function CoachPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; text: string }>>([]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [targets, setTargets] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [topMeal, setTopMeal] = useState("");
+  const [activeChallenge, setActiveChallenge] = useState<UserChallengeDTO | null>(null);
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  const [contextStatus, setContextStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [conversationStatus, setConversationStatus] = useState<"idle" | "loading">("idle");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
-
-  const send = async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || isTyping) return;
-    setError(null);
-
-    const optimistic: Message = {
-      id: `temp-${Date.now()}`,
-      role: "user",
-      text: trimmed,
-      timestamp: new Date().toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-      }),
+    let cancelled = false;
+    Promise.all([
+      listConversations().catch(() => []),
+      getDailySummary(todayISO()).catch(() => null),
+      listMeals(todayISO()).catch(() => []),
+      getProfile().catch(() => null),
+      getMealRecommendations({ limit: 1 }).catch(() => ({ remaining: { calories: null, protein: null, carbs: null, fat: null }, recommendations: [] })),
+      listMyChallenge("ACTIVE").catch(() => []),
+      getStreak().catch(() => null),
+    ])
+      .then(([apiConversations, daily, apiMeals, apiProfile, apiRecs, apiChallenges]) => {
+        if (cancelled) return;
+        setConversations(apiConversations);
+        if (daily) {
+          setTotals({
+            calories: Math.round(daily.totalCalories),
+            protein: Math.round(daily.totalProtein),
+            carbs: Math.round(daily.totalCarbs),
+            fat: Math.round(daily.totalFat),
+          });
+        }
+        if (apiMeals.length) setMeals(apiMeals.map(mealFromApi));
+        if (apiProfile) {
+          setTargets({
+            calories: apiProfile.dailyCalorieTarget ?? 0,
+            protein: apiProfile.proteinTargetG ?? 0,
+            carbs: apiProfile.carbsTargetG ?? 0,
+            fat: apiProfile.fatTargetG ?? 0,
+          });
+          setAllergies(apiProfile.allergies ?? []);
+        }
+        if (apiRecs.recommendations[0]) setTopMeal(apiRecs.recommendations[0].items.map((item) => item.name).join(", "));
+        setActiveChallenge(apiChallenges[0] ?? null);
+        setLoadError(false);
+        setContextStatus("ready");
+      })
+      .catch(() => {
+        setLoadError(true);
+        setContextStatus("error");
+      });
+    return () => {
+      cancelled = true;
     };
-    setMessages((prev) => [...prev, optimistic]);
+  }, []);
+
+  const liveRemaining = useMemo(() => ({
+    calories: Math.max(0, targets.calories - totals.calories),
+    protein: Math.max(0, targets.protein - totals.protein),
+  }), [targets, totals]);
+  const hasTargets = targets.calories > 0 || targets.protein > 0;
+  const chatTitle = hasTargets ? `Today with ${liveRemaining.calories} kcal left` : "Today's nutrition coach";
+  const quickPrompts = [
+    hasTargets ? `What fits ${liveRemaining.calories} kcal?` : "Plan my next balanced meal",
+    targets.protein > 0 ? `Close ${liveRemaining.protein}g protein` : "How can I add more protein?",
+    allergies[0] ? `Avoid ${allergies[0]}` : "Use my saved preferences",
+  ];
+
+  async function handleSend(prompt = input) {
+    const message = prompt.trim();
+    if (!message || sending) return;
+    setSending(true);
+    setMessages((current) => [...current, { role: "user", text: message }]);
     setInput("");
-    setIsTyping(true);
-
     try {
-      const resp = await sendChatMessage({ message: trimmed, conversationId });
-      setConversationId(resp.id);
-      setMessages(resp.messages.map(toMessage));
-    } catch (e) {
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-      setError(
-        e instanceof ApiError
-          ? e.message
-          : "Couldn't reach Ria. Check your connection and try again."
-      );
+      const response = await sendChatMessage({
+        message,
+        conversationId,
+        title: `Dinner with ${liveRemaining.calories} kcal left`,
+      });
+      setConversationId(response.conversationId);
+      setMessages((current) => [...current, { role: "assistant", text: response.reply }]);
+    } catch (error) {
+      const errorMessage =
+        error instanceof ApiError
+          ? error.message
+          : "I could not send that message right now. Sign in and try again.";
+      setMessages((current) => [...current, { role: "assistant", text: errorMessage }]);
     } finally {
-      setIsTyping(false);
+      setSending(false);
     }
-  };
+  }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send(input);
+  async function handleSelectConversation(id: string) {
+    setConversationStatus("loading");
+    try {
+      const conversation = await getConversation(id);
+      setConversationId(conversation.id);
+      setMessages(conversation.messages.map((item) => ({
+        role: item.role === "USER" ? "user" : "assistant",
+        text: item.content,
+      })));
+    } catch {
+      setLoadError(true);
+    } finally {
+      setConversationStatus("idle");
     }
-  };
+  }
 
-  const showEmptyState = messages.length === 0 && !isTyping;
+  async function handleDeleteConversation(id: string) {
+    try {
+      await deleteConversation(id);
+      setConversations((current) => current.filter((item) => item.id !== id));
+      if (conversationId === id) {
+        setConversationId(null);
+        setMessages([]);
+      }
+    } catch {}
+  }
 
   return (
-    <div className="flex min-h-screen gap-6 p-8 lg:p-12">
-      {/* Chat column */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Header */}
-        <header className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-sage/30 bg-sage/15">
-            <Sparkle size={16} weight="fill" className="text-sage-600" />
-          </div>
-          <div>
-            <h1 className="font-display text-[22px] font-bold text-ink">Coach Ria</h1>
-            <p className="text-[12px] text-ink-muted">AI Nutritionist · always on</p>
-          </div>
-        </header>
+    <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+      <PageHeader eyebrow="Coach Ria" title="Chat with nutrition context" />
+      {loadError ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load coach context. Sign in and try again.</p>
+        </Panel>
+      ) : null}
 
-        {/* Messages */}
-        <div className="flex flex-1 flex-col gap-4 pb-4">
-          {showEmptyState && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: EASE }}
-              className="flex flex-col gap-2 rounded-2xl border border-white/70 bg-white/60 px-5 py-6 backdrop-blur-sm"
-            >
-              <p className="text-[15px] font-semibold text-ink">
-                Hey! I&apos;m Ria — your AI nutritionist.
-              </p>
-              <p className="text-[13px] leading-relaxed text-ink-muted">
-                Ask me anything about your meals, targets, or what to eat next.
-                I&apos;ll factor in everything you&apos;ve logged.
-              </p>
-            </motion.div>
-          )}
-
-          {messages.map((msg, i) => (
-            <ChatMessage key={msg.id} message={msg} index={i} />
-          ))}
-
-          {/* Typing indicator */}
-          <AnimatePresence>
-            {isTyping && (
-              <motion.div
-                key="typing"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                transition={{ duration: 0.25, ease: EASE }}
-                className="flex items-center gap-3"
-              >
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-sage/30 bg-sage/15">
-                  <Sparkle size={12} weight="fill" className="text-sage-600" />
-                </div>
-                <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm border border-white/70 bg-white/70 px-4 py-3 backdrop-blur-sm">
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      className="h-1.5 w-1.5 rounded-full bg-ink-muted/40"
-                      style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Suggestions (only when no messages yet) */}
-          {showEmptyState && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: EASE, delay: 0.15 }}
-              className="mt-2 flex flex-wrap gap-2"
-            >
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="rounded-full border border-ink/[0.08] bg-white/60 px-4 py-2 text-[12px] font-medium text-ink-muted backdrop-blur-sm transition-colors hover:border-sage/40 hover:text-sage-600"
-                >
-                  {s}
+      <section className="grid min-h-[720px] gap-5 xl:grid-cols-[260px_1fr_360px]">
+        <Panel className="hidden p-4 xl:block">
+          <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#0f8b8d]">Conversations</p>
+          <div className="space-y-2">
+            {conversations.length ? conversations.map((item, index) => (
+              <div key={item.id} className={`rounded-md p-3 text-left text-[13px] font-semibold ${conversationId === item.id || (!conversationId && index === 0) ? "bg-[#173c2b] text-white" : "bg-[#f8f8f3] text-[#5f675f]"}`}>
+                <button onClick={() => handleSelectConversation(item.id)} className="block w-full text-left">
+                  <span className="block truncate">{item.title || "Untitled chat"}</span>
+                  <span className="mt-1 block text-[11px] opacity-70">{item.messageCount} messages</span>
                 </button>
-              ))}
-            </motion.div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-              <Warning size={15} weight="fill" className="mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Input */}
-        <div className="sticky bottom-0 pt-4">
-          <div className="flex items-end gap-3 rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_4px_24px_rgba(31,59,45,0.08)] backdrop-blur-xl">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask Ria anything about your nutrition…"
-              rows={1}
-              className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1.5 text-[14px] text-ink placeholder-ink-muted/50 outline-none"
-              style={{ scrollbarWidth: "none" }}
-            />
-            <button
-              onClick={() => send(input)}
-              disabled={!input.trim() || isTyping}
-              className={[
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all",
-                input.trim() && !isTyping
-                  ? "bg-forest text-cream shadow-[0_2px_8px_rgba(31,59,45,0.25)] hover:opacity-90 active:scale-95"
-                  : "bg-ink/[0.05] text-ink-muted/40 cursor-not-allowed",
-              ].join(" ")}
-            >
-              <PaperPlaneTilt size={15} weight="fill" />
-            </button>
+                <button onClick={() => handleDeleteConversation(item.id)} className="mt-2 text-[11px] font-bold opacity-70">
+                  Delete
+                </button>
+              </div>
+            )) : <p className="rounded-md bg-[#f8f8f3] p-3 text-[13px] font-semibold text-[#5f675f]">No conversations yet.</p>}
           </div>
-          <p className="mt-2 text-center text-[11px] text-ink-muted/50">
-            Ria uses your logged meals for context. Not medical advice.
-          </p>
-        </div>
-      </div>
+        </Panel>
 
-      {/* Right context panel */}
-      <div className="hidden xl:block">
-        <NutritionContext />
-      </div>
+        <Panel className="flex flex-col p-5">
+          <div className="mb-5 flex items-center gap-3 border-b border-border pb-4">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-lime shadow-sm">
+              <Sparkle size={20} weight="fill" />
+            </span>
+            <div>
+              <h2 className="text-[20px] font-semibold">{chatTitle}</h2>
+              <p className="text-[12px] text-[#5f675f]">{hasTargets ? "Uses your meals, targets, preferences, and active challenge." : "Add targets in settings for sharper meal guidance."}</p>
+            </div>
+          </div>
+
+          {conversations.length ? (
+            <select
+              value={conversationId ?? ""}
+              onChange={(event) => event.target.value ? handleSelectConversation(event.target.value) : undefined}
+              className="mb-4 rounded-xl border border-border bg-surface-alt px-4 py-3 text-[13px] font-bold outline-none xl:hidden"
+            >
+              <option value="">New conversation</option>
+              {conversations.map((item) => (
+                <option key={item.id} value={item.id}>{item.title || "Untitled chat"}</option>
+              ))}
+            </select>
+          ) : null}
+
+          <div className="flex flex-1 flex-col gap-4">
+            {conversationStatus === "loading" || contextStatus === "loading" ? (
+              <div className="space-y-3">
+                <Skeleton className="h-14 w-2/3" />
+                <Skeleton className="ml-auto h-14 w-1/2" />
+                <Skeleton className="h-20 w-3/4" />
+              </div>
+            ) : messages.map((message, index) => {
+              const user = message.role === "user";
+              return (
+                <div key={index} className={`flex ${user ? "justify-end" : "justify-start"}`}>
+                  <p className={`max-w-[78%] rounded-2xl px-5 py-3.5 text-[14px] leading-6 ${user ? "bg-forest text-white shadow-sm" : "bg-surface-alt border border-border"}`}>
+                    {message.text}
+                  </p>
+                </div>
+              );
+            })}
+            {sending ? (
+              <div className="flex justify-start">
+                <p className="max-w-[78%] rounded-2xl border border-border bg-surface-alt px-5 py-3.5 text-[14px] font-semibold leading-6 text-muted">
+                  Preparing reply...
+                </p>
+              </div>
+            ) : null}
+            {contextStatus !== "loading" && !messages.length ? (
+              <div className="rounded-2xl border border-dashed border-border bg-surface-alt p-6 text-center">
+                <p className="text-[14px] font-semibold text-forest">Start with today&apos;s plan.</p>
+                <p className="mt-2 text-[12px] text-muted">Ask about meals, targets, preferences, or what to eat next.</p>
+              </div>
+            ) : null}
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {quickPrompts.map((prompt) => (
+              <button key={prompt} onClick={() => handleSend(prompt)} disabled={sending || contextStatus === "loading"} className="rounded-full border border-border bg-surface-alt px-3 py-1.5 text-[12px] font-bold text-muted transition-all hover:border-teal/30 hover:bg-white hover:text-forest disabled:opacity-50">
+                {prompt}
+              </button>
+            ))}
+          </div>
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSend();
+            }}
+            className="mt-4 flex items-end gap-3 rounded-2xl border border-border bg-surface-alt p-3 transition-all focus-within:border-teal/30 focus-within:ring-2 focus-within:ring-teal/10"
+          >
+            <textarea className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1 text-[14px] outline-none" rows={1} placeholder="Ask Ria..." value={input} onChange={(event) => setInput(event.target.value)} />
+            <button disabled={sending || contextStatus === "loading" || !input.trim()} className="grid h-9 w-9 place-items-center rounded-xl bg-forest text-white transition-all hover:bg-forest-soft active:scale-95 disabled:opacity-60">
+              <PaperPlaneTilt size={16} weight="fill" />
+            </button>
+          </form>
+        </Panel>
+
+        <aside className="space-y-5">
+          <Panel className="p-5">
+            <h2 className="mb-4 text-[20px] font-semibold">Live nutrition context</h2>
+            <div className="space-y-4">
+              <BudgetBar label="Calories" value={totals.calories} target={targets.calories} unit="" />
+              <BudgetBar label="Protein" value={totals.protein} target={targets.protein} unit="g" tone="teal" />
+            </div>
+          </Panel>
+          <Panel className="p-5">
+            <h2 className="mb-3 text-[20px] font-semibold">Top repeat meal</h2>
+            <p className="text-[15px] font-semibold">{topMeal || "No repeat meal yet"}</p>
+            <p className="mt-2 text-[13px] leading-6 text-[#5f675f]">Your saved meals help this panel suggest familiar options.</p>
+          </Panel>
+          <Panel className="p-5">
+            <h2 className="mb-3 text-[20px] font-semibold">Recent meals</h2>
+            <div className="space-y-2">
+              {meals.slice(0, 2).map((meal) => <MealLine key={meal.id} meal={meal} />)}
+              {!meals.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No meals logged today.</p> : null}
+            </div>
+          </Panel>
+          <Panel className="p-5">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#0f8b8d]">Active challenge</p>
+            <p className="mt-2 text-[18px] font-semibold">{activeChallenge?.title ?? "No active challenge"}</p>
+            <p className="mt-1 text-[13px] text-[#5f675f]">{activeChallenge ? `${activeChallenge.daysCheckedIn}/${activeChallenge.durationDays} days checked in` : "Start a challenge to add context."}</p>
+          </Panel>
+        </aside>
+      </section>
     </div>
   );
 }

@@ -1,28 +1,7 @@
-"use client";
-
-import { motion } from "framer-motion";
-
-interface ToggleProps {
-  value: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}
-
-export function Toggle({ value, onChange, disabled = false }: ToggleProps) {
+export function Toggle({ value = true }: { value?: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      disabled={disabled}
-      className={`relative h-6 w-10 rounded-full transition-colors duration-200 ${
-        value ? "bg-forest" : "bg-ink/[0.12]"
-      } disabled:cursor-not-allowed disabled:opacity-50`}
-    >
-      <motion.span
-        className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.15)]"
-        animate={{ x: value ? 18 : 2 }}
-        transition={{ type: "spring", stiffness: 500, damping: 32 }}
-      />
-    </button>
+    <span className={`flex h-6 w-11 items-center rounded-full p-1 ${value ? "bg-[#173c2b]" : "bg-black/10"}`}>
+      <span className={`h-4 w-4 rounded-full bg-white transition ${value ? "translate-x-5" : ""}`} />
+    </span>
   );
 }

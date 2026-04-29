@@ -1,80 +1,41 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle, Warning, Sparkle } from "@phosphor-icons/react/dist/ssr";
-import { AuthCard } from "../_components/AuthCard";
+import { Suspense, useEffect, useState } from "react";
 import { verifyEmail } from "@/lib/api/emailAuth";
-import { ApiError } from "@/lib/api/client";
+import { AuthCard } from "../_components/AuthCard";
 
-type State = "loading" | "ok" | "error";
-
-function Inner() {
+function VerifyEmailContent() {
   const router = useRouter();
   const params = useSearchParams();
-  const token = params.get("token");
-
-  const [state, setState] = useState<State>(token ? "loading" : "error");
-  const [error, setError] = useState<string | null>(token ? null : "Missing verification token.");
+  const token = params.get("token") ?? "";
+  const [status, setStatus] = useState<"loading" | "verified" | "error">(token ? "loading" : "error");
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
+    if (!token) return;
     let cancelled = false;
     verifyEmail(token)
       .then(() => {
         if (cancelled) return;
-        setState("ok");
-        setTimeout(() => router.replace("/dashboard"), 1200);
+        setStatus("verified");
+        router.push("/dashboard");
       })
-      .catch((e) => {
-        if (cancelled) return;
-        setState("error");
-        setError(e instanceof ApiError ? e.message : "Couldn't verify this link.");
+      .catch(() => {
+        if (!cancelled) setStatus("error");
       });
-    return () => { cancelled = true; };
-  }, [token, router]);
-
-  if (state === "loading") {
-    return (
-      <AuthCard title="Verifying…" subtitle="One second while we confirm your email.">
-        <div className="flex justify-center py-6">
-          <Sparkle size={32} weight="fill" className="animate-pulse text-sage-600" />
-        </div>
-      </AuthCard>
-    );
-  }
-
-  if (state === "ok") {
-    return (
-      <AuthCard title="You're in." subtitle="Taking you to the dashboard…">
-        <div className="flex justify-center py-6">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-forest/10">
-            <CheckCircle size={30} weight="fill" className="text-forest" />
-          </div>
-        </div>
-      </AuthCard>
-    );
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [router, token]);
 
   return (
-    <AuthCard
-      title="Link didn't work"
-      subtitle={error ?? "This link may have expired or already been used."}
-      footer={
-        <>
-          Need a new link?{" "}
-          <Link href="/login" className="font-semibold text-sage-600 hover:underline">
-            Go back to sign in
-          </Link>
-        </>
-      }
-    >
-      <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-        <Warning size={16} weight="fill" className="mt-0.5 shrink-0" />
-        <span>Try requesting a new verification email from the sign-in page.</span>
+    <AuthCard title="Verify your email" subtitle="Email verification protects meal, weight, and profile data.">
+      <div className="space-y-4">
+        <div className="rounded-md bg-[#eef5f2] p-4 text-[14px] leading-6 text-[#5f675f]">
+          {status === "loading" ? "Verifying your email..." : status === "verified" ? "Email verified. Redirecting..." : "Verification link is missing or expired."}
+        </div>
+        <Link href="/login" className="block rounded-md bg-[#173c2b] py-3 text-center text-[14px] font-bold text-white">Back to sign in</Link>
       </div>
     </AuthCard>
   );
@@ -82,8 +43,8 @@ function Inner() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense>
-      <Inner />
+    <Suspense fallback={<AuthCard title="Verify your email" subtitle="Preparing verification."><div className="h-2 rounded-full bg-black/8" /></AuthCard>}>
+      <VerifyEmailContent />
     </Suspense>
   );
 }

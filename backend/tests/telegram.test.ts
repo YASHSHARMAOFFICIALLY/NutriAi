@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
     telegramAccount: {
       findUnique: vi.fn(),
       upsert: vi.fn(),
+      create: vi.fn(),
       delete: vi.fn(),
     },
     telegramPendingAction: {
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => {
     },
     user: {
       findUniqueOrThrow: vi.fn(),
+      create: vi.fn(),
     },
   };
 
@@ -37,6 +39,10 @@ const mocks = vi.hoisted(() => {
         create: vi.fn(),
         deleteMany: vi.fn(),
         findFirst: vi.fn(),
+      },
+      telegramAccount: {
+        findUnique: vi.fn(),
+        update: vi.fn(),
       },
       asset: {
         create: vi.fn(),
@@ -89,6 +95,24 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.prisma.$transaction.mockImplementation((cb: (arg: typeof mocks.tx) => unknown) => cb(mocks.tx));
   mocks.tx.telegramAccount.delete.mockResolvedValue({});
+  mocks.prisma.telegramAccount.findUnique.mockResolvedValue(null);
+  mocks.prisma.telegramAccount.update.mockResolvedValue({});
+  mocks.tx.user.create.mockResolvedValue({
+    id: 'telegram-user-1',
+    email: 'telegram+456@users.nutriai.local',
+    name: 'Telegram Tester',
+  });
+  mocks.tx.telegramAccount.create.mockResolvedValue({
+    id: 'telegram-account-1',
+    userId: 'telegram-user-1',
+    telegramUserId: '456',
+    chatId: '123',
+    user: {
+      id: 'telegram-user-1',
+      email: 'telegram+456@users.nutriai.local',
+      name: 'Telegram Tester',
+    },
+  });
   global.fetch = vi.fn(async () => ({
     ok: true,
     json: async () => telegramFetchResult,
@@ -118,6 +142,40 @@ describe('Telegram account service', () => {
     expect(mocks.tx.telegramPendingAction.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
     expect(mocks.tx.telegramLinkToken.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
     expect(mocks.tx.telegramAccount.delete).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+  });
+
+  it('creates a Telegram-owned NutriAI account when no website account exists', async () => {
+    const { getOrCreateTelegramUserAccount } = await import('../src/services/telegramAccountService');
+
+    const account = await getOrCreateTelegramUserAccount({
+      telegramUserId: '456',
+      chatId: '123',
+      username: 'telegramtester',
+      firstName: 'Telegram',
+      lastName: 'Tester',
+    });
+
+    expect(mocks.tx.user.create).toHaveBeenCalledWith({
+      data: {
+        email: 'telegram+456@users.nutriai.local',
+        name: 'Telegram Tester',
+        emailVerified: true,
+        emailVerifiedAt: expect.any(Date),
+      },
+    });
+    expect(mocks.tx.telegramAccount.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'telegram-user-1',
+        telegramUserId: '456',
+        chatId: '123',
+        username: 'telegramtester',
+        firstName: 'Telegram',
+        lastName: 'Tester',
+        lastSeenAt: expect.any(Date),
+      },
+      include: { user: true },
+    });
+    expect(account.userId).toBe('telegram-user-1');
   });
 });
 

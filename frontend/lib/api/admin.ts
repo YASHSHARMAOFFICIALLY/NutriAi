@@ -1,8 +1,11 @@
 import { apiFetch } from "./client";
 import type {
   AdminActivityResponse,
+  AdminAiSettings,
   AdminOverview,
+  AdminRuntimeResponse,
   AdminUsageResponse,
+  AdminUserDetail,
   AdminUsersResponse,
   UserRole,
 } from "./types";
@@ -20,6 +23,10 @@ export function getAdminOverview(): Promise<AdminOverview> {
   return apiFetch<AdminOverview>("/admin/overview");
 }
 
+export function getAdminRuntime(): Promise<AdminRuntimeResponse> {
+  return apiFetch<AdminRuntimeResponse>("/admin/runtime");
+}
+
 export function listAdminUsers(params: {
   search?: string;
   role?: UserRole;
@@ -27,6 +34,10 @@ export function listAdminUsers(params: {
   limit?: number;
 } = {}): Promise<AdminUsersResponse> {
   return apiFetch<AdminUsersResponse>(`/admin/users${query(params)}`);
+}
+
+export function getAdminUserDetail(id: string): Promise<AdminUserDetail> {
+  return apiFetch<AdminUserDetail>(`/admin/users/${encodeURIComponent(id)}`);
 }
 
 export function getAdminUsage(params: {
@@ -38,4 +49,15 @@ export function getAdminUsage(params: {
 
 export function getAdminActivity(limit = 20): Promise<AdminActivityResponse> {
   return apiFetch<AdminActivityResponse>(`/admin/activity${query({ limit })}`);
+}
+
+export function getAdminAiSettings(): Promise<AdminAiSettings> {
+  return apiFetch<AdminAiSettings>("/admin/ai-settings");
+}
+
+export function updateAdminAiSettings(input: AdminAiSettings): Promise<AdminAiSettings> {
+  return apiFetch<AdminAiSettings>("/admin/ai-settings", {
+    method: "PUT",
+    body: input,
+  });
 }

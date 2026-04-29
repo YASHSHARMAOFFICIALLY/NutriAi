@@ -1,27 +1,38 @@
-import { Nav } from "./_components/Nav";
-import { Hero } from "./_components/Hero";
-import { LogoCloud } from "./_components/LogoCloud";
-import { FeatureBento } from "./_components/FeatureBento";
-import { HowItWorks } from "./_components/HowItWorks";
-import { ChatShowcase } from "./_components/ChatShowcase";
-import { AnalyticsShowcase } from "./_components/AnalyticsShowcase";
-import { Pricing } from "./_components/Pricing";
-import { FinalCTA } from "./_components/FinalCTA";
-import { Footer } from "./_components/Footer";
+import LandingPage from "./_components/LandingPage";
+import { JsonLd } from "../JsonLd";
+import {
+  faqJsonLd,
+  softwareApplicationJsonLd,
+  websiteJsonLd,
+} from "../seo";
+
+const structuredData = [
+  softwareApplicationJsonLd(),
+  websiteJsonLd(),
+  faqJsonLd([
+      {
+        question: "Can myNutriAI handle Indian meals and mixed plates?",
+        answer:
+          "Yes. myNutriAI is built for mixed meals such as dal rice, paneer bowls, wraps, salads, and restaurant plates, with editable portions before saving.",
+      },
+      {
+        question: "What happens if the food analysis is wrong?",
+        answer:
+          "Users can edit food items, serving sizes, calories, and macros before confirming a meal.",
+      },
+      {
+        question: "Is myNutriAI only a calorie tracker?",
+        answer:
+          "No. myNutriAI combines calorie and macro tracking with recommendations, weight trends, challenges, history, weekly digests, and AI coaching.",
+      },
+    ]),
+];
 
 export default function MarketingHome() {
   return (
-    <main className="relative flex min-h-screen flex-col">
-      <Nav />
-      <Hero />
-      <LogoCloud />
-      <FeatureBento />
-      <HowItWorks />
-      <ChatShowcase />
-      <AnalyticsShowcase />
-      <Pricing />
-      <FinalCTA />
-      <Footer />
-    </main>
+    <>
+      <JsonLd data={structuredData} />
+      <LandingPage />
+    </>
   );
 }

@@ -1,10 +1,19 @@
-import { AppSidebar } from "./_components/AppSidebar";
+import type { Metadata } from "next";
+import { AppShell } from "./_components/AppShell";
+import { ToastProvider } from "@/lib/toast";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export const metadata: Metadata = {
+  title: "Workspace",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
+export default function ProductLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-cream">
-      <AppSidebar />
-      <div className="ml-[240px]">{children}</div>
-    </div>
+    <ToastProvider>
+      <AppShell>{children}</AppShell>
+    </ToastProvider>
   );
 }

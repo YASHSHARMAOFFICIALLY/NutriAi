@@ -1,105 +1,256 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { TrendUp, Lightning, ForkKnife, Flame } from "@phosphor-icons/react/dist/ssr";
-import { WeeklyChart } from "./_components/WeeklyChart";
-import { MacroRing } from "./_components/MacroRing";
-import { LogHeatmap } from "./_components/LogHeatmap";
+import { useEffect, useMemo, useState } from "react";
+import { getDailyAnalytics, getMacrosSummary, getStreak } from "@/lib/api/analytics";
+import { getFamilyDailyAnalytics, getFamilyMacrosSummary, getFamilyOverview, getFamilyStreak } from "@/lib/api/family";
+import { getProfile } from "@/lib/api/profile";
+import type { FamilyMemberDTO } from "@/lib/api/types";
+import { PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-
-const STATS = [
-  {
-    label: "Avg daily kcal",
-    value: "1,706",
-    sub: "vs 1,800 goal",
-    icon: <TrendUp size={16} weight="fill" className="text-sage-600" />,
-    bg: "bg-sage/10",
-  },
-  {
-    label: "Current streak",
-    value: "12",
-    sub: "days in a row",
-    icon: <Flame size={16} weight="fill" className="text-orange-500" />,
-    bg: "bg-orange-50",
-  },
-  {
-    label: "Meals logged",
-    value: "68",
-    sub: "this month",
-    icon: <ForkKnife size={16} weight="fill" className="text-forest" />,
-    bg: "bg-forest/10",
-  },
-  {
-    label: "Avg protein",
-    value: "94g",
-    sub: "vs 130g goal",
-    icon: <Lightning size={16} weight="fill" className="text-sage-600" />,
-    bg: "bg-sage/10",
-  },
-];
+type DayRow = {
+  date: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  mealCount: number;
+  calorieTargetPct?: number;
+};
 
 export default function AnalyticsPage() {
+  const [days, setDays] = useState<DayRow[]>([]);
+  const [targets, setTargets] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [streak, setStreak] = useState(0);
+  const [macroShare, setMacroShare] = useState({ protein: 0, carbs: 0, fat: 0 });
+  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
+  const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState("me");
+  const selectedMember = useMemo(
+    () => familyMembers.find((member) => member.id === selectedMemberId) ?? null,
+    [familyMembers, selectedMemberId],
+  );
+  const viewerLabel = selectedMember ? selectedMember.user.name || selectedMember.user.email : "Me";
+
+  function handleViewerChange(value: string) {
+    setSource("loading");
+    setSelectedMemberId(value);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    getFamilyOverview()
+      .then((overview) => {
+        if (cancelled) return;
+        const members = overview.families.flatMap((family) => family.members).filter((member) => member.analyticsAccess);
+        const unique = Array.from(new Map(members.map((member) => [member.id, member])).values());
+        setFamilyMembers(unique);
+      })
+      .catch(() => {
+        if (!cancelled) setFamilyMembers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - 6);
+    const range = { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+    const dailyRequest = selectedMember ? getFamilyDailyAnalytics(selectedMember.id, range) : getDailyAnalytics(range);
+    const macrosRequest = selectedMember ? getFamilyMacrosSummary(selectedMember.id, range).catch(() => null) : getMacrosSummary(range).catch(() => null);
+    const streakRequest = selectedMember ? getFamilyStreak(selectedMember.id).catch(() => null) : getStreak().catch(() => null);
+    const profileRequest = selectedMember ? Promise.resolve(null) : getProfile().catch(() => null);
+
+    Promise.all([dailyRequest, macrosRequest, streakRequest, profileRequest])
+      .then(([daily, macros, apiStreak, apiProfile]) => {
+        if (cancelled) return;
+        const liveTargets = {
+          calories: daily.targets.calories ?? apiProfile?.dailyCalorieTarget ?? 0,
+          protein: daily.targets.protein ?? apiProfile?.proteinTargetG ?? 0,
+          carbs: daily.targets.carbs ?? apiProfile?.carbsTargetG ?? 0,
+          fat: daily.targets.fat ?? apiProfile?.fatTargetG ?? 0,
+        };
+        setTargets(liveTargets);
+        setDays(daily.days.map((day) => ({
+          date: new Date(day.date).toLocaleDateString([], { weekday: "short" }),
+          calories: Math.round(day.calories),
+          protein: Math.round(day.protein),
+          carbs: Math.round(day.carbs),
+          fat: Math.round(day.fat),
+          mealCount: day.mealCount,
+          calorieTargetPct: liveTargets.calories ? (day.calories / liveTargets.calories) * 100 : 0,
+        })));
+        if (macros) {
+          setMacroShare({
+            protein: Math.round(macros.energyShare.protein),
+            carbs: Math.round(macros.energyShare.carbs),
+            fat: Math.round(macros.energyShare.fat),
+          });
+        }
+        if (apiStreak) setStreak(apiStreak.loggingStreak);
+        setSource("live");
+      })
+      .catch(() => setSource("error"));
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMember]);
+
+  const averages = useMemo(() => {
+    const count = Math.max(1, days.length);
+    return days.reduce(
+      (acc, day) => ({
+        calories: acc.calories + day.calories / count,
+        protein: acc.protein + day.protein / count,
+      }),
+      { calories: 0, protein: 0 },
+    );
+  }, [days]);
+
+  const max = Math.max(1, ...days.map((day) => day.calories));
+  const calorieAdherence = targets.calories > 0 ? Math.round((averages.calories / targets.calories) * 100) : 0;
+  const proteinGap = Math.max(0, targets.protein - Math.round(averages.protein));
+  const loggedDays = days.filter((day) => day.mealCount > 0).length;
+  const macroDrift = Math.abs(macroShare.protein - 25) + Math.abs(macroShare.carbs - 45) + Math.abs(macroShare.fat - 30);
+  const insights = [
+    {
+      title: "Protein consistency",
+      value: proteinGap > 0 ? `${proteinGap}g short` : "On target",
+      body: proteinGap > 0 ? "Recommendation and coach should bias dinner toward lean protein until the gap closes." : "Protein is supporting the current goal.",
+    },
+    {
+      title: "Calorie adherence",
+      value: `${calorieAdherence}%`,
+      body: calorieAdherence > 110 ? "Average intake is running above target; review dinner portions." : calorieAdherence < 80 ? "Average intake is under target; add a predictable meal or snack." : "Calories are staying inside a useful range.",
+    },
+    {
+      title: "Logging reliability",
+      value: `${loggedDays}/7 days`,
+      body: loggedDays < 5 ? "The weak point is logging frequency, not the nutrition math." : "Enough entries exist for better recommendations.",
+    },
+    {
+      title: "Macro drift",
+      value: macroDrift > 20 ? "High" : "Controlled",
+      body: macroDrift > 20 ? "Macro split is drifting from the target pattern; inspect repeat meals." : "Macro distribution is close enough for useful weekly guidance.",
+    },
+  ];
+
   return (
-    <div className="min-h-screen p-8 lg:p-12">
-      {/* Header */}
-      <header className="mb-10">
-        <p className="text-[13px] text-ink-muted">Your progress</p>
-        <h1 className="mt-1 font-display text-[32px] font-bold tracking-[-0.02em] text-ink">
-          Analytics
-        </h1>
-      </header>
+    <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+      <PageHeader eyebrow="Analytics" title="Adherence and streaks" />
+      {source === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load analytics. Sign in and try again.</p>
+        </Panel>
+      ) : null}
 
-      {/* Stat cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {STATS.map((s, i) => (
-          <motion.div
-            key={s.label}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: EASE, delay: i * 0.07 }}
-            className="rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_4px_20px_rgba(31,59,45,0.05)] backdrop-blur-sm"
-          >
-            <div className={`mb-3 inline-flex h-8 w-8 items-center justify-center rounded-xl ${s.bg}`}>
-              {s.icon}
-            </div>
-            <p className="font-display text-[28px] font-bold leading-none text-ink">{s.value}</p>
-            <p className="mt-1 text-[11px] font-medium text-ink-muted">{s.label}</p>
-            <p className="text-[10px] text-ink-muted/60">{s.sub}</p>
-          </motion.div>
+      <section className="mb-5 flex flex-col gap-3 rounded-lg border border-black/10 bg-white p-4 shadow-[0_10px_30px_rgba(16,21,16,0.05)] md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-[12px] font-semibold text-[#5f675f]">Viewing</p>
+          <p className="mt-1 text-[20px] font-semibold">{viewerLabel}</p>
+        </div>
+        <select
+          value={selectedMemberId}
+          onChange={(event) => handleViewerChange(event.target.value)}
+          className="rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-semibold outline-none"
+        >
+          <option value="me">Me</option>
+          {familyMembers.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.user.name || member.user.email} · {member.role.toLowerCase()}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      {source === "loading" ? (
+        <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </div>
+      ) : (
+        <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Stat label="Average calories" value={`${Math.round(averages.calories)}`} sub={targets.calories ? `${calorieAdherence}% of target` : "Set a calorie target"} />
+          <Stat label="Average protein" value={`${Math.round(averages.protein)}g`} sub={targets.protein ? `${Math.max(0, targets.protein - Math.round(averages.protein))}g daily gap` : "Set a protein target"} />
+          <Stat label="Logging streak" value={`${streak}d`} sub={streak > 0 ? "Current streak" : "Log a meal to start"} />
+          <Stat label="Macro share" value={`${macroShare.protein}%`} sub="Protein energy share" />
+        </section>
+      )}
+
+      <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {insights.map((item) => (
+          <Panel key={item.title} className="p-4">
+            <p className="text-[12px] font-semibold text-[#5f675f]">{item.title}</p>
+            <p className="mt-2 text-[24px] font-semibold">{item.value}</p>
+            <p className="mt-2 text-[12px] leading-5 text-[#5f675f]">{item.body}</p>
+          </Panel>
         ))}
-      </div>
+      </section>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
-        {/* Weekly chart — full width on left */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: EASE, delay: 0.28 }}
-        >
-          <WeeklyChart />
-        </motion.div>
+      <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
+        <Panel className="p-5">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-[22px] font-semibold">Daily target adherence</h2>
+            <span className="text-[12px] font-bold text-[#5f675f]">Last 7 days</span>
+          </div>
+          <div className="flex h-[320px] items-end gap-3 rounded-lg bg-[#f8f8f3] p-4">
+            {source === "loading" ? (
+              <div className="grid w-full gap-3">
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+              </div>
+            ) : days.map((day) => (
+              <div key={day.date} className="flex flex-1 flex-col items-center gap-2">
+                <div className="flex w-full flex-col justify-end rounded-md bg-white" style={{ height: "260px" }}>
+                  <div
+                    className={`rounded-md ${day.calorieTargetPct && day.calorieTargetPct > 120 ? "bg-[#b7791f]" : day.calorieTargetPct && day.calorieTargetPct >= 80 ? "bg-[#173c2b]" : "bg-[#5f8f72]"}`}
+                    style={{ height: `${Math.max(8, (day.calories / max) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[11px] font-bold text-[#5f675f]">{day.date}</span>
+              </div>
+            ))}
+            {source !== "loading" && !days.length ? <p className="self-center text-[13px] font-semibold text-[#5f675f]">No analytics data in this range.</p> : null}
+          </div>
+        </Panel>
 
-        {/* Macro ring */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: EASE, delay: 0.35 }}
-        >
-          <MacroRing />
-        </motion.div>
-      </div>
-
-      {/* Heatmap */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: EASE, delay: 0.42 }}
-        className="mt-6"
-      >
-        <LogHeatmap />
-      </motion.div>
+        <div className="space-y-5">
+          <Panel className="p-5">
+            <h2 className="mb-4 text-[22px] font-semibold">Macro energy share</h2>
+            <div className="space-y-3">
+              {[
+                ["Protein", macroShare.protein, "#0f8b8d"],
+                ["Carbs", macroShare.carbs, "#5f8f72"],
+                ["Fat", macroShare.fat, "#b7791f"],
+              ].map(([label, value, color]) => (
+                <div key={String(label)}>
+                  <div className="mb-1 flex justify-between text-[13px]">
+                    <span className="font-semibold">{label}</span>
+                    <span className="text-[#5f675f]">{value}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-black/8">
+                    <div className="h-2 rounded-full" style={{ width: `${value}%`, backgroundColor: String(color) }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+          <Panel className="p-5">
+            <h2 className="mb-3 text-[22px] font-semibold">Pattern this week</h2>
+            <p className="text-[14px] leading-6 text-[#5f675f]">
+              {proteinGap > 0
+                ? "Protein is the limiting metric. Calories are controlled on most days, but dinner often decides whether the target is reached."
+                : "The week has enough protein signal. The next improvement is keeping logging complete enough for recommendations to stay accurate."}
+            </p>
+          </Panel>
+        </div>
+      </section>
     </div>
   );
 }

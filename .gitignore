@@ -1,0 +1,36 @@
+.DS_Store
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.local.example
+!.env.production.example
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+out/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local AI/editor agent state
+.agents/
+.claude/
+**/.claude/
+CLAUDE.md
+**/CLAUDE.md
+skills-lock.json
+
+# Framework generated type files
+next-env.d.ts
+*.tsbuildinfo

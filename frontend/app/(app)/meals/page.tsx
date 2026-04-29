@@ -1,123 +1,293 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Plus } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { DayGroup } from "./_components/DayGroup";
-import type { Meal } from "./_components/MealCard";
+import { useEffect, useMemo, useState } from "react";
+import { Camera } from "@phosphor-icons/react/dist/ssr";
+import { listHistory } from "@/lib/api/history";
+import { deleteMeal, listMeals } from "@/lib/api/meals";
+import type { HistoryEntry, MealDTO } from "@/lib/api/types";
+import { EmptyState, PageHeader, MealLine, Panel, Skeleton, SourceBadge, Stat } from "../_components/ui";
+import type { Meal } from "../_components/ui";
+import { useToast } from "@/lib/toast";
 
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+type DiaryMeal = Meal & { loggedDate: string };
 
-type Filter = "today" | "week" | "month";
+function mealFromApi(meal: MealDTO): DiaryMeal {
+  const loggedAt = new Date(meal.loggedAt);
+  return {
+    id: meal.id,
+    mealType: meal.mealType,
+    title: meal.notes || meal.items[0]?.name || meal.mealType.toLowerCase(),
+    loggedAt: loggedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    loggedDate: loggedAt.toISOString().slice(0, 10),
+    source: meal.foodQueryId ? "IMAGE" : "TEXT",
+    provider: "db",
+    cached: false,
+    confidence: 1,
+    totals: {
+      calories: Math.round(meal.totalCalories),
+      protein: Math.round(meal.totalProtein),
+      carbs: Math.round(meal.totalCarbs),
+      fat: Math.round(meal.totalFat),
+    },
+    items: meal.items.map((item) => ({
+      name: item.name,
+      quantity: item.quantity ?? "",
+      calories: Math.round(item.calories),
+      protein: Math.round(item.protein),
+      carbs: Math.round(item.carbs),
+      fat: Math.round(item.fat),
+      confidence: 1,
+    })),
+  };
+}
 
-const ALL_MEALS: { label: string; meals: Meal[] }[] = [
-  {
-    label: "Today",
-    meals: [
-      { id: "1", name: "Greek yogurt bowl", time: "8:14 AM",  type: "Breakfast", kcal: 320, protein: 22, carbs: 38, fat: 8,  source: "text"  },
-      { id: "2", name: "Grilled chicken wrap", time: "12:40 PM", type: "Lunch",  kcal: 480, protein: 38, carbs: 44, fat: 12, source: "photo" },
-      { id: "3", name: "Almonds",           time: "3:22 PM",  type: "Snack",     kcal: 180, protein: 6,  carbs: 7,  fat: 16, source: "text"  },
-    ],
-  },
-  {
-    label: "Yesterday",
-    meals: [
-      { id: "4", name: "Oatmeal with banana", time: "7:50 AM",  type: "Breakfast", kcal: 360, protein: 12, carbs: 62, fat: 7,  source: "text"  },
-      { id: "5", name: "Grain bowl with salmon", time: "1:10 PM", type: "Lunch", kcal: 486, protein: 34, carbs: 42, fat: 18, source: "photo" },
-      { id: "6", name: "Protein shake",     time: "4:00 PM",  type: "Snack",     kcal: 220, protein: 28, carbs: 14, fat: 4,  source: "text"  },
-      { id: "7", name: "Pasta primavera",   time: "7:30 PM",  type: "Dinner",    kcal: 580, protein: 18, carbs: 82, fat: 16, source: "photo" },
-    ],
-  },
-  {
-    label: "Saturday, Apr 16",
-    meals: [
-      { id: "8",  name: "Avocado toast",    time: "9:00 AM",  type: "Breakfast", kcal: 290, protein: 10, carbs: 28, fat: 16, source: "photo" },
-      { id: "9",  name: "Caesar salad",     time: "1:30 PM",  type: "Lunch",     kcal: 420, protein: 14, carbs: 32, fat: 26, source: "text"  },
-      { id: "10", name: "Steak with rice",  time: "7:00 PM",  type: "Dinner",    kcal: 660, protein: 48, carbs: 54, fat: 22, source: "photo" },
-    ],
-  },
-];
+function todayStart() {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
 
-const FILTER_COUNTS: Record<Filter, number> = { today: 1, week: 3, month: 3 };
-
-const TABS: { id: Filter; label: string }[] = [
-  { id: "today", label: "Today" },
-  { id: "week",  label: "This week" },
-  { id: "month", label: "This month" },
-];
+function formatDiaryDate(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+  return date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+}
 
 export default function MealsPage() {
-  const [filter, setFilter] = useState<Filter>("week");
+  const { toast } = useToast();
+  const [meals, setMeals] = useState<DiaryMeal[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [activeFilter, setActiveFilter] = useState("Today");
+  const [historyFrom, setHistoryFrom] = useState("");
+  const [historyTo, setHistoryTo] = useState("");
+  const [minCalories, setMinCalories] = useState("");
+  const [maxCalories, setMaxCalories] = useState("");
+  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
 
-  const visible = ALL_MEALS.slice(0, FILTER_COUNTS[filter]);
-  const visibleGroups = visible.map((group, index) => ({
-    group,
-    startIndex: visible
-      .slice(0, index)
-      .reduce((total, previousGroup) => total + previousGroup.meals.length, 0),
-  }));
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      listMeals(),
+      listHistory({
+        pageSize: 8,
+        from: historyFrom || undefined,
+        to: historyTo || undefined,
+        minCalories: minCalories ? Number(minCalories) : undefined,
+        maxCalories: maxCalories ? Number(maxCalories) : undefined,
+      }).catch(() => ({ data: [], total: 0, page: 1, pageSize: 8, totalPages: 1 })),
+    ])
+      .then(([apiMeals, apiHistory]) => {
+        if (cancelled) return;
+        setMeals(apiMeals.map(mealFromApi));
+        setHistory(apiHistory.data);
+        setSource("live");
+      })
+      .catch(() => setSource("error"));
+    return () => {
+      cancelled = true;
+    };
+  }, [historyFrom, historyTo, maxCalories, minCalories]);
+
+  const days = useMemo(() => {
+    const groups = new Map<string, Meal[]>();
+    const today = todayStart();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 6);
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 29);
+    const filtered = meals.filter((meal) => {
+      const loggedDay = new Date(`${meal.loggedDate}T00:00:00`);
+      if (activeFilter === "Today") return loggedDay.getTime() === today.getTime();
+      if (activeFilter === "7 days") return loggedDay >= sevenDaysAgo;
+      if (activeFilter === "30 days") return loggedDay >= thirtyDaysAgo;
+      if (activeFilter === "Breakfast" || activeFilter === "Lunch" || activeFilter === "Dinner") {
+        return meal.mealType === activeFilter.toUpperCase();
+      }
+      if (activeFilter === "Photo source") return meal.source === "IMAGE";
+      return true;
+    });
+    filtered.forEach((meal) => groups.set(meal.loggedDate, [...(groups.get(meal.loggedDate) ?? []), meal]));
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([date, groupedMeals]) => ({ date, meals: groupedMeals }));
+  }, [activeFilter, meals]);
+
+  const visibleTotals = useMemo(() => days.reduce(
+    (acc, day) => {
+      day.meals.forEach((meal) => {
+        acc.meals += 1;
+        acc.calories += meal.totals.calories;
+        acc.protein += meal.totals.protein;
+      });
+      return acc;
+    },
+    { meals: 0, calories: 0, protein: 0 },
+  ), [days]);
+
+  async function handleDeleteMeal(id: string) {
+    const previous = meals;
+    setMeals((current) => current.filter((meal) => meal.id !== id));
+    try {
+      await deleteMeal(id);
+      toast("success", "Meal deleted.");
+      setSource("live");
+    } catch {
+      setMeals(previous);
+      toast("error", "Could not delete meal.");
+      setSource("error");
+    }
+  }
 
   return (
-    <div className="min-h-screen p-8 lg:p-12">
-      {/* Header */}
-      <header className="mb-8 flex items-start justify-between">
-        <div>
-          <p className="text-[13px] text-ink-muted">Your food diary</p>
-          <h1 className="mt-1 font-display text-[32px] font-bold tracking-[-0.02em] text-ink">
-            Meals
-          </h1>
-        </div>
-        <Link
-          href="/snap"
-          className="flex items-center gap-2 rounded-2xl bg-forest px-5 py-3 text-[14px] font-semibold text-cream shadow-[0_4px_20px_rgba(31,59,45,0.25)] transition-all hover:opacity-90 active:scale-[0.99]"
-        >
-          <Plus size={15} weight="bold" />
-          Log meal
-        </Link>
-      </header>
+    <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
+      <PageHeader
+        eyebrow="Meals"
+        title="Food diary"
+        description="Review saved meals, filter by time or meal type, and use analysis history to keep the diary accurate."
+        action={{ label: "Log meal", href: "/snap" }}
+      />
+      {source === "error" ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load meal data. Sign in and try again.</p>
+        </Panel>
+      ) : null}
 
-      {/* Filter tabs */}
-      <div className="mb-6 flex self-start rounded-full border border-ink/[0.08] bg-white/60 p-1 backdrop-blur-sm w-fit">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setFilter(t.id)}
-            className={[
-              "rounded-full px-5 py-2 text-[13px] font-medium transition-all duration-200",
-              filter === t.id
-                ? "bg-forest text-cream shadow-[0_2px_8px_rgba(31,59,45,0.2)]"
-                : "text-ink-muted hover:text-ink",
-            ].join(" ")}
-          >
-            {t.label}
+      <div className="mb-5 flex flex-wrap gap-2">
+        {["Today", "7 days", "30 days", "Breakfast", "Lunch", "Dinner", "Photo source"].map((filter) => (
+          <button key={filter} onClick={() => setActiveFilter(filter)} className={`rounded-lg border px-3 py-1.5 text-[12px] font-bold transition-colors ${activeFilter === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f] hover:border-teal/30 hover:text-forest"}`}>
+            {filter}
           </button>
         ))}
       </div>
 
-      {/* Meal groups */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={filter}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.25, ease: EASE }}
-          className="flex flex-col gap-8"
-        >
-          {visibleGroups.map(({ group, startIndex }) => {
-            return (
-              <DayGroup
-                key={group.label}
-                label={group.label}
-                meals={group.meals}
-                totalKcal={group.meals.reduce((s, m) => s + m.kcal, 0)}
-                startIndex={startIndex}
-              />
-            );
-          })}
-        </motion.div>
-      </AnimatePresence>
+      {source === "loading" ? (
+        <div className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-3">
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+          </div>
+          <Panel className="p-5">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="mt-5 h-20" />
+            <Skeleton className="mt-3 h-20" />
+          </Panel>
+        </div>
+      ) : null}
+
+      {source !== "loading" ? (
+        <section className="mb-5 grid gap-3 md:grid-cols-3">
+          <Stat label="Visible meals" value={`${visibleTotals.meals}`} sub={`${activeFilter} filter`} />
+          <Stat label="Calories" value={`${visibleTotals.calories}`} sub="In current view" />
+          <Stat label="Protein" value={`${visibleTotals.protein}g`} sub="In current view" />
+        </section>
+      ) : null}
+
+      <section className="space-y-6">
+        {source !== "loading" && days.map((day) => {
+          const totals = day.meals.reduce(
+            (acc, meal) => ({
+              calories: acc.calories + meal.totals.calories,
+              protein: acc.protein + meal.totals.protein,
+            }),
+            { calories: 0, protein: 0 },
+          );
+
+          return (
+            <Panel key={day.date} className="overflow-hidden">
+              <div className="flex flex-col gap-3 border-b border-black/10 p-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-[22px] font-semibold">{formatDiaryDate(day.date)}</h2>
+                  <p className="mt-1 text-[13px] text-[#5f675f]">{day.meals.length} meals · {totals.calories} kcal · {totals.protein}g protein</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <SourceBadge label="editable items" />
+                </div>
+              </div>
+              <div className="space-y-3 p-5">
+                {day.meals.map((meal, index) => (
+                  <MealLine
+                    key={meal.id}
+                    meal={meal}
+                    expanded={index === 1}
+                    action={
+                      <button onClick={() => handleDeleteMeal(meal.id)} className="rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#b7791f]">
+                        Delete
+                      </button>
+                    }
+                  />
+                ))}
+              </div>
+            </Panel>
+          );
+        })}
+        {source !== "loading" && !days.length ? (
+          <Panel className="p-6">
+            <EmptyState
+              icon={Camera}
+              title={meals.length ? "No meals match this filter" : "No meals logged yet"}
+              description={meals.length ? "Try a wider date range or clear the meal type filter." : "Start with a photo scan or text description to build your diary history."}
+              action={meals.length ? undefined : { label: "Scan meal", href: "/snap" }}
+            />
+            {meals.length ? (
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <button onClick={() => setActiveFilter("Today")} className="rounded-lg border border-black/10 bg-white px-4 py-3 text-[13px] font-bold text-[#173c2b]">
+                Show today
+              </button>
+              <Link href="/snap" className="rounded-lg bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white">
+                Scan meal
+              </Link>
+            </div>
+            ) : null}
+          </Panel>
+        ) : null}
+      </section>
+
+      <Panel className="mt-5 overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-black/10 p-5">
+          <div>
+            <h2 className="text-[22px] font-semibold">Analysis history</h2>
+            <p className="mt-1 text-[13px] text-[#5f675f]">Recent food checks and saved nutrition estimates.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="date" value={historyFrom} onChange={(event) => setHistoryFrom(event.target.value)} className="rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[12px] font-bold outline-none" />
+            <input type="date" value={historyTo} onChange={(event) => setHistoryTo(event.target.value)} className="rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[12px] font-bold outline-none" />
+            <input inputMode="numeric" value={minCalories} onChange={(event) => setMinCalories(event.target.value)} placeholder="Min kcal" className="w-24 rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[12px] font-bold outline-none" />
+            <input inputMode="numeric" value={maxCalories} onChange={(event) => setMaxCalories(event.target.value)} placeholder="Max kcal" className="w-24 rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[12px] font-bold outline-none" />
+            <SourceBadge label={history.length ? `${history.length} recent` : "empty"} />
+          </div>
+        </div>
+        <div className="divide-y divide-black/8">
+          {(history.length ? history : []).map((entry) => (
+            <div key={entry.id} className="grid gap-3 p-5 md:grid-cols-[1fr_260px] md:items-center">
+              <div>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <SourceBadge label={entry.inputType.toLowerCase()} />
+                  <SourceBadge label={`${Math.round(entry.confidence * 100)}% confidence`} />
+                </div>
+                <p className="text-[15px] font-semibold">{entry.inputText || entry.items.map((item) => item.name).slice(0, 3).join(", ") || "Image analysis"}</p>
+                <p className="mt-1 text-[12px] text-[#5f675f]">{new Date(entry.createdAt).toLocaleString()}</p>
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                {[
+                  [Math.round(entry.totals.calories), "kcal"],
+                  [`${Math.round(entry.totals.protein)}g`, "protein"],
+                  [`${Math.round(entry.totals.carbs)}g`, "carbs"],
+                  [`${Math.round(entry.totals.fat)}g`, "fat"],
+                ].map(([value, label]) => (
+                  <div key={label} className="rounded-md bg-[#f8f8f3] p-2">
+                    <p className="text-[13px] font-semibold">{value}</p>
+                    <p className="text-[10px] text-[#5f675f]">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          {!history.length ? (
+            <div className="p-5 text-[13px] font-semibold text-[#5f675f]">No food analysis history yet. Analyze a meal from Snap to populate this section.</div>
+          ) : null}
+        </div>
+      </Panel>
     </div>
   );
 }
