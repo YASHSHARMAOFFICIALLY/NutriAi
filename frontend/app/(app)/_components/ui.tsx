@@ -72,9 +72,26 @@ export function Panel({
   );
 }
 
-export function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+export function Stat({
+  label,
+  value,
+  sub,
+  tone = "forest",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: "forest" | "teal" | "sage" | "amber";
+}) {
+  const tones = {
+    forest: "border-t-forest",
+    teal: "border-t-teal",
+    sage: "border-t-sage",
+    amber: "border-t-[#b7791f]",
+  };
+
   return (
-    <Panel className="p-5">
+    <Panel className={`border-t-4 p-5 ${tones[tone]}`}>
       <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p>
       <div className="mt-3 flex items-baseline gap-1">
         <p className="text-[30px] font-bold leading-none tracking-tight text-forest">{value}</p>
@@ -223,11 +240,13 @@ export function EmptyState({
   title,
   description,
   action,
+  secondaryAction,
 }: {
   icon: ComponentType<{ size?: number; weight?: "thin" | "light" | "regular" | "bold" | "fill" | "duotone" }>;
   title: string;
   description: string;
   action?: { label: string; href: string };
+  secondaryAction?: { label: string; href: string };
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-alt/60 px-6 py-12 text-center">
@@ -236,14 +255,26 @@ export function EmptyState({
       </div>
       <h3 className="text-[16px] font-bold text-forest">{title}</h3>
       <p className="mt-2 max-w-sm text-[13px] leading-6 text-muted">{description}</p>
-      {action && (
-        <Link
-          href={action.href}
-          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-forest px-5 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-forest-soft"
-        >
-          {action.label}
-          <ArrowRight size={14} weight="bold" />
-        </Link>
+      {(action || secondaryAction) && (
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {action && (
+            <Link
+              href={action.href}
+              className="inline-flex items-center gap-2 rounded-lg bg-forest px-5 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-forest-soft"
+            >
+              {action.label}
+              <ArrowRight size={14} weight="bold" />
+            </Link>
+          )}
+          {secondaryAction && (
+            <Link
+              href={secondaryAction.href}
+              className="inline-flex items-center rounded-lg border border-border bg-white px-5 py-2.5 text-[13px] font-bold text-forest transition-colors hover:bg-surface-alt"
+            >
+              {secondaryAction.label}
+            </Link>
+          )}
+        </div>
       )}
     </div>
   );

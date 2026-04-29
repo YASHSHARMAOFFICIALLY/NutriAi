@@ -13,4 +13,5 @@ export * as analytics from "./analytics";
 export * as family from "./family";
 export * as profile from "./profile";
 export * as recommendations from "./recommendations";
+export * as telegram from "./telegram";
 export * as uploads from "./uploads";

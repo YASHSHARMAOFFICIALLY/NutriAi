@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AddressBook, Bell, CreditCard, Gear } from "@phosphor-icons/react/dist/ssr";
-import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api/apiKeys";
-import { getApiUrl } from "@/lib/api/auth";
+import { AddressBook, Bell, CreditCard, Gear, PaperPlaneTilt } from "@phosphor-icons/react/dist/ssr";
 import { createCheckout, getMyPlan, type UserPlan } from "@/lib/api/payments";
 import { deleteProfile, getProfile, updateProfile } from "@/lib/api/profile";
-import type { ActivityLevel, ApiKeyRow, Goal, IssuedApiKey, Sex, UserProfile } from "@/lib/api/types";
+import { createTelegramLink, getTelegramStatus, unlinkTelegram, type TelegramLink, type TelegramStatus } from "@/lib/api/telegram";
+import type { ActivityLevel, Goal, Sex, UserProfile } from "@/lib/api/types";
 import { CheckRow, PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 import { sexLabels, activityLabels, goalLabels } from "@/lib/enumLabels";
 import { useToast } from "@/lib/toast";
@@ -67,12 +66,8 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [form, setForm] = useState<ProfileForm>(formFromProfile());
   const [plan, setPlan] = useState<UserPlan | null>(null);
-  const [apiKeys, setApiKeys] = useState<ApiKeyRow[]>([]);
-  const [newKeyName, setNewKeyName] = useState("Production client");
-  const [issuedKey, setIssuedKey] = useState<IssuedApiKey | null>(null);
-  const [apiToken, setApiToken] = useState("");
-  const [apiText, setApiText] = useState("2 roti and dal");
-  const [apiResult, setApiResult] = useState<string | null>(null);
+  const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null);
+  const [telegramLink, setTelegramLink] = useState<TelegramLink | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [source, setSource] = useState<"loading" | "live" | "error">("loading");
   const [saving, setSaving] = useState(false);
@@ -81,14 +76,14 @@ export default function SettingsPage() {
     let cancelled = false;
     Promise.all([
       getProfile(),
-      listApiKeys().catch(() => []),
       getMyPlan().catch(() => null),
+      getTelegramStatus().catch(() => null),
     ])
-      .then(([apiProfile, keys, apiPlan]) => {
+      .then(([apiProfile, apiPlan, tgStatus]) => {
         if (cancelled) return;
         setForm(formFromProfile(apiProfile));
-        setApiKeys(keys);
         setPlan(apiPlan);
+        setTelegramStatus(tgStatus);
         setSource("live");
       })
       .catch(() => setSource("error"));
@@ -146,51 +141,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleCreateApiKey() {
-    if (!newKeyName.trim()) return;
-    setSaving(true);
-    try {
-      const key = await createApiKey({
-        name: newKeyName.trim(),
-        scopes: ["calories:read"],
-        rateLimitPerMin: 60,
-      });
-      setIssuedKey(key);
-      setApiToken(key.token);
-      setApiKeys((current) => [key, ...current]);
-      toast("success", "Developer key created.");
-      setSource("live");
-    } catch {
-      toast("error", "Could not create developer key.");
-      setSource("error");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handlePublicApiTest() {
-    if (!apiToken.trim() || !apiText.trim()) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`${getApiUrl()}/v1/public/calories`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiToken.trim(),
-        },
-        body: JSON.stringify({ text: apiText.trim() }),
-      });
-      const data = await res.json();
-      setApiResult(res.ok ? `Lookup ready: ${data?.totals?.calories ? `${Math.round(data.totals.calories)} calories estimated` : "request completed"}` : "Lookup failed. Check the key and try again.");
-      setSource(res.ok ? "live" : "error");
-    } catch {
-      setApiResult("Public API call failed. Check the key and try again.");
-      setSource("error");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleDeleteProfile() {
     if (!confirmDelete) {
       setConfirmDelete(true);
@@ -211,16 +161,29 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleRevokeApiKey(id: string) {
+  async function handleCreateTelegramLink() {
     setSaving(true);
     try {
-      const revoked = await revokeApiKey(id);
-      setApiKeys((current) => current.map((key) => key.id === id ? { ...key, revokedAt: revoked.revokedAt } : key));
-      toast("success", "Developer key revoked.");
-      setSource("live");
+      const link = await createTelegramLink();
+      setTelegramLink(link);
+      toast("success", "Telegram link created.");
+      if (link.deepLink) window.open(link.deepLink, "_blank", "noopener,noreferrer");
     } catch {
-      toast("error", "Could not revoke developer key.");
-      setSource("error");
+      toast("error", "Could not create Telegram link.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUnlinkTelegram() {
+    setSaving(true);
+    try {
+      await unlinkTelegram();
+      setTelegramStatus((current) => current ? { ...current, linked: false, account: null } : current);
+      setTelegramLink(null);
+      toast("success", "Telegram disconnected.");
+    } catch {
+      toast("error", "Could not disconnect Telegram.");
     } finally {
       setSaving(false);
     }
@@ -262,7 +225,7 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Account"
         title="Settings and subscription"
-        description="Manage the profile data that powers targets, recommendations, notifications, developer access, and your plan."
+        description="Manage the profile data that powers targets, recommendations, notifications, Telegram, and your plan."
       />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
@@ -390,43 +353,31 @@ export default function SettingsPage() {
             </div>
           </Panel>
           <Panel className="p-5">
-            <h2 className="mb-4 text-[22px] font-bold text-forest tracking-tight">Developer keys</h2>
-            <div className="rounded-xl bg-surface-alt p-4 border border-border">
-              <p className="text-[12px] font-bold text-forest">Calorie lookup access</p>
-              <p className="mt-1 text-[13px] leading-5 text-muted">Create a scoped key for approved integrations. Keep the key private and revoke it if it is no longer needed.</p>
-            </div>
-            {issuedKey ? (
-              <div className="mt-3 rounded-md border border-[#d7ff68] bg-[#f8f8f3] p-3">
-                <p className="text-[12px] font-bold text-[#173c2b]">Copy now. This key is shown once.</p>
-                <p className="mt-2 break-all font-mono text-[12px]">{issuedKey.token}</p>
+            <div className="mb-4 flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-surface-alt text-forest">
+                <PaperPlaneTilt size={19} weight="bold" />
+              </span>
+              <div>
+                <h2 className="text-[20px] font-bold tracking-tight text-forest">Telegram</h2>
+                <p className="mt-1 text-[12px] font-semibold text-muted">
+                  {telegramStatus?.linked ? "Connected" : "Optional quick logging"}
+                </p>
               </div>
-            ) : null}
-            <div className="mt-3 flex gap-2">
-              <input className="min-w-0 flex-1 rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-2 text-[13px] outline-none" value={newKeyName} onChange={(event) => setNewKeyName(event.target.value)} />
-              <button onClick={handleCreateApiKey} disabled={saving} className="rounded-md bg-[#173c2b] px-3 py-2 text-[12px] font-bold text-white disabled:opacity-60">Create</button>
             </div>
-            <div className="mt-4 rounded-md border border-black/8 bg-[#f8f8f3] p-3">
-              <p className="text-[13px] font-semibold">Test calorie lookup</p>
-              <input className="mt-3 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-[12px] outline-none" placeholder="nk_..." value={apiToken} onChange={(event) => setApiToken(event.target.value)} />
-              <input className="mt-2 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-[12px] outline-none" value={apiText} onChange={(event) => setApiText(event.target.value)} />
-              <button onClick={handlePublicApiTest} disabled={saving || !apiToken.trim()} className="mt-3 rounded-md bg-[#173c2b] px-3 py-2 text-[12px] font-bold text-white disabled:opacity-60">Run test</button>
-              {apiResult ? <p className="mt-3 rounded-md bg-white p-3 text-[12px] font-semibold text-[#5f675f]">{apiResult}</p> : null}
-            </div>
-            <div className="mt-4 space-y-2">
-              {apiKeys.map((key) => (
-                <div key={key.id} className="rounded-md border border-black/8 bg-[#f8f8f3] p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[13px] font-semibold">{key.name}</p>
-                      <p className="mt-1 text-[11px] text-[#5f675f]">nk_{key.prefix} · {key.rateLimitPerMin}/min · {key.revokedAt ? "revoked" : "active"}</p>
-                    </div>
-                    {!key.revokedAt ? (
-                      <button onClick={() => handleRevokeApiKey(key.id)} className="text-[11px] font-bold text-[#b7791f]">Revoke</button>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-              {!apiKeys.length ? <p className="text-[12px] font-semibold text-[#5f675f]">No developer keys yet.</p> : null}
+            <p className="text-[13px] leading-6 text-muted">
+              {telegramStatus?.linked
+                ? `Linked${telegramStatus.account?.username ? ` to @${telegramStatus.account.username}` : ""}.`
+                : "Connect only if you want meal logging from Telegram."}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {telegramStatus?.linked ? (
+                <button onClick={handleUnlinkTelegram} disabled={saving} className="rounded-lg border border-border bg-white px-4 py-2.5 text-[12px] font-bold text-forest disabled:opacity-60">Disconnect</button>
+              ) : (
+                <button onClick={handleCreateTelegramLink} disabled={saving} className="rounded-lg bg-forest px-4 py-2.5 text-[12px] font-bold text-white disabled:opacity-60">Connect Telegram</button>
+              )}
+              {telegramLink?.deepLink ? (
+                <a href={telegramLink.deepLink} target="_blank" rel="noreferrer" className="rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-[12px] font-bold text-forest">Open bot</a>
+              ) : null}
             </div>
           </Panel>
           <Panel className="border-amber-200 p-5">

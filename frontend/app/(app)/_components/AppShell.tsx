@@ -14,7 +14,6 @@ import {
   Gear,
   House,
   Medal,
-  Prohibit,
   SidebarSimple,
   Sparkle,
   Star,
@@ -107,8 +106,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {expanded ? (
             <button
               onClick={() => setExpanded((current) => !current)}
-              className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-surface-alt text-muted transition-colors hover:text-forest"
-              aria-label="Toggle sidebar"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface-alt text-muted transition-colors hover:text-forest"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
             >
               <SidebarSimple size={17} weight="bold" />
             </button>
@@ -128,17 +128,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     href={href}
                     title={label}
                     className={[
-                      "group/nav relative flex h-11 items-center rounded-2xl text-[13px] font-bold transition-all duration-300",
+                      "group/nav relative flex h-11 items-center rounded-lg text-[13px] font-bold transition-all duration-300",
                       expanded ? "gap-3 px-3" : "justify-center px-0",
                       active
                         ? "bg-forest text-white shadow-premium"
-                        : "text-muted hover:bg-surface-alt hover:text-forest",
+                        : href === "/snap"
+                          ? "bg-lime/45 text-forest hover:bg-lime"
+                          : "text-muted hover:bg-surface-alt hover:text-forest",
                     ].join(" ")}
                   >
                     <Icon size={19} weight={active ? "fill" : "bold"} />
                     <span className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${expanded ? "w-36 opacity-100" : "w-0 opacity-0"}`}>{label}</span>
                     {!expanded ? (
-                      <span className="pointer-events-none absolute left-[64px] z-50 rounded-xl border border-border bg-white px-3 py-2 text-[12px] font-bold text-forest opacity-0 shadow-lg transition-opacity group-hover/nav:opacity-100">
+                      <span className="pointer-events-none absolute left-[64px] z-50 rounded-lg border border-border bg-white px-3 py-2 text-[12px] font-bold text-forest opacity-0 shadow-lg transition-opacity group-hover/nav:opacity-100">
                         {label}
                       </span>
                     ) : null}
@@ -150,7 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="border-t border-border p-3">
-          <div className={`overflow-hidden rounded-2xl border border-border bg-surface-alt shadow-sm transition-all duration-300 ${expanded ? "p-4" : "p-2"}`}>
+          <div className={`overflow-hidden rounded-lg border border-border bg-surface-alt shadow-sm transition-all duration-300 ${expanded ? "p-4" : "p-2"}`}>
             <div className={`mb-3 flex items-center ${expanded ? "justify-between" : "justify-center"}`}>
               <p className={`text-[10px] font-bold uppercase tracking-wider text-muted transition-all ${expanded ? "w-auto opacity-100" : "w-0 opacity-0"}`}>Daily target</p>
               <span className="h-2 w-2 rounded-full bg-teal animate-pulse" />
@@ -160,11 +162,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className={`text-[11px] font-bold uppercase text-muted transition-all ${expanded ? "w-auto opacity-100" : "w-0 overflow-hidden opacity-0"}`}>kcal left</span>
             </div>
             <div className={`mt-4 flex flex-col gap-3 transition-all ${expanded ? "max-h-32 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
-              <Link href="/recommendations" className="rounded-xl bg-white py-3 text-center text-[12px] font-bold text-forest transition-colors hover:bg-forest hover:text-white">
+              <Link href="/recommendations" className="rounded-lg bg-white py-3 text-center text-[12px] font-bold text-forest transition-colors hover:bg-forest hover:text-white">
                 View Recommendations
               </Link>
               {!isPro && (
-                <Link href="/pricing" className="flex items-center justify-center gap-1.5 rounded-xl bg-[#d7ff68] py-3 text-center text-[12px] font-bold text-forest transition-colors hover:bg-[#c8f050]">
+                <Link href="/pricing" className="flex items-center justify-center gap-1.5 rounded-lg bg-[#d7ff68] py-3 text-center text-[12px] font-bold text-forest transition-colors hover:bg-[#c8f050]">
                   <CrownSimple size={14} weight="fill" />
                   Upgrade to Pro
                 </Link>
@@ -184,13 +186,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-[60] lg:hidden" onClick={() => setMoreOpen(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="absolute inset-x-3 bottom-20 rounded-2xl border border-border bg-white p-4 shadow-xl"
+            className="absolute inset-x-3 bottom-20 rounded-lg border border-border bg-white p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
               <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-muted">More</p>
-              <button onClick={() => setMoreOpen(false)} className="grid h-8 w-8 place-items-center rounded-xl bg-surface-alt text-muted">
-                <Prohibit size={16} weight="bold" />
+              <button onClick={() => setMoreOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg bg-surface-alt text-[18px] font-bold leading-none text-muted" aria-label="Close more menu">
+                &times;
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -202,7 +204,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     href={href}
                     onClick={() => setMoreOpen(false)}
                     className={[
-                      "flex flex-col items-center gap-2 rounded-xl p-3 text-[12px] font-bold transition-all",
+                      "flex flex-col items-center gap-2 rounded-lg p-3 text-[12px] font-bold transition-all",
                       active ? "bg-forest text-white" : "bg-surface-alt text-muted hover:text-forest",
                     ].join(" ")}
                   >
@@ -225,7 +227,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={href}
                 href={href}
                 className={[
-                  "flex h-12 flex-col items-center justify-center gap-1 rounded-xl transition-all",
+                  "flex h-12 flex-col items-center justify-center gap-1 rounded-lg transition-all",
                   active ? "bg-forest text-white shadow-premium" : "text-muted",
                 ].join(" ")}
               >
@@ -237,7 +239,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setMoreOpen((o) => !o)}
             className={[
-              "flex h-12 flex-col items-center justify-center gap-1 rounded-xl transition-all",
+              "flex h-12 flex-col items-center justify-center gap-1 rounded-lg transition-all",
               moreOpen || moreNav.some((n) => pathname === n.href)
                 ? "bg-forest text-white shadow-premium"
                 : "text-muted",

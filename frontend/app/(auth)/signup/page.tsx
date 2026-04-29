@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowRight, SealWarning, Sparkle, Check } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, ForkKnife, SealWarning } from "@phosphor-icons/react/dist/ssr";
 import { register } from "@/lib/api/emailAuth";
 import { ApiError } from "@/lib/api/client";
 
@@ -35,23 +35,23 @@ function SignupShell({
   footer?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-cream px-6 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE }}
         className="w-full max-w-[400px]"
       >
-        <Link href="/" className="mb-8 flex items-center gap-2 font-display text-xl font-bold tracking-tight text-ink">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-sage/30 bg-sage/15">
-            <Sparkle size={14} weight="fill" className="text-sage-600" />
+        <Link href="/" className="mb-8 flex items-center gap-2 text-xl font-bold tracking-tight text-forest">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-forest text-white">
+            <ForkKnife size={15} weight="bold" />
           </span>
           NutriAI
         </Link>
-        <h1 className="font-display text-[30px] font-bold tracking-[-0.02em] text-ink">{title}</h1>
-        {subtitle && <p className="mt-2 text-[14px] leading-[1.55] text-ink-muted">{subtitle}</p>}
+        <h1 className="text-[30px] font-bold text-forest">{title}</h1>
+        {subtitle && <p className="mt-2 text-[14px] leading-[1.55] text-muted">{subtitle}</p>}
         <div className="mt-8">{children}</div>
-        {footer && <div className="mt-8 text-center text-[13px] text-ink-muted">{footer}</div>}
+        {footer && <div className="mt-8 text-center text-[13px] text-muted">{footer}</div>}
       </motion.div>
     </div>
   );
@@ -89,7 +89,7 @@ export default function SignupPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-sage-600 hover:underline">
+          <Link href="/login" className="font-semibold text-teal hover:underline">
             Sign in
           </Link>
         </>
@@ -97,16 +97,16 @@ export default function SignupPage() {
     >
       <a
         href={`${API_URL}/auth/google`}
-        className="flex w-full items-center justify-center gap-3 rounded-xl border border-black/12 bg-white px-5 py-3.5 text-[15px] font-semibold text-[#121410] shadow-[0_2px_8px_rgba(31,59,45,0.07)] transition-shadow hover:shadow-[0_4px_16px_rgba(31,59,45,0.12)]"
+        className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-white px-5 py-3.5 text-[15px] font-semibold text-foreground shadow-sm transition-shadow hover:shadow-md"
       >
         <GoogleIcon />
         Continue with Google
       </a>
 
       <div className="my-2 flex items-center gap-4">
-        <div className="h-px flex-1 bg-black/8" />
-        <span className="text-[11px] uppercase tracking-[0.15em] text-black/30">or</span>
-        <div className="h-px flex-1 bg-black/8" />
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-[11px] uppercase tracking-[0.15em] text-muted/70">or</span>
+        <div className="h-px flex-1 bg-border" />
       </div>
 
       <form onSubmit={submit} className="flex flex-col gap-4">
@@ -155,7 +155,7 @@ export default function SignupPage() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-forest py-3.5 text-[15px] font-semibold text-cream shadow-[0_2px_8px_rgba(31,59,45,0.25)] transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-forest py-3.5 text-[15px] font-semibold text-white shadow-md transition-all hover:bg-forest-soft active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Creating account..." : (<>Create account <ArrowRight size={14} weight="bold" /></>)}
         </button>
@@ -168,14 +168,14 @@ export default function SignupPage() {
           border-radius: 10px;
           padding: 11px 14px;
           font-size: 14px;
-          color: var(--color-ink, #121410);
+          color: var(--foreground);
           background: #fff;
           outline: none;
           transition: border-color 0.15s, box-shadow 0.15s;
         }
         .input:focus {
-          border-color: #5e8a69;
-          box-shadow: 0 0 0 3px rgba(94, 138, 105, 0.15);
+          border-color: var(--teal);
+          box-shadow: 0 0 0 3px rgba(15, 139, 141, 0.14);
         }
         .input::placeholder {
           color: rgba(18, 20, 16, 0.35);
@@ -188,9 +188,9 @@ export default function SignupPage() {
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[12px] font-medium text-ink-muted">{label}</span>
+      <span className="text-[12px] font-medium text-muted">{label}</span>
       {children}
-      {hint && <span className="text-[11px] text-ink-muted/70">{hint}</span>}
+      {hint && <span className="text-[11px] text-muted/70">{hint}</span>}
     </label>
   );
 }

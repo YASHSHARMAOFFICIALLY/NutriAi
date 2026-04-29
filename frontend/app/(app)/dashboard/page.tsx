@@ -151,6 +151,10 @@ export default function DashboardPage() {
         ? "Keep the next meal light; your calorie budget is nearly used."
         : `You have ${remaining.calories} kcal to work with for the next meal.`
     : "Set targets in Account to unlock clearer daily guidance.";
+  const targetTone =
+    !hasTargets ? "Set up" : goalProgress >= 95 ? "Nearly full" : goalProgress >= 70 ? "On track" : "Room left";
+  const targetToneClass =
+    !hasTargets ? "bg-surface-alt text-muted" : goalProgress >= 95 ? "bg-amber-50 text-[#8a5514]" : "bg-lime/50 text-forest";
 
   if (status === "loading") {
     return (
@@ -198,15 +202,63 @@ export default function DashboardPage() {
         action={{ label: "Scan meal", href: "/snap" }}
       />
 
+      <section className="mb-6 overflow-hidden rounded-lg border border-border bg-white shadow-sm">
+        <div className="grid gap-0 lg:grid-cols-[1fr_360px]">
+          <div className="p-6 md:p-7">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] ${targetToneClass}`}>
+                {targetTone}
+              </span>
+              {goal ? <span className="text-[13px] font-semibold text-muted">{goalLabels[goal]}</span> : null}
+            </div>
+            <h2 className="max-w-2xl text-[24px] font-bold leading-tight text-forest md:text-[30px]">
+              {dailyInsight}
+            </h2>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link href="/snap" className="inline-flex items-center gap-2 rounded-lg bg-forest px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-forest-soft">
+                <Camera size={17} weight="bold" />
+                Log meal
+              </Link>
+              <Link href={hasTargets ? "/recommendations" : "/settings"} className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface-alt px-5 py-3 text-[14px] font-bold text-forest transition-colors hover:bg-white">
+                <Star size={17} weight="bold" />
+                {hasTargets ? "Next meal idea" : "Set targets"}
+              </Link>
+            </div>
+          </div>
+          <div className="border-t border-border bg-surface-alt p-6 lg:border-l lg:border-t-0">
+            <div className="mb-3 flex items-center justify-between text-[13px] font-bold">
+              <span className="text-muted">Daily calorie progress</span>
+              <span className="text-forest">{hasTargets ? `${goalProgress}%` : "No target"}</span>
+            </div>
+            <div className="h-4 overflow-hidden rounded-full bg-white">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${goalProgress >= 95 ? "bg-[#b7791f]" : "bg-forest"}`}
+                style={{ width: `${hasTargets ? Math.min(100, goalProgress) : 0}%` }}
+              />
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-white p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Calories left</p>
+                <p className="mt-2 text-[24px] font-bold text-forest">{hasTargets ? remaining.calories : "-"}</p>
+              </div>
+              <div className="rounded-lg bg-white p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Protein left</p>
+                <p className="mt-2 text-[24px] font-bold text-forest">{targets.protein > 0 ? `${remaining.protein}g` : "-"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Calories left", value: hasTargets ? `${remaining.calories}` : "Set target", sub: hasTargets ? `${totals.calories}/${targets.calories} kcal` : "Add targets in settings" },
-          { label: "Protein gap", value: targets.protein > 0 ? `${remaining.protein}g` : "Set target", sub: targets.protein > 0 ? `${totals.protein}/${targets.protein}g logged` : "Add protein target" },
-          { label: "Logging streak", value: `${streak}d`, sub: streak > 0 ? "Keep the chain going" : "Log today to start" },
-          { label: "Goal progress", value: hasTargets ? `${goalProgress}%` : "Pending", sub: hasTargets ? "Daily target" : "Waiting for targets" },
+          { label: "Calories left", value: hasTargets ? `${remaining.calories}` : "Set target", sub: hasTargets ? `${totals.calories}/${targets.calories} kcal` : "Add targets in settings", tone: goalProgress >= 95 ? "amber" : "forest" },
+          { label: "Protein gap", value: targets.protein > 0 ? `${remaining.protein}g` : "Set target", sub: targets.protein > 0 ? `${totals.protein}/${targets.protein}g logged` : "Add protein target", tone: "teal" },
+          { label: "Logging streak", value: `${streak}d`, sub: streak > 0 ? "Keep the chain going" : "Log today to start", tone: "sage" },
+          { label: "Goal progress", value: hasTargets ? `${goalProgress}%` : "Pending", sub: hasTargets ? "Daily target" : "Waiting for targets", tone: "forest" },
         ].map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-            <Stat {...stat} />
+            <Stat {...stat} tone={stat.tone as "forest" | "teal" | "sage" | "amber"} />
           </motion.div>
         ))}
       </section>
@@ -266,6 +318,7 @@ export default function DashboardPage() {
                   title="No meals logged today"
                   description="Start with a photo scan or type a short meal description. Your diary and daily progress update immediately after saving."
                   action={{ label: "Log first meal", href: "/snap" }}
+                  secondaryAction={{ label: hasTargets ? "Ask Coach Ria" : "Set targets", href: hasTargets ? "/coach" : "/settings" }}
                 />
               )}
             </div>

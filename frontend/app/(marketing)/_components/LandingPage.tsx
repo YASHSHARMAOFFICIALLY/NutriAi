@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   Sparkle,
 } from "@phosphor-icons/react/dist/ssr";
+import { seoPages } from "../seoPages";
+import { PublicMealEstimator } from "./PublicMealEstimator";
 
 const heroImage =
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=2400&q=90";
@@ -85,7 +87,7 @@ const personalization = [
 
 const faqs = [
   {
-    question: "Can NutriAI handle Indian meals and mixed plates?",
+    question: "Can myNutriAI handle Indian meals and mixed plates?",
     answer:
       "Yes. The scanner is designed for mixed meals like dal rice, paneer bowls, wraps, salads, and restaurant plates, then lets the user edit portions before saving.",
   },
@@ -105,7 +107,7 @@ const faqs = [
       "No. Calories are the base layer, but the value is the loop: recommendations, weight trends, challenges, streaks, history, and weekly digests.",
   },
   {
-    question: "Can I use NutriAI without uploading photos?",
+    question: "Can I use myNutriAI without uploading photos?",
     answer:
       "Yes. Users can type meals manually, use recommendations, track weight, view analytics, and still get coaching from saved context.",
   },
@@ -150,12 +152,14 @@ export default function LandingPage() {
       <ScrollProgress />
       <Nav />
       <Hero />
+      <PublicMealEstimator />
       <ProofStrip />
       <ProductMoments />
       <ImmersiveProduct />
       <DailyLoop />
       <Personalization />
       <PlatformProof />
+      <SeoHub />
       <Pricing />
       <FAQ />
       <Final />
@@ -200,7 +204,7 @@ function Nav() {
           <span className="grid h-8 w-8 place-items-center rounded-md bg-[#d7ff68] text-[#101510]">
             <ForkKnife size={17} weight="bold" />
           </span>
-          NutriAI
+          myNutriAI
         </Link>
         <nav className="hidden items-center gap-8 text-[14px] font-medium text-white/76 md:flex">
           <a href="#product" className="hover:text-white">Product</a>
@@ -236,13 +240,13 @@ function Hero() {
         <div className="max-w-3xl">
           <div className="hero-reveal mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-bold uppercase tracking-[0.12em] backdrop-blur-md">
             <Sparkle size={14} weight="fill" className="text-[#d7ff68]" />
-            NutriAI meal scanner
+            AI meal scanner and macro tracker
           </div>
           <h1 className="hero-reveal hero-delay-1 display-heading max-w-4xl text-[44px] font-semibold leading-[0.98] md:text-[64px] xl:text-[80px]">
-            Snap a meal. See your macros. Know dinner.
+            Track real meals with an AI calorie scanner.
           </h1>
           <p className="hero-reveal hero-delay-2 mt-6 max-w-2xl text-[16px] leading-7 text-white/78 md:text-[18px] xl:mt-7 xl:text-[20px] xl:leading-8">
-            Take a photo, review editable food items, save the meal, and let NutriAI guide your next choice from today&apos;s targets and history.
+            myNutriAI helps you log burrito bowls, salads, sandwiches, pasta, dal rice, roti sabzi, paneer bowls, thalis, snacks, and mixed plates. Scan a food photo, review editable calories and macros, then see what fits your protein and calorie targets.
           </p>
           <div className="hero-reveal hero-delay-3 mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d7ff68] px-6 py-3.5 text-[15px] font-bold text-[#101510] shadow-[0_18px_44px_rgba(215,255,104,0.22)] transition hover:bg-white">
@@ -574,7 +578,7 @@ function DailyLoop() {
               A simple loop that brings people back.
             </h2>
             <p className="mt-6 max-w-xl text-[17px] leading-8 text-[#5f675f]">
-              NutriAI becomes more valuable after every saved meal because the coach, analytics, recommendations, challenges, and digests get more context.
+              myNutriAI becomes more valuable after every saved meal because the coach, analytics, recommendations, challenges, and digests get more context.
             </p>
           </div>
           <div className="relative min-h-[520px] overflow-hidden rounded-xl bg-[#eef5f2] p-5">
@@ -618,7 +622,7 @@ function Personalization() {
               Recommendations match the person eating.
             </h2>
             <p className="mt-5 max-w-xl text-[16px] leading-7 text-white/72">
-              NutriAI uses goals, body profile, allergies, preferences, budget, activity, timezone, and weight history to make personalization visible.
+              myNutriAI uses goals, body profile, allergies, preferences, budget, activity, timezone, and weight history to make personalization visible.
             </p>
           </div>
         </div>
@@ -682,7 +686,7 @@ function PlatformProof() {
         <div>
           <Header eyebrow="Platform depth" title="The app goes beyond the meal scanner." />
           <p className="mt-6 max-w-xl text-[17px] leading-8 text-[#5f675f]">
-            Private uploads, developer keys, public calorie lookup, role-based admin, and usage visibility make NutriAI ready for a real SaaS launch.
+            Private uploads, developer keys, public calorie lookup, role-based admin, and usage visibility make myNutriAI ready for a real SaaS launch.
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {["Private image uploads", "API key management", "Public calorie tools", "Usage tracking", "Admin user operations", "Reliability overview"].map((item) => (
@@ -712,6 +716,41 @@ function PlatformProof() {
             <p className="mt-2 text-[18px] font-semibold">Meal analysis completed · 640 kcal saved to today</p>
             <p className="mt-1 text-[13px] opacity-70">Admin views keep user, usage, and activity signals visible without exposing system details.</p>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SeoHub() {
+  return (
+    <section className="bg-[#f8f8f3] px-5 py-20 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="max-w-3xl">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#0f8b8d]">Nutrition guides</p>
+          <h2 className="mt-4 text-[42px] font-semibold leading-tight text-[#173c2b] md:text-[54px]">
+            Learn how myNutriAI handles real meal tracking.
+          </h2>
+          <p className="mt-5 text-[16px] leading-7 text-[#5f675f]">
+            Practical pages for users comparing AI food scanning, US and Indian meal calorie tracking, and daily macro tracking.
+          </p>
+        </div>
+        <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          {seoPages.map((page) => (
+            <Link
+              key={page.slug}
+              href={`/${page.slug}`}
+              className="group rounded-lg border border-black/10 bg-white p-5 transition hover:border-[#173c2b]/30 hover:shadow-[0_16px_42px_rgba(16,21,16,0.08)]"
+            >
+              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#0f8b8d]">{page.eyebrow}</p>
+              <h3 className="mt-3 text-[21px] font-bold leading-tight text-[#173c2b]">{page.primaryKeyword}</h3>
+              <p className="mt-3 text-[14px] leading-6 text-[#5f675f]">{page.description}</p>
+              <span className="mt-5 inline-flex items-center gap-2 text-[14px] font-bold text-[#101510]">
+                Read guide
+                <ArrowRight size={14} weight="bold" className="transition group-hover:translate-x-1" />
+              </span>
+            </Link>
+          ))}
         </div>
       </div>
     </section>
@@ -757,7 +796,7 @@ function Final() {
       <div className="absolute bottom-[-80px] left-[-60px] h-[260px] w-[260px] rounded-full border-[40px] border-[#101510]/6" />
       <div className="relative mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-[13px] font-bold uppercase tracking-[0.18em] opacity-70">NutriAI</p>
+          <p className="text-[13px] font-bold uppercase tracking-[0.18em] opacity-70">myNutriAI</p>
           <h2 className="display-heading mt-4 max-w-3xl text-[50px] font-semibold leading-[0.98] md:text-[54px]">
             Turn the next meal into the next right decision.
           </h2>
