@@ -52,13 +52,13 @@ export function PublicMealEstimator({
         <div className={compact ? "rounded-xl border border-black/10 bg-white p-5 text-[#101510] shadow-[0_18px_48px_rgba(16,21,16,0.08)]" : "grid gap-8 rounded-xl border border-white/12 bg-white/8 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.22)] backdrop-blur lg:grid-cols-[0.82fr_1.18fr] lg:p-8"}>
           <div>
             <p className={compact ? "text-[12px] font-bold uppercase tracking-[0.16em] text-[#0f8b8d]" : "text-[12px] font-bold uppercase tracking-[0.16em] text-[#d7ff68]"}>
-              Try without an account
+              Try a text estimate
             </p>
             <h2 className={compact ? "mt-3 text-[26px] font-bold leading-tight text-[#173c2b]" : "mt-4 text-[42px] font-semibold leading-tight"}>
               Estimate a meal before you sign up.
             </h2>
             <p className={compact ? "mt-3 text-[14px] leading-6 text-[#5f675f]" : "mt-4 max-w-xl text-[16px] leading-7 text-white/72"}>
-              Type a real meal and get an editable calorie, protein, carb, and fat estimate. Save it after signup to track your full day.
+              Type a real meal and get an editable calorie, protein, carb, and fat estimate. Photo scanning unlocks after signup.
             </p>
           </div>
 

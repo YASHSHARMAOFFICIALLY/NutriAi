@@ -1,7 +1,6 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -20,14 +19,11 @@ import {
 import { seoPages } from "../seoPages";
 import { PublicMealEstimator } from "./PublicMealEstimator";
 
-const heroImage =
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=2400&q=90";
+const heroImage = "/marketing/hero.webp";
 
-const mealImage =
-  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1600&q=90";
+const mealImage = "/marketing/meal.webp";
 
-const phoneImage =
-  "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=1600&q=90";
+const phoneImage = "/marketing/phone.webp";
 
 const proof = [
   {
@@ -121,30 +117,46 @@ const faqs = [
 const pricing: Array<{
   name: string;
   price: string;
+  period: string;
   subtitle: string;
   featured?: boolean;
+  cta: string;
+  href: string;
   items: string[];
 }> = [
   {
     name: "Free",
     price: "$0",
+    period: "forever",
     subtitle: "For the first meal habit",
-    items: ["Meal logging", "Daily macro targets", "Limited food analysis", "Saved meal history"],
+    cta: "Start free",
+    href: "/signup",
+    items: ["Meal logging", "Daily macro targets", "3 food analyses per day", "Saved meal history"],
   },
   {
     name: "Pro",
     price: "$9",
+    period: "/month",
     subtitle: "For daily coaching",
     featured: true,
+    cta: "Start Pro",
+    href: "/pricing",
     items: ["Unlimited analysis", "Coach Ria", "Meal recommendations", "Weight tracking", "Challenges", "Weekly digest"],
   },
   {
-    name: "Platform",
-    price: "Talk",
-    subtitle: "For future API or team use",
-    items: ["API keys", "Usage tracking", "Admin overview", "Role-based access"],
+    name: "Pro Lifetime",
+    price: "$79",
+    period: "one-time",
+    subtitle: "Pay once, use forever",
+    cta: "Get lifetime",
+    href: "/pricing",
+    items: ["Everything in Pro", "Lifetime access", "All future features", "No recurring charges"],
   },
 ];
+
+const featuredSeoPages = ["ai-meal-scanner", "indian-meal-calorie-tracker", "us-meal-calorie-tracker"]
+  .map((slug) => seoPages.find((page) => page.slug === slug))
+  .filter((page): page is (typeof seoPages)[number] => Boolean(page));
 
 export default function LandingPage() {
   return (
@@ -158,10 +170,9 @@ export default function LandingPage() {
       <ImmersiveProduct />
       <DailyLoop />
       <Personalization />
-      <PlatformProof />
-      <SeoHub />
       <Pricing />
       <FAQ />
+      <SeoHub />
       <Final />
     </main>
   );
@@ -207,19 +218,24 @@ function Nav() {
           myNutriAI
         </Link>
         <nav className="hidden items-center gap-8 text-[14px] font-medium text-white/76 md:flex">
+          <a href="#estimate" className="hover:text-white">Try demo</a>
           <a href="#product" className="hover:text-white">Product</a>
           <a href="#loop" className="hover:text-white">Routine</a>
-          <a href="#personal" className="hover:text-white">Personal</a>
           <a href="#pricing" className="hover:text-white">Pricing</a>
           <a href="#faq" className="hover:text-white">FAQ</a>
         </nav>
-        <Link
-          href="/signup"
-          className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-[14px] font-semibold text-[#101510] transition hover:bg-[#d7ff68]"
-        >
-          Get started
-          <ArrowRight size={14} weight="bold" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/login" className="hidden text-[14px] font-semibold text-white/76 transition hover:text-white sm:inline-flex">
+            Log in
+          </Link>
+          <Link
+            href="/signup"
+            className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-[14px] font-semibold text-[#101510] transition hover:bg-[#d7ff68]"
+          >
+            Get started
+            <ArrowRight size={14} weight="bold" />
+          </Link>
+        </div>
       </div>
     </header>
   );
@@ -228,10 +244,13 @@ function Nav() {
 function Hero() {
   return (
     <section className="relative min-h-[100svh] overflow-hidden bg-[#101510] text-white">
-      <img
+      <Image
         src={heroImage}
         alt="Colorful nutrition bowl with grains and vegetables"
-        className="absolute inset-0 h-full w-full object-cover"
+        fill
+        priority
+        sizes="100vw"
+        className="absolute inset-0 object-cover"
       />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,16,0.96)_0%,rgba(16,21,16,0.82)_46%,rgba(16,21,16,0.28)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#101510] to-transparent" />
@@ -246,20 +265,20 @@ function Hero() {
             Track real meals with an AI calorie scanner.
           </h1>
           <p className="hero-reveal hero-delay-2 mt-6 max-w-2xl text-[16px] leading-7 text-white/78 md:text-[18px] xl:mt-7 xl:text-[20px] xl:leading-8">
-            myNutriAI helps you log burrito bowls, salads, sandwiches, pasta, dal rice, roti sabzi, paneer bowls, thalis, snacks, and mixed plates. Scan a food photo, review editable calories and macros, then see what fits your protein and calorie targets.
+            Scan a food photo, review editable calories and macros, then see what fits your calorie and protein targets next.
           </p>
           <div className="hero-reveal hero-delay-3 mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d7ff68] px-6 py-3.5 text-[15px] font-bold text-[#101510] shadow-[0_18px_44px_rgba(215,255,104,0.22)] transition hover:bg-white">
-              Get started
+            <a href="#estimate" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d7ff68] px-6 py-3.5 text-[15px] font-bold text-[#101510] shadow-[0_18px_44px_rgba(215,255,104,0.22)] transition hover:bg-white">
+              Try meal estimate
               <ArrowRight size={16} weight="bold" />
-            </Link>
-            <a href="#product" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/24 bg-white/10 px-6 py-3.5 text-[15px] font-bold text-white backdrop-blur-md transition hover:bg-white/16">
-              See how it works
             </a>
+            <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/24 bg-white/10 px-6 py-3.5 text-[15px] font-bold text-white backdrop-blur-md transition hover:bg-white/16">
+              Create account
+            </Link>
           </div>
 
           <div className="hero-reveal hero-delay-3 mt-7 grid max-w-2xl gap-2 sm:grid-cols-3">
-            {["Editable scan results", "Daily target gaps", "Next-meal guidance"].map((item) => (
+            {["Burrito bowls", "Dal rice and thalis", "Salads and sandwiches"].map((item) => (
               <div key={item} className="flex items-center gap-2 rounded-xl border border-white/14 bg-white/8 px-3 py-2.5 text-[12px] font-semibold text-white/78 backdrop-blur-md">
                 <Check size={14} weight="bold" className="text-[#d7ff68]" />
                 {item}
@@ -313,7 +332,7 @@ function Hero() {
       </div>
 
       <div className="absolute bottom-4 left-1/2 z-20 hidden -translate-x-1/2 text-[11px] font-bold uppercase tracking-[0.22em] text-white/55 md:block">
-        Product flow below
+        Try a meal estimate below
       </div>
     </section>
   );
@@ -338,7 +357,13 @@ function FloatingPhone() {
         </div>
 
         <div className="relative h-[184px] overflow-hidden">
-          <img src={phoneImage} alt="Healthy meal ingredients" className="h-full w-full object-cover saturate-[1.12] contrast-[1.04]" />
+          <Image
+            src={phoneImage}
+            alt="Healthy meal ingredients"
+            fill
+            sizes="286px"
+            className="object-cover saturate-[1.12] contrast-[1.04]"
+          />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.05),rgba(0,0,0,0.28))]" />
           <div className="absolute bottom-3 left-4 flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1.5 text-[10px] font-bold text-[#173c2b] shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-md">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#16a34a]" />
@@ -490,7 +515,7 @@ function ProductMoments() {
           {productMoments.map(({ kicker, title, copy, image, icon: Icon }) => (
             <article key={title} className="story-tile group relative min-h-[400px] overflow-hidden rounded-xl border border-white/10 bg-[#101510] p-7 text-white">
               <div className="absolute inset-0 opacity-34 transition group-hover:scale-105 group-hover:opacity-48">
-                <img src={image} alt="" className="h-full w-full object-cover" />
+                <Image src={image} alt="" fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover" />
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-[#101510] via-[#101510]/70 to-transparent" />
               <div className="relative z-10 flex h-full flex-col justify-between">
@@ -553,7 +578,7 @@ function ImmersiveProduct() {
               <p className="mt-4 text-[14px] leading-6 opacity-76">You have enough carbs today. Add lean protein and vegetables, keep oils light.</p>
             </div>
             <div className="absolute right-24 top-0 h-[220px] w-[220px] overflow-hidden rounded-full border-[10px] border-white/10 shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
-              <img src={mealImage} alt="Vegetable salad bowl" className="h-full w-full object-cover" />
+              <Image src={mealImage} alt="Vegetable salad bowl" fill sizes="220px" className="object-cover" />
             </div>
             <div className="absolute bottom-0 left-24 w-[280px] rounded-xl border border-white/16 bg-white/12 p-5 backdrop-blur-xl">
               <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#d7ff68]">Weight trend</p>
@@ -582,7 +607,13 @@ function DailyLoop() {
             </p>
           </div>
           <div className="relative min-h-[520px] overflow-hidden rounded-xl bg-[#eef5f2] p-5">
-            <img src={mealImage} alt="Healthy vegetables and grains" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+            <Image
+              src={mealImage}
+              alt="Healthy vegetables and grains"
+              fill
+              sizes="(min-width: 1024px) 55vw, 100vw"
+              className="absolute inset-0 object-cover opacity-30"
+            />
             <div className="absolute inset-0 bg-gradient-to-r from-[#eef5f2] via-[#eef5f2]/90 to-[#eef5f2]/40" />
             <div className="relative z-10 grid h-full gap-4 md:grid-cols-2">
               {[
@@ -614,7 +645,13 @@ function Personalization() {
     <section id="personal" className="px-5 py-24 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_1fr] lg:items-center">
         <div className="relative min-h-[560px] overflow-hidden rounded-xl bg-[#173c2b] text-white">
-          <img src={phoneImage} alt="Ingredients for a personalized meal plan" className="absolute inset-0 h-full w-full object-cover opacity-34" />
+          <Image
+            src={phoneImage}
+            alt="Ingredients for a personalized meal plan"
+            fill
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            className="absolute inset-0 object-cover opacity-34"
+          />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(23,60,43,0.20),rgba(23,60,43,0.96))]" />
           <div className="relative z-10 flex min-h-[560px] flex-col justify-end p-8">
             <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#d7ff68]">Personal profile</p>
@@ -650,12 +687,15 @@ function Pricing() {
       <div className="mx-auto max-w-7xl">
         <Header eyebrow="Pricing" title="Simple plans that match the product today." />
         <div className="mt-12 grid gap-4 lg:grid-cols-3">
-          {pricing.map(({ name, price, subtitle, items, featured }) => (
+          {pricing.map(({ name, price, period, subtitle, items, featured, cta, href }) => (
             <div key={name} className={`pricing-tile relative rounded-xl border p-7 ${featured ? "border-[#101510] bg-[#101510] text-white shadow-[0_30px_80px_rgba(16,21,16,0.24)]" : "border-black/10 bg-white"}`}>
               {featured && <span className="absolute -top-3 left-6 rounded-full bg-[#d7ff68] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[#101510]">Popular</span>}
               <p className="text-[18px] font-semibold">{name}</p>
               <p className={featured ? "mt-2 text-[14px] text-white/62" : "mt-2 text-[14px] text-[#5f675f]"}>{subtitle}</p>
-              <p className="mt-8 text-[48px] font-semibold">{price}</p>
+              <p className="mt-8 flex items-baseline gap-1">
+                <span className="text-[48px] font-semibold leading-none">{price}</span>
+                <span className={featured ? "text-[14px] font-semibold text-white/58" : "text-[14px] font-semibold text-[#5f675f]"}>{period}</span>
+              </p>
               <ul className="mt-8 space-y-3">
                 {items.map((item) => (
                   <li key={item} className="flex gap-2 text-[14px]">
@@ -665,10 +705,10 @@ function Pricing() {
                 ))}
               </ul>
               <Link
-                href={name === "Pro" ? "/pricing" : "/signup"}
+                href={href}
                 className={`mt-8 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition ${featured ? "bg-[#d7ff68] text-[#101510] hover:bg-white" : "bg-[#101510] text-white hover:bg-[#173c2b]"}`}
               >
-                {price === "Talk" ? "Contact us" : name === "Pro" ? "Upgrade to Pro" : "Get started"}
+                {cta}
                 <ArrowRight size={14} weight="bold" />
               </Link>
             </div>
@@ -679,64 +719,21 @@ function Pricing() {
   );
 }
 
-function PlatformProof() {
-  return (
-    <section className="border-y border-black/10 bg-white px-5 py-24 lg:px-8">
-      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-        <div>
-          <Header eyebrow="Platform depth" title="The app goes beyond the meal scanner." />
-          <p className="mt-6 max-w-xl text-[17px] leading-8 text-[#5f675f]">
-            Private uploads, developer keys, public calorie lookup, role-based admin, and usage visibility make myNutriAI ready for a real SaaS launch.
-          </p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {["Private image uploads", "API key management", "Public calorie tools", "Usage tracking", "Admin user operations", "Reliability overview"].map((item) => (
-              <div key={item} className="rounded-xl border border-black/8 bg-[#f8f8f3] p-4 transition-all hover:border-black/16 hover:shadow-[0_6px_20px_rgba(16,21,16,0.06)]">
-                <p className="text-[14px] font-semibold">{item}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-xl bg-[#101510] p-6 text-white shadow-[0_28px_90px_rgba(16,21,16,0.22)]">
-          <div className="grid gap-3 md:grid-cols-2">
-            {[
-              ["Usage today", "$2.18", "1,105 requests"],
-              ["Repeat savings", "18%", "lower cost repeats"],
-              ["Active API keys", "9", "scoped and revocable"],
-              ["Failed calls", "2", "watchlist signal"],
-            ].map(([label, value, sub]) => (
-              <div key={label} className="rounded-xl border border-white/10 bg-white/8 p-4 transition hover:bg-white/12">
-                <p className="text-[12px] font-semibold text-white/58">{label}</p>
-                <p className="mt-2 text-[32px] font-semibold">{value}</p>
-                <p className="mt-1 text-[12px] text-white/58">{sub}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 rounded-xl bg-[#d7ff68] p-5 text-[#101510]">
-            <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Admin activity</p>
-            <p className="mt-2 text-[18px] font-semibold">Meal analysis completed · 640 kcal saved to today</p>
-            <p className="mt-1 text-[13px] opacity-70">Admin views keep user, usage, and activity signals visible without exposing system details.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function SeoHub() {
   return (
-    <section className="bg-[#f8f8f3] px-5 py-20 lg:px-8">
+    <section className="border-t border-black/10 bg-[#f8f8f3] px-5 py-20 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-3xl">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#0f8b8d]">Nutrition guides</p>
-          <h2 className="mt-4 text-[42px] font-semibold leading-tight text-[#173c2b] md:text-[54px]">
-            Learn how myNutriAI handles real meal tracking.
+          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#0f8b8d]">Related guides</p>
+          <h2 className="mt-4 text-[36px] font-semibold leading-tight text-[#173c2b] md:text-[44px]">
+            A few practical guides for real meal tracking.
           </h2>
           <p className="mt-5 text-[16px] leading-7 text-[#5f675f]">
-            Practical pages for users comparing AI food scanning, US and Indian meal calorie tracking, and daily macro tracking.
+            Kept short so the landing page stays focused on trying the product.
           </p>
         </div>
         <div className="mt-10 grid gap-4 lg:grid-cols-3">
-          {seoPages.map((page) => (
+          {featuredSeoPages.map((page) => (
             <Link
               key={page.slug}
               href={`/${page.slug}`}
