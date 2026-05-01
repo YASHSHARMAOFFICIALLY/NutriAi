@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { fetchMe } from "@/lib/api/account";
+import { setAccessToken } from "@/lib/api/auth";
 import { AuthCard } from "../_components/AuthCard";
 
 export default function CallbackPage() {
@@ -12,6 +13,13 @@ export default function CallbackPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = hashParams.get("access_token");
+    if (accessToken) {
+      setAccessToken(accessToken);
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+
     fetchMe()
       .then(() => {
         if (!cancelled) router.push("/dashboard");

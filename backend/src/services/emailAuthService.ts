@@ -4,7 +4,7 @@ import { prisma } from '../config/prisma';
 import { env } from '../config/env';
 import { randomTokenUrlSafe, sha256Hex } from '../utils/hash';
 import { BadRequestError, ConflictError, UnauthorizedError } from '../utils/errors';
-import { sendPasswordResetEmail, sendVerificationEmail } from './emailService';
+import { assertEmailDeliveryConfigured, sendPasswordResetEmail, sendVerificationEmail } from './emailService';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -27,6 +27,7 @@ export async function registerWithPassword(input: {
   password: string;
   name?: string | null;
 }): Promise<User> {
+  assertEmailDeliveryConfigured();
   const email = input.email.trim().toLowerCase();
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing?.passwordHash) {
@@ -89,6 +90,7 @@ export async function verifyEmailWithToken(token: string): Promise<User> {
 }
 
 export async function resendVerification(email: string): Promise<void> {
+  assertEmailDeliveryConfigured();
   const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   // Always succeed silently if no user / already verified — don't leak account existence.
   if (!user || user.emailVerified) return;
@@ -102,6 +104,7 @@ export async function resendVerification(email: string): Promise<void> {
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
+  assertEmailDeliveryConfigured();
   const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (!user || !user.passwordHash) return; // silent no-op
 

@@ -16,14 +16,14 @@ const setRefreshCookie = (res: Response, token: string, expiresAt: Date): void =
   res.cookie(REFRESH_COOKIE, token, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/auth',
     expires: expiresAt,
   });
 };
 
 const clearRefreshCookie = (res: Response): void => {
-  res.clearCookie(REFRESH_COOKIE, { secure: isProd, sameSite: 'lax', path: '/auth' });
+  res.clearCookie(REFRESH_COOKIE, { secure: isProd, sameSite: isProd ? 'none' : 'lax', path: '/auth' });
 };
 
 const setOAuthStateCookie = (res: Response, state: string): void => {
@@ -50,13 +50,41 @@ const stateMatches = (actual: string, expected: string): boolean => {
   return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
 };
 
+type GoogleAuthenticateOptions = {
+  callbackURL: string;
+  scope?: string[];
+  session: false;
+  state?: string;
+};
+
+const configuredGoogleCallbackUrl = (): string | null => {
+  if (!env.GOOGLE_CALLBACK_URL || env.GOOGLE_CALLBACK_URL.includes('your-backend-domain.com')) return null;
+  return env.GOOGLE_CALLBACK_URL;
+};
+
+const requestGoogleCallbackUrl = (req: Request): string => {
+  const forwardedProto = typeof req.headers['x-forwarded-proto'] === 'string'
+    ? req.headers['x-forwarded-proto'].split(',')[0]?.trim()
+    : undefined;
+  const protocol = forwardedProto || req.protocol || (isProd ? 'https' : 'http');
+  return `${protocol}://${req.get('host')}/auth/google/callback`;
+};
+
+const googleCallbackUrl = (req: Request): string => configuredGoogleCallbackUrl() ?? requestGoogleCallbackUrl(req);
+
 export const googleStart: RequestHandler = (req, res, next) => {
   if (!googleConfigured()) {
     throw new AppError(503, 'OAUTH_NOT_CONFIGURED', 'Google OAuth is not configured');
   }
   const state = randomBytes(32).toString('base64url');
   setOAuthStateCookie(res, state);
-  passport.authenticate('google', { scope: ['profile', 'email'], session: false, state })(req, res, next);
+  const options: GoogleAuthenticateOptions = {
+    callbackURL: googleCallbackUrl(req),
+    scope: ['profile', 'email'],
+    session: false,
+    state,
+  };
+  passport.authenticate('google', options)(req, res, next);
 };
 
 export const googleCallback: RequestHandler = (req, res, next) => {
@@ -69,7 +97,8 @@ export const googleCallback: RequestHandler = (req, res, next) => {
   if (!expectedState || !actualState || !stateMatches(actualState, expectedState)) {
     throw new UnauthorizedError('Invalid OAuth state');
   }
-  passport.authenticate('google', { session: false }, async (err: unknown, user: User | false) => {
+  const options: GoogleAuthenticateOptions = { callbackURL: googleCallbackUrl(req), session: false };
+  passport.authenticate('google', options, async (err: unknown, user: User | false) => {
     if (err) return next(err);
     if (!user) return next(new UnauthorizedError('Google authentication failed'));
     try {

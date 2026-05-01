@@ -140,7 +140,7 @@ const pricing: Array<{
     subtitle: "For daily coaching",
     featured: true,
     cta: "Start Pro",
-    href: "/pricing",
+    href: "#pricing",
     items: ["Unlimited analysis", "Coach Ria", "Meal recommendations", "Weight tracking", "Challenges", "Weekly digest"],
   },
   {
@@ -149,7 +149,7 @@ const pricing: Array<{
     period: "one-time",
     subtitle: "Pay once, use forever",
     cta: "Get lifetime",
-    href: "/pricing",
+    href: "#pricing",
     items: ["Everything in Pro", "Lifetime access", "All future features", "No recurring charges"],
   },
 ];

@@ -1,19 +1,32 @@
 import { Resend } from 'resend';
-import { env } from '../config/env';
+import { env, isProd } from '../config/env';
 import { logger } from '../config/logger';
+import { AppError } from '../utils/errors';
 import type { WeeklyDigestData } from './digestService';
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
+export function assertEmailDeliveryConfigured(): void {
+  if (!resend && isProd) {
+    throw new AppError(
+      503,
+      'EMAIL_DELIVERY_NOT_CONFIGURED',
+      'Email delivery is not configured. Please contact support.',
+    );
+  }
+}
+
 async function send(to: string, subject: string, html: string, text: string): Promise<void> {
   // Dev / unconfigured fallback: log the email so flows can still be tested.
   if (!resend) {
+    assertEmailDeliveryConfigured();
     logger.warn({ to, subject, text }, 'RESEND_API_KEY not set — email logged instead of sent');
     return;
   }
   const result = await resend.emails.send({ from: env.EMAIL_FROM, to, subject, html, text });
   if (result.error) {
-    throw new Error(`Email send failed: ${result.error.message}`);
+    logger.error({ err: result.error, to, subject }, 'email send failed');
+    throw new AppError(502, 'EMAIL_DELIVERY_FAILED', 'Could not send email. Please try again in a few minutes.');
   }
 }
 

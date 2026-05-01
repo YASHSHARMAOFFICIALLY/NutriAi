@@ -17,7 +17,7 @@ const setRefreshCookie = (res: Response, token: string, expiresAt: Date): void =
   res.cookie(REFRESH_COOKIE, token, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/auth',
     expires: expiresAt,
   });
