@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { withQuery } from "./query";
 import type { CreateMealInput, DailySummary, MealDTO } from "./types";
 
 interface ListMealsResponse {
@@ -20,14 +21,13 @@ export async function createMeal(input: CreateMealInput): Promise<MealDTO> {
 
 export function listMeals(date?: string): Promise<MealDTO[]> {
   const resolvedDate = date ?? todayISO();
-  return apiFetch<ListMealsResponse>(`/meals?date=${encodeURIComponent(resolvedDate)}`).then(
+  return apiFetch<ListMealsResponse>(withQuery("/meals", { date: resolvedDate })).then(
     (res) => res.meals,
   );
 }
 
 export function getDailySummary(date?: string): Promise<DailySummary> {
-  const query = date ? `?date=${encodeURIComponent(date)}` : "";
-  return apiFetch<DailySummary>(`/meals/daily-summary${query}`);
+  return apiFetch<DailySummary>(withQuery("/meals/daily-summary", { date }));
 }
 
 export function deleteMeal(id: string): Promise<void> {

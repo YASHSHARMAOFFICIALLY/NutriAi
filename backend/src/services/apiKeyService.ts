@@ -45,6 +45,8 @@ export const issueApiKey = async ({ userId, name, scopes, rateLimitPerMin }: Iss
     prefix: row.prefix,
     scopes: row.scopes,
     rateLimitPerMin: row.rateLimitPerMin,
+    lastUsedAt: row.lastUsedAt,
+    revokedAt: row.revokedAt,
     createdAt: row.createdAt,
     // Only returned at creation time — never again.
     token,

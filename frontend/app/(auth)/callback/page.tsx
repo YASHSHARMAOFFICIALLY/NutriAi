@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { fetchMe } from "@/lib/api/account";
 import { setAccessToken } from "@/lib/api/auth";
+import { POST_LOGIN_NEXT_KEY, safeNextPath } from "@/lib/safeRedirect";
 import { AuthCard } from "../_components/AuthCard";
 
 export default function CallbackPage() {
@@ -14,7 +15,10 @@ export default function CallbackPage() {
   useEffect(() => {
     let cancelled = false;
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const queryParams = new URLSearchParams(window.location.search);
     const accessToken = hashParams.get("access_token");
+    const storedNext = window.localStorage.getItem(POST_LOGIN_NEXT_KEY);
+    const redirectPath = safeNextPath(queryParams.get("next"), safeNextPath(storedNext));
     if (accessToken) {
       setAccessToken(accessToken);
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
@@ -22,7 +26,10 @@ export default function CallbackPage() {
 
     fetchMe()
       .then(() => {
-        if (!cancelled) router.push("/dashboard");
+        if (!cancelled) {
+          window.localStorage.removeItem(POST_LOGIN_NEXT_KEY);
+          router.push(redirectPath);
+        }
       })
       .catch(() => {
         if (!cancelled) setStatus("error");

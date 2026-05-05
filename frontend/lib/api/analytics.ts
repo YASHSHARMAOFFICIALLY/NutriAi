@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { withQuery } from "./query";
 import type { DailyAnalytics, MacrosSummary, StreakInfo } from "./types";
 
 export interface DateRangeQuery {
@@ -6,19 +7,12 @@ export interface DateRangeQuery {
   to?: string;
 }
 
-function qs(q: DateRangeQuery): string {
-  const parts: string[] = [];
-  if (q.from) parts.push(`from=${encodeURIComponent(q.from)}`);
-  if (q.to) parts.push(`to=${encodeURIComponent(q.to)}`);
-  return parts.length ? `?${parts.join("&")}` : "";
-}
-
 export function getDailyAnalytics(q: DateRangeQuery = {}): Promise<DailyAnalytics> {
-  return apiFetch<DailyAnalytics>(`/analytics/daily${qs(q)}`);
+  return apiFetch<DailyAnalytics>(withQuery("/analytics/daily", q));
 }
 
 export function getMacrosSummary(q: DateRangeQuery = {}): Promise<MacrosSummary> {
-  return apiFetch<MacrosSummary>(`/analytics/macros${qs(q)}`);
+  return apiFetch<MacrosSummary>(withQuery("/analytics/macros", q));
 }
 
 export function getStreak(): Promise<StreakInfo> {

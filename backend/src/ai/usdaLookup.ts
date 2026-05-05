@@ -5,6 +5,7 @@
 
 import { logger } from '../config/logger';
 import type { FoodAnalysisResult, FoodItemResult } from './provider';
+import { scaleToTenth } from '../utils/number';
 
 const BASE = 'https://api.nal.usda.gov/fdc/v1';
 const USDA_API_KEY = 'DEMO_KEY'; // DEMO_KEY gives 30 req/hr anonymous — swap for real key via USDA_API_KEY env
@@ -113,23 +114,22 @@ export async function lookupUsda(text: string): Promise<UsdaResult | null> {
 
   // USDA nutrient values are per 100g. Scale to requested grams.
   const scale = grams / 100;
-  const round = (n: number) => Math.round(n * scale * 10) / 10;
 
   const item: FoodItemResult = {
     name: food.description,
     quantity: quantity ?? `${DEFAULT_GRAMS}g`,
-    calories: round(extractNutrient(food.foodNutrients, NID.calories)),
-    protein:  round(extractNutrient(food.foodNutrients, NID.protein)),
-    carbs:    round(extractNutrient(food.foodNutrients, NID.carbs)),
-    fat:      round(extractNutrient(food.foodNutrients, NID.fat)),
+    calories: scaleToTenth(extractNutrient(food.foodNutrients, NID.calories), scale),
+    protein: scaleToTenth(extractNutrient(food.foodNutrients, NID.protein), scale),
+    carbs: scaleToTenth(extractNutrient(food.foodNutrients, NID.carbs), scale),
+    fat: scaleToTenth(extractNutrient(food.foodNutrients, NID.fat), scale),
     confidence,
   };
 
   const totals = {
     calories: item.calories,
-    protein:  item.protein,
-    carbs:    item.carbs,
-    fat:      item.fat,
+    protein: item.protein,
+    carbs: item.carbs,
+    fat: item.fat,
   };
 
   logger.debug({ fdcId: food.fdcId, name: food.description, confidence }, 'USDA hit');

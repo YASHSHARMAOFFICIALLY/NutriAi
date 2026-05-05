@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
-import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import {
   createEntry,
   deleteEntry,
@@ -22,24 +22,24 @@ export const listWeightQuerySchema = z.object({
 });
 
 export const createWeightHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const body = req.body as z.infer<typeof createWeightSchema>;
   const recordedAt = body.recordedAt ?? new Date();
   if (recordedAt.getTime() > Date.now() + 60_000) {
     res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'recordedAt cannot be in the future' } });
     return;
   }
-  const entry = await createEntry(req.user.id, body.weightKg, recordedAt, body.note ?? null);
+  const entry = await createEntry(user.id, body.weightKg, recordedAt, body.note ?? null);
   res.status(201).json({ entry });
 };
 
 export const listWeightHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const q = req.query as unknown as z.infer<typeof listWeightQuerySchema>;
   const [entries, latest, first] = await Promise.all([
-    listEntries(req.user.id, { from: q.from, to: q.to, limit: q.limit }),
-    latestEntry(req.user.id),
-    firstEntry(req.user.id),
+    listEntries(user.id, { from: q.from, to: q.to, limit: q.limit }),
+    latestEntry(user.id),
+    firstEntry(user.id),
   ]);
   const delta =
     latest && first && latest.id !== first.id
@@ -49,7 +49,7 @@ export const listWeightHandler: RequestHandler = async (req, res) => {
 };
 
 export const deleteWeightHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  await deleteEntry(req.user.id, req.params.id);
+  const user = requireUser(req);
+  await deleteEntry(user.id, req.params.id);
   res.status(204).end();
 };

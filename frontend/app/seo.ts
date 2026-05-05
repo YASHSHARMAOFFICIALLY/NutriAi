@@ -83,14 +83,20 @@ export function softwareApplicationJsonLd() {
       {
         "@type": "Offer",
         name: "Pro",
-        price: "9",
+        price: "4.99",
         priceCurrency: "USD",
         priceSpecification: {
           "@type": "UnitPriceSpecification",
-          price: "9",
+          price: "4.99",
           priceCurrency: "USD",
-          billingDuration: "P1M",
+          billingDuration: "P12Y",
         },
+      },
+      {
+        "@type": "Offer",
+        name: "Pro Lifetime",
+        price: "25",
+        priceCurrency: "USD",
       },
     ],
     featureList: [

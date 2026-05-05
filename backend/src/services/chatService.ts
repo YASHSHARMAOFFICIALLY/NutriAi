@@ -9,7 +9,8 @@ import { recordTokenUsage } from '../ai/usage';
 import { guardedAiCall } from '../ai/guard';
 import type { ChatMessage, ChatResult } from '../ai/provider';
 import type { Prisma } from '@prisma/client';
-import { assertChatMessageAllowed, startOfUtcDay } from './chatPolicy';
+import { startOfUtcDay } from '../utils/date';
+import { assertChatMessageAllowed } from './chatPolicy';
 import { assertDailyAiBudgetAllowed } from './aiPolicy';
 import { getAiSettings } from './appSettingsService';
 

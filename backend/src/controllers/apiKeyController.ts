@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
-import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import { issueApiKey, listApiKeys, revokeApiKey } from '../services/apiKeyService';
 
 export const createApiKeySchema = z.object({
@@ -16,10 +16,10 @@ export const revokeApiKeyParamsSchema = z.object({
 });
 
 export const createApiKeyHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const body = req.body as CreateApiKeyBody;
   const issued = await issueApiKey({
-    userId: req.user.id,
+    userId: user.id,
     name: body.name,
     scopes: body.scopes,
     rateLimitPerMin: body.rateLimitPerMin,
@@ -28,15 +28,15 @@ export const createApiKeyHandler: RequestHandler = async (req, res) => {
 };
 
 export const listApiKeysHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  const keys = await listApiKeys(req.user.id);
+  const user = requireUser(req);
+  const keys = await listApiKeys(user.id);
   res.json({ keys });
 };
 
 export const revokeApiKeyHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const { id } = req.params as { id: string };
-  const row = await revokeApiKey(req.user.id, id);
+  const row = await revokeApiKey(user.id, id);
   res.json({
     id: row.id,
     name: row.name,

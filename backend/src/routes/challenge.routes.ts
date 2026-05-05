@@ -7,16 +7,18 @@ import {
   checkInToday,
   getPresets,
   getUserChallenges,
+  presetsQuerySchema,
   startChallenge,
+  userChallengesQuerySchema,
 } from '../controllers/challengeController';
 
 export const challengeRouter = Router();
 
 // Public: preset list (no auth needed — used on marketing / unauthenticated views too).
-challengeRouter.get('/', getPresets);
+challengeRouter.get('/', validate(presetsQuerySchema, 'query'), getPresets);
 
 // Authenticated: user's challenges.
-challengeRouter.get('/me', requireAuth, getUserChallenges);
+challengeRouter.get('/me', requireAuth, validate(userChallengesQuerySchema, 'query'), getUserChallenges);
 
 const startSchema = z.object({
   challengeId: z.string().uuid().optional(),

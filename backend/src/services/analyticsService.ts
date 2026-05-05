@@ -1,20 +1,12 @@
 import { prisma } from '../config/prisma';
 import { getProfileOrNull } from './profileService';
 import { dayWindow } from './mealService';
-
-const round = (n: number) => Math.round(n * 10) / 10;
-
-const addDays = (d: Date, n: number): Date => {
-  const out = new Date(d);
-  out.setUTCDate(out.getUTCDate() + n);
-  return out;
-};
-
-const toKey = (d: Date): string => d.toISOString().slice(0, 10);
+import { addUtcDays, utcDateKey } from '../utils/date';
+import { roundToTenth } from '../utils/number';
 
 const pctOfTarget = (actual: number, target: number | null | undefined): number | null => {
   if (!target || target <= 0) return null;
-  return Math.round((actual / target) * 1000) / 10;
+  return roundToTenth((actual / target) * 100);
 };
 
 export interface DailyPoint {
@@ -49,7 +41,7 @@ const resolveRange = (
   const end = to ? dayWindow(to).end : dayWindow(new Date()).end;
   const start = from
     ? dayWindow(from).start
-    : dayWindow(addDays(new Date(end.getTime() - 1), -(defaultDays - 1))).start;
+    : dayWindow(addUtcDays(new Date(end.getTime() - 1), -(defaultDays - 1))).start;
   return { start, endExclusive: end };
 };
 
@@ -76,10 +68,10 @@ export const dailyAnalytics = async (
   for (
     let cursor = new Date(start);
     cursor < endExclusive;
-    cursor = addDays(cursor, 1)
+    cursor = addUtcDays(cursor, 1)
   ) {
-    buckets.set(toKey(cursor), {
-      date: toKey(cursor),
+    buckets.set(utcDateKey(cursor), {
+      date: utcDateKey(cursor),
       calories: 0,
       protein: 0,
       carbs: 0,
@@ -90,13 +82,13 @@ export const dailyAnalytics = async (
   }
 
   for (const r of rows) {
-    const key = toKey(r.loggedAt);
+    const key = utcDateKey(r.loggedAt);
     const b = buckets.get(key);
     if (!b) continue;
-    b.calories = round(b.calories + r.totalCalories);
-    b.protein = round(b.protein + r.totalProtein);
-    b.carbs = round(b.carbs + r.totalCarbs);
-    b.fat = round(b.fat + r.totalFat);
+    b.calories = roundToTenth(b.calories + r.totalCalories);
+    b.protein = roundToTenth(b.protein + r.totalProtein);
+    b.carbs = roundToTenth(b.carbs + r.totalCarbs);
+    b.fat = roundToTenth(b.fat + r.totalFat);
     b.mealCount += 1;
   }
 
@@ -122,14 +114,14 @@ export const dailyAnalytics = async (
   );
 
   return {
-    from: toKey(start),
-    to: toKey(addDays(endExclusive, -1)),
+    from: utcDateKey(start),
+    to: utcDateKey(addUtcDays(endExclusive, -1)),
     days,
     averages: {
-      calories: round(averages.calories / count),
-      protein: round(averages.protein / count),
-      carbs: round(averages.carbs / count),
-      fat: round(averages.fat / count),
+      calories: roundToTenth(averages.calories / count),
+      protein: roundToTenth(averages.protein / count),
+      carbs: roundToTenth(averages.carbs / count),
+      fat: roundToTenth(averages.fat / count),
     },
     targets: {
       calories: calorieTarget,
@@ -171,16 +163,16 @@ export const macroAnalytics = async (
     },
   });
 
-  const calories = round(agg._sum.totalCalories ?? 0);
-  const protein = round(agg._sum.totalProtein ?? 0);
-  const carbs = round(agg._sum.totalCarbs ?? 0);
-  const fat = round(agg._sum.totalFat ?? 0);
+  const calories = roundToTenth(agg._sum.totalCalories ?? 0);
+  const protein = roundToTenth(agg._sum.totalProtein ?? 0);
+  const carbs = roundToTenth(agg._sum.totalCarbs ?? 0);
+  const fat = roundToTenth(agg._sum.totalFat ?? 0);
 
   const proteinKcal = protein * 4;
   const carbsKcal = carbs * 4;
   const fatKcal = fat * 9;
   const macroKcalTotal = proteinKcal + carbsKcal + fatKcal;
-  const share = (k: number) => (macroKcalTotal > 0 ? round((k / macroKcalTotal) * 100) : 0);
+  const share = (k: number) => (macroKcalTotal > 0 ? roundToTenth((k / macroKcalTotal) * 100) : 0);
 
   // Days in range for per-day target comparison.
   const ms = endExclusive.getTime() - start.getTime();
@@ -188,8 +180,8 @@ export const macroAnalytics = async (
   const perDay = (v: number) => v / days;
 
   return {
-    from: toKey(start),
-    to: toKey(addDays(endExclusive, -1)),
+    from: utcDateKey(start),
+    to: utcDateKey(addUtcDays(endExclusive, -1)),
     totals: { calories, protein, carbs, fat },
     energyShare: {
       protein: share(proteinKcal),
@@ -222,7 +214,7 @@ export const streakAnalytics = async (userId: string, now = new Date()): Promise
   // Look back up to 400 days — sufficient for streak computation without
   // scanning the whole table.
   const { end: todayEnd } = dayWindow(now);
-  const start = addDays(todayEnd, -400);
+  const start = addUtcDays(todayEnd, -400);
 
   const rows = await prisma.meal.findMany({
     where: { userId, loggedAt: { gte: start, lt: todayEnd } },
@@ -233,45 +225,41 @@ export const streakAnalytics = async (userId: string, now = new Date()): Promise
   // Per-day totals.
   const perDay = new Map<string, number>();
   for (const r of rows) {
-    const key = toKey(r.loggedAt);
+    const key = utcDateKey(r.loggedAt);
     perDay.set(key, (perDay.get(key) ?? 0) + r.totalCalories);
   }
 
-  const todayKey = toKey(addDays(todayEnd, -1));
-  const yesterdayKey = toKey(addDays(todayEnd, -2));
+  const todayKey = utcDateKey(addUtcDays(todayEnd, -1));
   // Streak anchor: today if logged, else yesterday (so a streak doesn't break
   // just because the user hasn't eaten yet today).
-  let cursor = perDay.has(todayKey) ? addDays(todayEnd, -1) : addDays(todayEnd, -2);
+  let cursor = perDay.has(todayKey) ? addUtcDays(todayEnd, -1) : addUtcDays(todayEnd, -2);
   let loggingStreak = 0;
-  while (perDay.has(toKey(cursor))) {
+  while (perDay.has(utcDateKey(cursor))) {
     loggingStreak += 1;
-    cursor = addDays(cursor, -1);
+    cursor = addUtcDays(cursor, -1);
   }
 
   let calorieTargetStreak: number | null = null;
   if (target && target > 0) {
     const low = target * WITHIN_TARGET_LOW;
     const high = target * WITHIN_TARGET_HIGH;
-    const firstKey = perDay.has(todayKey) ? todayKey : yesterdayKey;
-    let c = perDay.has(todayKey) ? addDays(todayEnd, -1) : addDays(todayEnd, -2);
+    let c = perDay.has(todayKey) ? addUtcDays(todayEnd, -1) : addUtcDays(todayEnd, -2);
     calorieTargetStreak = 0;
-    while (perDay.has(toKey(c))) {
-      const v = perDay.get(toKey(c)) ?? 0;
+    while (perDay.has(utcDateKey(c))) {
+      const v = perDay.get(utcDateKey(c)) ?? 0;
       if (v >= low && v <= high) {
         calorieTargetStreak += 1;
-        c = addDays(c, -1);
+        c = addUtcDays(c, -1);
       } else {
         break;
       }
     }
-    // Silence unused-var lint for firstKey — it's kept for future debug logs.
-    void firstKey;
   }
 
-  const lastLoggedDate = rows.length > 0 ? toKey(rows[0]!.loggedAt) : null;
+  const lastLoggedDate = rows.length > 0 ? utcDateKey(rows[0]!.loggedAt) : null;
 
   return {
-    today: toKey(addDays(todayEnd, -1)),
+    today: utcDateKey(addUtcDays(todayEnd, -1)),
     loggingStreak,
     calorieTargetStreak,
     lastLoggedDate,

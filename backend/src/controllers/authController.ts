@@ -1,48 +1,22 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import type { Request, RequestHandler, Response } from 'express';
+import type { Request, RequestHandler } from 'express';
 import type { User } from '@prisma/client';
 import passport from 'passport';
 import { env, isProd } from '../config/env';
 import { prisma } from '../config/prisma';
 import { googleConfigured } from '../config/passport';
-import { issueTokens, revokeRefresh, rotateRefresh } from '../services/authService';
+import { issueAuthSession, issueTokens, revokeRefresh, rotateRefresh } from '../services/authService';
+import {
+  clearOAuthStateCookie,
+  clearRefreshCookie,
+  OAUTH_STATE_COOKIE,
+  REFRESH_COOKIE,
+  setOAuthStateCookie,
+  setRefreshCookie,
+} from '../utils/authCookies';
 import { AppError, BadRequestError, NotFoundError, UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import { getSessionMetadata } from '../utils/sessionMetadata';
-
-const REFRESH_COOKIE = 'nutriai_rt';
-const OAUTH_STATE_COOKIE = 'nutriai_oauth_state';
-
-const setRefreshCookie = (res: Response, token: string, expiresAt: Date): void => {
-  res.cookie(REFRESH_COOKIE, token, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
-    path: '/auth',
-    expires: expiresAt,
-  });
-};
-
-const clearRefreshCookie = (res: Response): void => {
-  res.clearCookie(REFRESH_COOKIE, { secure: isProd, sameSite: isProd ? 'none' : 'lax', path: '/auth' });
-};
-
-const setOAuthStateCookie = (res: Response, state: string): void => {
-  res.cookie(OAUTH_STATE_COOKIE, state, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: 'lax',
-    path: '/auth/google/callback',
-    maxAge: 10 * 60 * 1000,
-  });
-};
-
-const clearOAuthStateCookie = (res: Response): void => {
-  res.clearCookie(OAUTH_STATE_COOKIE, {
-    secure: isProd,
-    sameSite: 'lax',
-    path: '/auth/google/callback',
-  });
-};
 
 const stateMatches = (actual: string, expected: string): boolean => {
   const actualBuffer = Buffer.from(actual);
@@ -129,9 +103,9 @@ export const logout: RequestHandler = async (req, res) => {
 };
 
 export const me: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const authUser = requireUser(req);
   const user = await prisma.user.findUnique({
-    where: { id: req.user.id },
+    where: { id: authUser.id },
     select: {
       id: true,
       email: true,
@@ -157,10 +131,13 @@ export const devLogin: RequestHandler = async (req: Request, res) => {
     update: {},
     create: { email, name: email.split('@')[0] },
   });
-  const tokens = await issueTokens(user, getSessionMetadata(req));
-  setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
+  const { accessToken, refreshToken, refreshExpiresAt, user: authUser } = await issueAuthSession(
+    user,
+    getSessionMetadata(req),
+  );
+  setRefreshCookie(res, refreshToken, refreshExpiresAt);
   res.json({
-    accessToken: tokens.accessToken,
-    user: { id: user.id, email: user.email, role: user.role },
+    accessToken,
+    user: { id: authUser.id, email: authUser.email, role: authUser.role },
   });
 };

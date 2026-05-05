@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
-import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import {
   dailyAnalytics,
   macroAnalytics,
@@ -15,21 +15,21 @@ export const rangeQuerySchema = z.object({
 export type RangeQuery = z.infer<typeof rangeQuerySchema>;
 
 export const dailyAnalyticsHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const q = req.query as unknown as RangeQuery;
-  const result = await dailyAnalytics(req.user.id, { from: q.from, to: q.to });
+  const result = await dailyAnalytics(user.id, { from: q.from, to: q.to });
   res.json(result);
 };
 
 export const macroAnalyticsHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const q = req.query as unknown as RangeQuery;
-  const result = await macroAnalytics(req.user.id, { from: q.from, to: q.to });
+  const result = await macroAnalytics(user.id, { from: q.from, to: q.to });
   res.json(result);
 };
 
 export const streakAnalyticsHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  const result = await streakAnalytics(req.user.id);
+  const user = requireUser(req);
+  const result = await streakAnalytics(user.id);
   res.json(result);
 };

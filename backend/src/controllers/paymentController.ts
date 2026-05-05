@@ -7,19 +7,23 @@ import {
   verifyWebhook,
 } from '../services/paymentService';
 import { BadRequestError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 
-const CheckoutSchema = z.object({
+export const checkoutSchema = z.object({
   plan: z.enum(['monthly', 'lifetime']),
 });
+type CheckoutBody = z.infer<typeof checkoutSchema>;
 
 export const createCheckout = async (req: Request, res: Response) => {
-  const { plan } = CheckoutSchema.parse(req.body);
-  const result = await createCheckoutSession(req.user!.id, req.user!.email, plan);
+  const user = requireUser(req);
+  const { plan } = req.body as CheckoutBody;
+  const result = await createCheckoutSession(user.id, user.email, plan);
   res.json(result);
 };
 
 export const getMyPlan = async (req: Request, res: Response) => {
-  const plan = await getUserPlan(req.user!.id);
+  const user = requireUser(req);
+  const plan = await getUserPlan(user.id);
   res.json(plan);
 };
 

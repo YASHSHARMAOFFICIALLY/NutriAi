@@ -19,10 +19,36 @@ export interface IssuedTokens {
   refreshExpiresAt: Date;
 }
 
+type AuthUser = Pick<User, 'id' | 'email' | 'role'>;
+
+export interface IssuedAuthSession extends IssuedTokens {
+  user: AuthUser;
+}
+
 const REFRESH_TTL_DAYS = (() => {
   const m = env.JWT_REFRESH_TTL.match(/^(\d+)d$/);
   return m ? Number(m[1]) : 30;
 })();
+
+const configuredAdminEmails = (): Set<string> =>
+  new Set(
+    env.ADMIN_EMAILS.split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
+
+export const ensureConfiguredAdminRole = async <T extends AuthUser>(user: T): Promise<T> => {
+  if (user.role === 'ADMIN') return user;
+  if (!configuredAdminEmails().has(user.email.trim().toLowerCase())) return user;
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { role: 'ADMIN' },
+    select: { role: true },
+  });
+
+  return { ...user, role: updated.role };
+};
 
 const refreshExpiry = (): Date =>
   new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000);
@@ -53,17 +79,17 @@ export const findOrCreateFromGoogle = async (input: GoogleProfileInput): Promise
   });
 };
 
-export const issueTokens = async (
-  user: Pick<User, 'id' | 'email' | 'role'>,
+const issueTokensForUser = async (
+  authUser: AuthUser,
   session?: SessionMetadataInput,
 ): Promise<IssuedTokens> => {
-  const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
+  const accessToken = signAccessToken({ sub: authUser.id, email: authUser.email, role: authUser.role });
   const refreshToken = randomTokenUrlSafe(48);
   const refreshExpiresAt = refreshExpiry();
 
   const refresh = await prisma.refreshToken.create({
     data: {
-      userId: user.id,
+      userId: authUser.id,
       tokenHash: sha256Hex(refreshToken),
       expiresAt: refreshExpiresAt,
     },
@@ -72,7 +98,7 @@ export const issueTokens = async (
   if (session) {
     await prisma.userSession.create({
       data: {
-        userId: user.id,
+        userId: authUser.id,
         refreshTokenId: refresh.id,
         ipAddress: session.ipAddress ?? null,
         userAgent: session.userAgent ?? null,
@@ -88,10 +114,24 @@ export const issueTokens = async (
   return { accessToken, refreshToken, refreshExpiresAt };
 };
 
+export const issueTokens = async (
+  user: AuthUser,
+  session?: SessionMetadataInput,
+): Promise<IssuedTokens> => issueTokensForUser(await ensureConfiguredAdminRole(user), session);
+
+export const issueAuthSession = async (
+  user: AuthUser,
+  session?: SessionMetadataInput,
+): Promise<IssuedAuthSession> => {
+  const authUser = await ensureConfiguredAdminRole(user);
+  const tokens = await issueTokensForUser(authUser, session);
+  return { ...tokens, user: authUser };
+};
+
 export const rotateRefresh = async (
   presented: string,
   session?: SessionMetadataInput,
-): Promise<IssuedTokens & { user: User }> => {
+): Promise<IssuedAuthSession> => {
   const tokenHash = sha256Hex(presented);
   const record = await prisma.refreshToken.findUnique({
     where: { tokenHash },
@@ -124,8 +164,7 @@ export const rotateRefresh = async (
     }),
   ]);
 
-  const issued = await issueTokens(record.user, session);
-  return { ...issued, user: record.user };
+  return issueAuthSession(record.user, session);
 };
 
 export const markSessionSeen = async (presented: string): Promise<void> => {

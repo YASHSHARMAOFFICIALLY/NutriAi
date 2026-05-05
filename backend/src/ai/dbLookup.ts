@@ -13,6 +13,7 @@ import { prisma } from '../config/prisma';
 import { canonicalizeText } from './canonicalize';
 import { logger } from '../config/logger';
 import type { FoodAnalysisResult, FoodItemResult } from './provider';
+import { scaleToTenth } from '../utils/number';
 
 const MIN_CONFIDENCE = 0.85;
 
@@ -67,23 +68,22 @@ export async function lookupDb(text: string): Promise<DbResult | null> {
     // If stored item has a quantity we can parse, scale proportionally.
     const storedGrams = parseGramsFromText(item.quantity ?? '100g');
     const scale = grams / (storedGrams || 100);
-    const round = (n: number) => Math.round(n * scale * 10) / 10;
 
     const result: FoodItemResult = {
       name: item.name,
       quantity: `${grams}g`,
-      calories: round(item.calories),
-      protein:  round(item.protein),
-      carbs:    round(item.carbs),
-      fat:      round(item.fat),
+      calories: scaleToTenth(item.calories, scale),
+      protein: scaleToTenth(item.protein, scale),
+      carbs: scaleToTenth(item.carbs, scale),
+      fat: scaleToTenth(item.fat, scale),
       confidence: item.confidence ?? 0,
     };
 
     const totals = {
       calories: result.calories,
-      protein:  result.protein,
-      carbs:    result.carbs,
-      fat:      result.fat,
+      protein: result.protein,
+      carbs: result.carbs,
+      fat: result.fat,
     };
 
     logger.debug({ itemId: item.id, name: item.name }, 'DB lookup hit');

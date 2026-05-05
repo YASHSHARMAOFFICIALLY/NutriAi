@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Crown, Lightning } from "@phosphor-icons/react/dist/ssr";
+import { UnauthorizedError } from "@/lib/api/client";
 import { createCheckout, type UserPlan } from "@/lib/api/payments";
 import { getMyPlan } from "@/lib/api/payments";
-import { useEffect } from "react";
+import { withNextParam } from "@/lib/safeRedirect";
 import { PageHeader, Panel } from "../_components/ui";
 
 const plans = [
@@ -26,7 +28,7 @@ const plans = [
   {
     id: "monthly" as const,
     name: "Pro",
-    price: "$9",
+    price: "$4.99",
     period: "/month",
     subtitle: "For daily coaching",
     featured: true,
@@ -45,7 +47,7 @@ const plans = [
   {
     id: "lifetime" as const,
     name: "Pro Lifetime",
-    price: "$79",
+    price: "$25",
     period: "one-time",
     subtitle: "Pay once, use forever",
     features: [
@@ -57,34 +59,55 @@ const plans = [
   },
 ];
 
-export default function PricingPage() {
+function PricingContent() {
+  const searchParams = useSearchParams();
+  const requestedCheckout = searchParams.get("checkout");
+  const checkoutIntent = requestedCheckout === "monthly" || requestedCheckout === "lifetime" ? requestedCheckout : null;
+  const autoCheckoutStarted = useRef(false);
   const [plan, setPlan] = useState<UserPlan | null>(null);
-  const [loading, setLoading] = useState<string | null>(null);
+  const [planLoaded, setPlanLoaded] = useState(false);
+  const [loading, setLoading] = useState<"monthly" | "lifetime" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getMyPlan()
+    getMyPlan({ silent: true })
       .then(setPlan)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setPlanLoaded(true));
   }, []);
 
-  const handleCheckout = async (planId: "monthly" | "lifetime") => {
+  const handleCheckout = useCallback(async (planId: "monthly" | "lifetime") => {
     setLoading(planId);
     setError(null);
     try {
-      const { paymentLink } = await createCheckout(planId);
+      const { paymentLink } = await createCheckout(planId, { silent: true });
       if (paymentLink) {
         window.location.href = paymentLink;
       }
     } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        window.location.href = withNextParam("/login", `/pricing?checkout=${planId}`);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(null);
     }
-  };
+  }, []);
 
   const isPro = plan?.tier === "PRO" && (plan.status === "ACTIVE" || plan.status === "PAST_DUE");
   const trustItems = ["Secure checkout", "Editable AI results", "Cancel anytime", "No ads"];
+  const proOutcomes = [
+    { label: "Daily ceiling", value: "Unlimited scans", copy: "Use it for snacks, restaurant meals, and corrections without waiting for tomorrow." },
+    { label: "Decision support", value: "Coach + next meal", copy: "Turn logged food, targets, and preferences into the next practical choice." },
+    { label: "Habit loop", value: "Trends + digests", copy: "Keep weight, streaks, challenges, and weekly summaries in one routine." },
+  ];
+
+  useEffect(() => {
+    if (!checkoutIntent || !planLoaded || isPro || loading || autoCheckoutStarted.current) return;
+    autoCheckoutStarted.current = true;
+    handleCheckout(checkoutIntent);
+  }, [checkoutIntent, handleCheckout, isPro, loading, planLoaded]);
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
@@ -120,6 +143,27 @@ export default function PricingPage() {
           </div>
         ))}
       </div>
+
+      <Panel className="mb-6 overflow-hidden">
+        <div className="grid gap-0 lg:grid-cols-[300px_1fr]">
+          <div className="bg-forest p-6 text-white">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-lime">Why Pro</p>
+            <h2 className="mt-3 text-[24px] font-bold leading-tight">Built for users who log more than one meal.</h2>
+            <p className="mt-3 text-[13px] leading-6 text-white/72">
+              The upgrade removes the daily scan bottleneck and makes the app useful before the next meal, not only after eating.
+            </p>
+          </div>
+          <div className="grid gap-3 bg-surface-alt p-4 md:grid-cols-3">
+            {proOutcomes.map((item) => (
+              <div key={item.label} className="rounded-lg border border-border bg-white p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">{item.label}</p>
+                <p className="mt-2 text-[18px] font-bold text-forest">{item.value}</p>
+                <p className="mt-2 text-[12px] leading-5 text-muted">{item.copy}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Panel>
 
       {error && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[14px] text-red-700">
@@ -237,5 +281,25 @@ export default function PricingPage() {
         Payments are processed securely by Dodo Payments. Subscription changes are reflected after payment confirmation.
       </p>
     </div>
+  );
+}
+
+function PricingFallback() {
+  return (
+    <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
+      <PageHeader
+        eyebrow="Upgrade"
+        title="Choose your plan"
+        description="Free keeps the core food diary open. Pro removes daily limits and adds coaching, recommendations, trends, and family workflows."
+      />
+    </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={<PricingFallback />}>
+      <PricingContent />
+    </Suspense>
   );
 }

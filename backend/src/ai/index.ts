@@ -8,7 +8,7 @@ let cached: AIProvider | null = null;
 
 export const getAIProvider = (): AIProvider => {
   if (cached) return cached;
-  if (env.AI_PROVIDER === 'stub')   cached = stubProvider;
+  if (env.AI_PROVIDER === 'stub') cached = stubProvider;
   else if (env.AI_PROVIDER === 'gemini') cached = geminiProvider;
   else cached = openaiProvider;
   return cached;

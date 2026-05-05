@@ -21,16 +21,16 @@ type Form = {
 };
 
 const initialForm: Form = {
-  sex: "MALE",
-  birthYear: "1998",
-  heightCm: "178",
-  weightKg: "72.4",
-  activityLevel: "MODERATE",
-  goal: "GAIN",
-  dietaryPrefs: "high protein, Indian food",
-  allergies: "peanuts",
-  dailyBudgetUsd: "12",
-  timezone: "Asia/Kolkata",
+  sex: "",
+  birthYear: "",
+  heightCm: "",
+  weightKg: "",
+  activityLevel: "",
+  goal: "MAINTAIN",
+  dietaryPrefs: "",
+  allergies: "",
+  dailyBudgetUsd: "",
+  timezone: typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "",
 };
 
 function numberOrNull(value: string) {
@@ -48,9 +48,12 @@ export default function OnboardingPage() {
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
 
   const targets = useMemo(() => {
-    const weight = numberOrNull(form.weightKg) ?? 72.4;
-    const height = numberOrNull(form.heightCm) ?? 178;
-    const birthYear = numberOrNull(form.birthYear) ?? 1998;
+    const weight = numberOrNull(form.weightKg);
+    const height = numberOrNull(form.heightCm);
+    const birthYear = numberOrNull(form.birthYear);
+    if (!weight || !height || !birthYear || !form.sex || !form.activityLevel) {
+      return { bmr: 0, tdee: 0, calories: 0, protein: 0, carbs: 0, fat: 0 };
+    }
     const age = new Date().getFullYear() - birthYear;
     const bmr = Math.round(10 * weight + 6.25 * height - 5 * age + (form.sex === "FEMALE" ? -161 : 5));
     const multiplier = form.activityLevel === "ACTIVE" ? 1.725 : form.activityLevel === "MODERATE" ? 1.55 : form.activityLevel === "LIGHT" ? 1.375 : 1.2;
@@ -66,11 +69,20 @@ export default function OnboardingPage() {
     };
   }, [form]);
 
+  const requiredFields: Array<keyof Form> = ["sex", "birthYear", "heightCm", "weightKg", "activityLevel", "goal"];
+  const completedRequired = requiredFields.filter((key) => String(form[key]).trim()).length;
+  const requiredComplete = completedRequired === requiredFields.length && targets.calories > 0;
+  const setupPercent = Math.round((completedRequired / requiredFields.length) * 100);
+
   function updateField(key: keyof Form, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function handleSave() {
+  async function handleSave(next = "/dashboard") {
+    if (!requiredComplete) {
+      setStatus("error");
+      return;
+    }
     setStatus("saving");
     try {
       await updateProfile({
@@ -91,20 +103,11 @@ export default function OnboardingPage() {
         notifyStreakRisk: true,
         notifyWeeklyDigest: true,
       });
-      router.push("/dashboard");
+      router.push(next);
     } catch {
       setStatus("error");
     }
   }
-
-  const profileFields: Array<[keyof Form, string]> = [
-    ["sex", "Sex"],
-    ["birthYear", "Birth year"],
-    ["heightCm", "Height"],
-    ["weightKg", "Weight"],
-    ["activityLevel", "Activity"],
-    ["goal", "Goal"],
-  ];
 
   return (
     <main className="min-h-screen bg-[#f8f8f3] px-5 py-8 text-[#101510]">
@@ -124,8 +127,17 @@ export default function OnboardingPage() {
             <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#d7ff68]">Profile calibration</p>
             <h1 className="mt-4 text-[56px] font-semibold leading-[0.94]">Targets should come from real inputs.</h1>
             <p className="mt-5 text-[15px] leading-7 text-white/72">
-              This setup uses your body data, goal, activity, preferences, allergies, budget, timezone, and notification choices to personalize your plan.
+              This setup uses your own body data, goal, activity, preferences, allergies, budget, timezone, and notification choices to personalize your plan.
             </p>
+            <div className="mt-6 rounded-lg border border-white/14 bg-white/10 p-4">
+              <div className="mb-2 flex items-center justify-between text-[12px] font-bold">
+                <span className="text-white/72">Setup completion</span>
+                <span className="text-[#d7ff68]">{setupPercent}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/12">
+                <div className="h-full rounded-full bg-[#d7ff68] transition-all" style={{ width: `${setupPercent}%` }} />
+              </div>
+            </div>
             <div className="mt-6 grid gap-2">
               {["Body and goal", "Food rules", "Notifications", "First meal"].map((step, index) => (
                 <div key={step} className="flex items-center gap-3 rounded-md bg-white/10 px-3 py-2">
@@ -149,7 +161,7 @@ export default function OnboardingPage() {
                   ["Fat", `${targets.fat}g`],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-md bg-white/10 p-3">
-                    <p className="text-[20px] font-semibold">{value}</p>
+                    <p className="text-[20px] font-semibold">{value || "-"}</p>
                     <p className="text-[11px] text-white/58">{label}</p>
                   </div>
                 ))}
@@ -170,6 +182,7 @@ export default function OnboardingPage() {
                 <label className="block">
                   <span className="text-[12px] font-semibold text-[#5f675f]">Sex</span>
                   <select className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-bold outline-none" value={form.sex} onChange={(e) => updateField("sex", e.target.value)}>
+                    <option value="">Select sex</option>
                     {Object.entries(sexLabels).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                   </select>
                 </label>
@@ -188,6 +201,7 @@ export default function OnboardingPage() {
                 <label className="block">
                   <span className="text-[12px] font-semibold text-[#5f675f]">Activity level</span>
                   <select className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-4 py-3 text-[14px] font-bold outline-none" value={form.activityLevel} onChange={(e) => updateField("activityLevel", e.target.value)}>
+                    <option value="">Select activity</option>
                     {Object.entries(activityLabels).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                   </select>
                 </label>
@@ -230,8 +244,8 @@ export default function OnboardingPage() {
                     </div>
                   ))}
                 </div>
-                {status === "error" ? <p className="mt-4 text-[12px] font-semibold text-[#b7791f]">Could not save profile. Sign in and try again.</p> : null}
-                <button onClick={handleSave} disabled={status === "saving"} className="mt-6 flex w-full items-center justify-center gap-2 rounded-md bg-[#173c2b] py-3 text-[14px] font-bold text-white disabled:opacity-60">
+                {status === "error" ? <p className="mt-4 text-[12px] font-semibold text-[#b7791f]">{requiredComplete ? "Could not save profile. Sign in and try again." : "Complete the required body and goal fields first."}</p> : null}
+                <button onClick={() => handleSave("/dashboard")} disabled={status === "saving" || !requiredComplete} className="mt-6 flex w-full items-center justify-center gap-2 rounded-md bg-[#173c2b] py-3 text-[14px] font-bold text-white disabled:opacity-60">
                   {status === "saving" ? "Saving..." : "Save and open dashboard"}
                   <ArrowRight size={15} weight="bold" />
                 </button>
@@ -247,10 +261,10 @@ export default function OnboardingPage() {
                     Once the profile is saved, log a first meal so your dashboard, recommendations, and coach have real context.
                   </p>
                 </div>
-                <Link href="/snap" className="inline-flex items-center justify-center gap-2 rounded-md border border-black/10 bg-[#f8f8f3] px-5 py-3 text-[14px] font-bold text-[#173c2b]">
-                  Preview meal logger
+                <button onClick={() => handleSave("/snap")} disabled={status === "saving" || !requiredComplete} className="inline-flex items-center justify-center gap-2 rounded-md border border-black/10 bg-[#f8f8f3] px-5 py-3 text-[14px] font-bold text-[#173c2b] disabled:opacity-50">
+                  Save and log meal
                   <ArrowRight size={15} weight="bold" />
-                </Link>
+                </button>
               </div>
             </section>
           </div>

@@ -7,6 +7,8 @@ import {
   requireScope,
 } from '../middleware/apiKey';
 import {
+  pageVisitHandler,
+  pageVisitSchema,
   publicAnalyzeSchema,
   publicCaloriesHandler,
 } from '../controllers/publicController';
@@ -20,6 +22,8 @@ publicRouter.post(
   validate(publicAnalyzeSchema),
   publicCaloriesHandler,
 );
+
+publicRouter.post('/public/visit', validate(pageVisitSchema), pageVisitHandler);
 
 // All /v1/public/* endpoints are gated by an API key, per-key rate limited,
 // and usage-metered into ApiUsage.

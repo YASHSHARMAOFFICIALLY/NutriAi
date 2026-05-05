@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, CheckCircle, ImageSquare, ListChecks, PencilSimple, Sparkle } from "@phosphor-icons/react/dist/ssr";
+import { Camera, CheckCircle, ImageSquare, ListChecks, PencilSimple, Sparkle, Trash } from "@phosphor-icons/react/dist/ssr";
 import { analyzeFood } from "@/lib/api/food";
 import { ApiError } from "@/lib/api/client";
 import { createMeal, inferMealType } from "@/lib/api/meals";
@@ -175,6 +175,27 @@ export default function SnapPage() {
     });
   }
 
+  function updateTitle(value: string) {
+    setCandidate((current) => current ? { ...current, title: value } : current);
+  }
+
+  function removeItem(index: number) {
+    setCandidate((current) => {
+      if (!current || current.items.length <= 1) return current;
+      const items = current.items.filter((_, itemIndex) => itemIndex !== index);
+      const totals = items.reduce(
+        (acc, item) => ({
+          calories: acc.calories + item.calories,
+          protein: acc.protein + item.protein,
+          carbs: acc.carbs + item.carbs,
+          fat: acc.fat + item.fat,
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      );
+      return { ...current, items, totals };
+    });
+  }
+
   function addItem() {
     setCandidate((current) => current ? ({
       ...current,
@@ -193,7 +214,7 @@ export default function SnapPage() {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-auto max-w-7xl px-6 py-10 lg:px-10"
+      className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10"
     >
       <PageHeader
         eyebrow="Snap"
@@ -201,14 +222,14 @@ export default function SnapPage() {
         description="Upload a photo or type a quick description, then review the editable nutrition estimate before saving it to your diary."
       />
 
-      <section className="grid gap-8 xl:grid-cols-[400px_1fr]">
+      <section className="grid gap-6 xl:grid-cols-[400px_1fr] xl:gap-8">
         <div className="space-y-6">
-          <Panel className="p-6">
+          <Panel className="p-4 sm:p-6">
             <div className="mb-6 grid grid-cols-2 rounded-lg border border-border bg-surface-alt p-1" role="tablist" aria-label="Meal input mode">
               <button 
                 onClick={() => setInputMode("photo")}
                 aria-pressed={inputMode === "photo"}
-                className={`flex items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
+                className={`flex min-h-11 items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
                   inputMode === "photo" ? "bg-forest text-white" : "text-muted hover:text-forest"
                 }`}
               >
@@ -218,7 +239,7 @@ export default function SnapPage() {
               <button 
                 onClick={() => setInputMode("text")}
                 aria-pressed={inputMode === "text"}
-                className={`flex items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
+                className={`flex min-h-11 items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
                   inputMode === "text" ? "bg-forest text-white" : "text-muted hover:text-forest"
                 }`}
               >
@@ -234,7 +255,7 @@ export default function SnapPage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
-                  className="group relative flex h-[340px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-alt/60 p-8 text-center transition-colors hover:border-teal/50 hover:bg-surface-alt"
+                  className="group relative flex h-[260px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-alt/60 p-5 text-center transition-colors hover:border-teal/50 hover:bg-surface-alt sm:h-[340px] sm:p-8"
                 >
                   <span className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-lg bg-white text-forest shadow-sm">
                     {previewUrl ? (
@@ -262,7 +283,7 @@ export default function SnapPage() {
                         event.preventDefault();
                         handleFileChange(null);
                       }}
-                      className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-lg bg-white text-[20px] font-bold leading-none text-forest shadow-sm transition-colors hover:bg-surface-alt"
+                      className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-lg bg-white text-[20px] font-bold leading-none text-forest shadow-sm transition-colors hover:bg-surface-alt sm:h-9 sm:w-9"
                       aria-label="Remove selected photo"
                     >
                       &times;
@@ -275,7 +296,7 @@ export default function SnapPage() {
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
-                  className="rounded-lg border border-border bg-surface-alt/60 p-6"
+                  className="rounded-lg border border-border bg-surface-alt/60 p-4 sm:p-6"
                 >
                   <p className="text-[12px] font-bold uppercase tracking-wider text-muted mb-3">What are you eating?</p>
                   <textarea
@@ -322,7 +343,7 @@ export default function SnapPage() {
                 animate={{ opacity: 1 }} 
                 exit={{ opacity: 0 }}
               >
-                <Panel className="flex min-h-[500px] h-full items-center justify-center p-12">
+                <Panel className="flex min-h-[360px] h-full items-center justify-center p-6 sm:min-h-[500px] sm:p-12">
                   <AnalyzingState />
                 </Panel>
               </motion.div>
@@ -333,18 +354,23 @@ export default function SnapPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-8"
               >
-                <Panel className="p-8">
+                <Panel className="p-5 sm:p-8">
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
+                    <div className="min-w-0">
                       <div className="mb-4 flex flex-wrap gap-2">
                         <span className="rounded-full bg-lime/20 px-3 py-1 text-[11px] font-bold text-forest">
                           {Math.round(candidate.confidence * 100)}% Match
                         </span>
                       </div>
                       <h2 className="text-[36px] font-bold tracking-tight text-forest leading-tight">
-                        {candidate.title}
+                        <input
+                          value={candidate.title}
+                          onChange={(event) => updateTitle(event.target.value)}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-0 py-1 text-[26px] font-bold leading-tight tracking-tight text-forest outline-none transition-colors focus:border-teal/30 focus:bg-surface-alt focus:px-3 sm:text-[32px] md:text-[36px]"
+                          aria-label="Meal title"
+                        />
                       </h2>
-                      <label className="mt-4 inline-flex items-center gap-3 rounded-xl border border-border bg-surface-alt px-4 py-3 text-[13px] font-bold text-forest">
+                      <label className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface-alt px-4 py-3 text-[13px] font-bold text-forest sm:inline-flex sm:w-auto">
                         Meal type
                         <select
                           value={candidate.mealType}
@@ -373,7 +399,7 @@ export default function SnapPage() {
                     </div>
                   </div>
 
-                  <div className="mt-8 grid gap-4 md:grid-cols-3">
+                  <div className="mt-8 grid gap-3 md:grid-cols-3 md:gap-4">
                     {sourceSteps.map((step, i) => (
                       <div key={i} className="flex items-center gap-4 rounded-lg border border-border bg-surface-alt/30 p-4">
                         <span className="grid h-10 w-10 place-items-center rounded-lg bg-white text-forest shadow-sm">
@@ -386,23 +412,26 @@ export default function SnapPage() {
                 </Panel>
 
                 <Panel className="overflow-hidden">
-                  <div className="flex items-center justify-between bg-surface-alt p-6 border-b border-border">
+                  <div className="flex flex-col gap-3 border-b border-border bg-surface-alt p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                     <h2 className="text-[20px] font-bold text-forest tracking-tight">Verified Line Items</h2>
-                    <button onClick={addItem} className="flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-[13px] font-bold text-forest transition-colors hover:bg-surface-alt">
+                    <button onClick={addItem} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-[13px] font-bold text-forest transition-colors hover:bg-surface-alt">
                       <PencilSimple size={16} weight="bold" />
                       Add row
                     </button>
                   </div>
                   
                   <div className="hidden overflow-x-auto md:block">
-                    <table className="w-full min-w-[700px] text-left text-[14px]">
+                    <table className="w-full min-w-[980px] text-left text-[14px]">
                       <thead className="bg-surface-alt/50 text-muted">
                         <tr>
                           <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Food Item</th>
                           <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Amount</th>
                           <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[11px]">Calories</th>
-                          <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[11px]">Macros (P/C/F)</th>
+                          <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[11px]">Protein</th>
+                          <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[11px]">Carbs</th>
+                          <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[11px]">Fat</th>
                           <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[11px]">Certainty</th>
+                          <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[11px]">Remove</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border bg-white">
@@ -433,13 +462,28 @@ export default function SnapPage() {
                               />
                             </td>
                             <td className="px-6 py-4 text-right">
-                               <div className="flex justify-end gap-1.5 text-[12px] font-medium text-muted">
-                                 <span className="text-teal font-bold">{item.protein}g</span>
-                                 <span>/</span>
-                                 <span className="text-sage font-bold">{item.carbs}g</span>
-                                 <span>/</span>
-                                 <span className="text-amber-600 font-bold">{item.fat}g</span>
-                               </div>
+                              <input
+                                className="w-16 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-teal outline-none transition-colors focus:border-teal/30 focus:bg-white"
+                                value={item.protein}
+                                onChange={(event) => updateItem(index, "protein", event.target.value)}
+                                aria-label={`Food item ${index + 1} protein`}
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <input
+                                className="w-16 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-sage outline-none transition-colors focus:border-teal/30 focus:bg-white"
+                                value={item.carbs}
+                                onChange={(event) => updateItem(index, "carbs", event.target.value)}
+                                aria-label={`Food item ${index + 1} carbs`}
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <input
+                                className="w-16 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-[#b7791f] outline-none transition-colors focus:border-teal/30 focus:bg-white"
+                                value={item.fat}
+                                onChange={(event) => updateItem(index, "fat", event.target.value)}
+                                aria-label={`Food item ${index + 1} fat`}
+                              />
                             </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -449,13 +493,23 @@ export default function SnapPage() {
                                 <span className="text-[11px] font-bold text-muted">{Math.round(item.confidence * 100)}%</span>
                               </div>
                             </td>
+                            <td className="px-6 py-4 text-right">
+                              <button
+                                onClick={() => removeItem(index)}
+                                disabled={candidate.items.length <= 1}
+                                className="inline-grid h-8 w-8 place-items-center rounded-md border border-border bg-white text-muted transition-colors hover:border-[#b7791f]/30 hover:text-[#b7791f] disabled:opacity-40"
+                                aria-label={`Remove food item ${index + 1}`}
+                              >
+                                <Trash size={15} weight="bold" />
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
 
-                  <div className="grid gap-3 bg-white p-4 md:hidden">
+                  <div className="grid gap-3 bg-white p-3 md:hidden">
                     {candidate.items.map((item, index) => (
                       <div key={index} className="rounded-lg border border-border bg-surface-alt p-4">
                         <div className="grid gap-3">
@@ -475,7 +529,7 @@ export default function SnapPage() {
                               onChange={(event) => updateItem(index, "quantity", event.target.value)}
                             />
                           </label>
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-2 gap-2">
                             <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
                               kcal
                               <input
@@ -486,19 +540,50 @@ export default function SnapPage() {
                             </label>
                             <div className="rounded-lg bg-white p-3">
                               <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Protein</p>
-                              <p className="mt-1 text-[14px] font-bold text-teal">{item.protein}g</p>
+                              <input
+                                className="mt-1 w-full rounded-md border border-transparent bg-transparent text-[14px] font-bold text-teal outline-none focus:border-teal/30 focus:bg-surface-alt"
+                                value={item.protein}
+                                onChange={(event) => updateItem(index, "protein", event.target.value)}
+                                aria-label={`Food item ${index + 1} protein`}
+                              />
                             </div>
                             <div className="rounded-lg bg-white p-3">
                               <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Certainty</p>
                               <p className="mt-1 text-[14px] font-bold text-forest">{Math.round(item.confidence * 100)}%</p>
                             </div>
                           </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                              carbs
+                              <input
+                                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-sage outline-none focus:border-teal"
+                                value={item.carbs}
+                                onChange={(event) => updateItem(index, "carbs", event.target.value)}
+                              />
+                            </label>
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                              fat
+                              <input
+                                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-[#b7791f] outline-none focus:border-teal"
+                                value={item.fat}
+                                onChange={(event) => updateItem(index, "fat", event.target.value)}
+                              />
+                            </label>
+                            <button
+                              onClick={() => removeItem(index)}
+                              disabled={candidate.items.length <= 1}
+                              className="col-span-2 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-[12px] font-bold text-muted transition-colors hover:border-[#b7791f]/30 hover:text-[#b7791f] disabled:opacity-40"
+                            >
+                              <Trash size={14} weight="bold" />
+                              Remove
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="sticky bottom-[76px] z-20 flex flex-col gap-6 border-t border-border bg-surface-alt p-5 shadow-[0_-12px_32px_rgba(16,21,16,0.08)] lg:static lg:flex-row lg:items-center lg:justify-between lg:p-8 lg:shadow-none">
+                  <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 flex flex-col gap-4 border-t border-border bg-surface-alt p-4 shadow-[0_-12px_32px_rgba(16,21,16,0.08)] lg:static lg:flex-row lg:items-center lg:justify-between lg:p-8 lg:shadow-none">
                     <div>
                       <p className="text-[14px] font-medium text-muted leading-relaxed">
                         Saving this meal adds the reviewed totals to your diary and updates today&apos;s dashboard.
@@ -507,7 +592,7 @@ export default function SnapPage() {
                     <button
                       onClick={handleSave}
                       disabled={status === "saving"}
-                      className="flex h-14 items-center justify-center gap-3 rounded-lg bg-lime px-10 text-[16px] font-bold text-forest transition-colors hover:bg-white disabled:opacity-50"
+                      className="flex h-14 w-full items-center justify-center gap-3 rounded-lg bg-lime px-6 text-[16px] font-bold text-forest transition-colors hover:bg-white disabled:opacity-50 lg:w-auto lg:px-10"
                     >
                       <CheckCircle size={20} weight="fill" />
                       {status === "saving" ? "Saving meal..." : status === "saved" ? "Meal saved" : "Confirm and save"}
@@ -516,7 +601,7 @@ export default function SnapPage() {
                 </Panel>
               </motion.div>
             ) : (
-              <Panel className="flex min-h-[500px] items-center justify-center p-8">
+              <Panel className="flex min-h-[360px] items-center justify-center p-5 sm:min-h-[500px] sm:p-8">
                 <EmptyState
                   icon={ImageSquare}
                   title="No analysis yet"

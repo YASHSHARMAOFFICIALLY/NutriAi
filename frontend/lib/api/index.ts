@@ -1,5 +1,7 @@
 export * from "./auth";
 export * from "./client";
+export * from "./config";
+export * from "./query";
 export * from "./types";
 
 export * as account from "./account";
@@ -9,9 +11,14 @@ export * as food from "./food";
 export * as history from "./history";
 export * as meals from "./meals";
 export * as chat from "./chat";
+export * as challenges from "./challenges";
 export * as analytics from "./analytics";
+export * as emailAuth from "./emailAuth";
 export * as family from "./family";
+export * as payments from "./payments";
 export * as profile from "./profile";
+export * as publicEstimate from "./publicEstimate";
 export * as recommendations from "./recommendations";
 export * as telegram from "./telegram";
 export * as uploads from "./uploads";
+export * as weight from "./weight";

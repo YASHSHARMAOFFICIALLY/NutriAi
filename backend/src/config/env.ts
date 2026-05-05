@@ -58,6 +58,7 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   TRUST_PROXY: TrustProxySchema,
+  ADMIN_EMAILS: z.string().default(''),
 
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),

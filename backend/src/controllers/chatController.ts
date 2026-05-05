@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
-import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import {
   deleteConversation,
   getConversation,
@@ -17,10 +17,10 @@ export const chatSendSchema = z.object({
 export type ChatSendBody = z.infer<typeof chatSendSchema>;
 
 export const chatSendHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const body = req.body as ChatSendBody;
   const result = await sendMessage({
-    userId: req.user.id,
+    userId: user.id,
     message: body.message,
     conversationId: body.conversationId ?? null,
     title: body.title ?? null,
@@ -29,8 +29,8 @@ export const chatSendHandler: RequestHandler = async (req, res) => {
 };
 
 export const listConversationsHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  const rows = await listConversations(req.user.id);
+  const user = requireUser(req);
+  const rows = await listConversations(user.id);
   res.json({
     data: rows.map((r) => ({
       id: r.id,
@@ -43,8 +43,8 @@ export const listConversationsHandler: RequestHandler = async (req, res) => {
 };
 
 export const getConversationHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  const convo = await getConversation(req.user.id, req.params.id);
+  const user = requireUser(req);
+  const convo = await getConversation(user.id, req.params.id);
   res.json({
     id: convo.id,
     title: convo.title,
@@ -60,7 +60,7 @@ export const getConversationHandler: RequestHandler = async (req, res) => {
 };
 
 export const deleteConversationHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  await deleteConversation(req.user.id, req.params.id);
+  const user = requireUser(req);
+  await deleteConversation(user.id, req.params.id);
   res.status(204).send();
 };

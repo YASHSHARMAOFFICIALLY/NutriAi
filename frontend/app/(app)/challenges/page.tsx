@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle, Flag, MinusCircle } from "@phosphor-icons/react/dist/ssr";
+import { useEffect, useState, type FormEvent } from "react";
+import { CheckCircle, Flag, MinusCircle, Plus, X } from "@phosphor-icons/react/dist/ssr";
+import { ApiError } from "@/lib/api/client";
 import { abandonChallenge, checkInToday, listMyChallenge, listPresets, startChallenge } from "@/lib/api/challenges";
 import type { ChallengePreset, UserChallengeDTO } from "@/lib/api/types";
 import { PageHeader, Panel, Skeleton, SourceBadge } from "../_components/ui";
@@ -36,6 +37,11 @@ export default function ChallengesPage() {
   const [past, setPast] = useState<UserChallengeDTO[]>([]);
   const [source, setSource] = useState<"loading" | "live" | "error">("loading");
   const [busy, setBusy] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [customTitle, setCustomTitle] = useState("");
+  const [customDescription, setCustomDescription] = useState("");
+  const [customDurationDays, setCustomDurationDays] = useState(14);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,9 +77,15 @@ export default function ChallengesPage() {
     try {
       if (!active) return;
       const updated = await checkInToday(active.id);
-      setActive(fromUserChallenge(updated));
+      if (updated.status === "ACTIVE") {
+        setActive(fromUserChallenge(updated));
+      } else {
+        setPast((current) => [updated, ...current]);
+        setActive(null);
+      }
       setSource("live");
-    } catch {
+    } catch (error) {
+      setFormError(error instanceof ApiError ? error.message : "Could not check in today.");
       setSource("error");
     } finally {
       setBusy(false);
@@ -91,7 +103,45 @@ export default function ChallengesPage() {
       });
       setActive(fromUserChallenge(created));
       setSource("live");
-    } catch {
+      setFormError(null);
+    } catch (error) {
+      setFormError(error instanceof ApiError ? error.message : "Could not start this challenge.");
+      setSource("error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreateCustom(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (active) {
+      setFormError("Finish or abandon the current challenge before creating a new one.");
+      return;
+    }
+
+    const title = customTitle.trim();
+    const description = customDescription.trim();
+    if (!title) {
+      setFormError("Challenge title is required.");
+      return;
+    }
+
+    setBusy(true);
+    setFormError(null);
+    try {
+      const created = await startChallenge({
+        title,
+        description: description || null,
+        durationDays: customDurationDays,
+      });
+      setActive(fromUserChallenge(created));
+      setCustomTitle("");
+      setCustomDescription("");
+      setCustomDurationDays(14);
+      setCreateOpen(false);
+      setSource("live");
+    } catch (error) {
+      setFormError(error instanceof ApiError ? error.message : "Could not create this challenge.");
       setSource("error");
     } finally {
       setBusy(false);
@@ -116,9 +166,71 @@ export default function ChallengesPage() {
   return (
     <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Challenges" title="Active habit check-in" />
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[13px] font-semibold text-[#5f675f]">
+          {active ? "One active challenge is already running." : "Start from a preset or create a custom habit challenge."}
+        </p>
+        <button
+          onClick={() => {
+            setCreateOpen((current) => !current);
+            setFormError(null);
+          }}
+          disabled={busy || Boolean(active)}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white transition-colors hover:bg-[#1f4d38] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {createOpen ? <X size={15} weight="bold" /> : <Plus size={15} weight="bold" />}
+          {createOpen ? "Close" : "Create challenge"}
+        </button>
+      </div>
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load challenge data. Sign in and try again.</p>
+          <p className="text-[13px] font-semibold text-[#b7791f]">{formError || "Could not load challenge data. Sign in and try again."}</p>
+        </Panel>
+      ) : null}
+      {createOpen ? (
+        <Panel className="mb-5 p-5">
+          <form onSubmit={handleCreateCustom} className="grid gap-4 lg:grid-cols-[1fr_1.2fr_140px_auto] lg:items-end">
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5f675f]">Title</span>
+              <input
+                value={customTitle}
+                onChange={(event) => setCustomTitle(event.target.value)}
+                maxLength={120}
+                placeholder="No sugar after dinner"
+                className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-3 text-[13px] font-semibold outline-none focus:border-[#0f8b8d]"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5f675f]">Description</span>
+              <input
+                value={customDescription}
+                onChange={(event) => setCustomDescription(event.target.value)}
+                maxLength={500}
+                placeholder="Keep evenings consistent for two weeks"
+                className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-3 text-[13px] font-semibold outline-none focus:border-[#0f8b8d]"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5f675f]">Days</span>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={customDurationDays}
+                onChange={(event) => setCustomDurationDays(Math.min(365, Math.max(1, Number(event.target.value) || 1)))}
+                className="mt-2 w-full rounded-md border border-black/10 bg-[#f8f8f3] px-3 py-3 text-[13px] font-semibold outline-none focus:border-[#0f8b8d]"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={busy || Boolean(active)}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#d7ff68] px-5 py-3 text-[13px] font-bold text-[#101510] transition-colors hover:bg-[#c8f050] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Plus size={15} weight="bold" />
+              Create
+            </button>
+          </form>
+          {formError ? <p className="mt-3 text-[12px] font-semibold text-[#b7791f]">{formError}</p> : null}
         </Panel>
       ) : null}
 

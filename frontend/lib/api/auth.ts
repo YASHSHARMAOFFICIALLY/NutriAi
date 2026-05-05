@@ -1,5 +1,8 @@
+import { AUTH_SESSION_COOKIE, AUTH_SESSION_MAX_AGE_SECONDS } from "../authSession";
+
 const STORAGE_KEY = "nutriai.access_token";
-export const AUTH_SESSION_COOKIE = "nutriai_auth";
+export { AUTH_SESSION_COOKIE } from "../authSession";
+export { getApiUrl } from "./config";
 
 let accessToken: string | null = null;
 
@@ -19,10 +22,6 @@ export function clearAccessToken(): void {
   clearLegacyStoredToken();
 }
 
-export function getApiUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-}
-
 function clearLegacyStoredToken(): void {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
@@ -35,7 +34,7 @@ function cookieSecureAttribute(): string {
 
 function setAuthSessionMarker(): void {
   if (typeof document === "undefined") return;
-  document.cookie = `${AUTH_SESSION_COOKIE}=1; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax${cookieSecureAttribute()}`;
+  document.cookie = `${AUTH_SESSION_COOKIE}=1; Path=/; Max-Age=${AUTH_SESSION_MAX_AGE_SECONDS}; SameSite=Lax${cookieSecureAttribute()}`;
 }
 
 function clearAuthSessionMarker(): void {

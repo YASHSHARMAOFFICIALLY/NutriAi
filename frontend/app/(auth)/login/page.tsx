@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Check, SealWarning } from "@phosphor-icons/react/dist/ssr";
 import { devLogin } from "@/lib/api/account";
 import { login } from "@/lib/api/emailAuth";
 import { ApiError } from "@/lib/api/client";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const IS_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(API_URL);
+import { getGoogleAuthUrl, isLocalApiUrl } from "@/lib/api/config";
+import {
+  rememberPostLoginNext,
+  safeNextPath,
+  withNextParam,
+} from "@/lib/safeRedirect";
 
 const FEATURES = [
   "Snap a meal - calories back in seconds",
@@ -87,8 +90,11 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease } },
 };
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const params = useSearchParams();
+  const nextPath = safeNextPath(params.get("next"));
+  const signupHref = withNextParam("/signup", nextPath);
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -101,7 +107,7 @@ export default function LoginPage() {
     setDevError(null);
     try {
       await devLogin("dev@nutriai.test");
-      router.replace("/dashboard");
+      router.replace(nextPath);
     } catch (e) {
       setDevError(e instanceof Error ? e.message : "Dev login failed.");
       setDevLoading(false);
@@ -114,7 +120,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login({ email, password });
-      router.replace("/dashboard");
+      router.replace(nextPath);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Couldn't sign in. Try again.");
       setLoading(false);
@@ -188,7 +194,8 @@ export default function LoginPage() {
           </div>
 
           <motion.a
-            href={`${API_URL}/auth/google`}
+            href={getGoogleAuthUrl()}
+            onClick={() => rememberPostLoginNext(nextPath)}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-white px-5 py-3.5 text-[15px] font-semibold text-foreground shadow-sm transition-shadow hover:shadow-md"
@@ -239,7 +246,7 @@ export default function LoginPage() {
             </button>
 
             <div className="flex items-center justify-between text-[12px]">
-              <Link href="/signup" className="text-muted hover:text-teal">Create account</Link>
+              <Link href={signupHref} className="text-muted hover:text-teal">Create account</Link>
               <Link href="/forgot-password" className="text-muted hover:text-teal">Forgot password?</Link>
             </div>
           </form>
@@ -253,7 +260,7 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {IS_LOCAL && (
+          {isLocalApiUrl() && (
             <div className="mt-6 flex flex-col items-center gap-1.5">
               <button
                 onClick={handleDevLogin}
@@ -275,5 +282,23 @@ export default function LoginPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
+      <div className="h-2 w-48 overflow-hidden rounded-full bg-border">
+        <div className="h-full w-1/2 rounded-full bg-forest" />
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent />
+    </Suspense>
   );
 }

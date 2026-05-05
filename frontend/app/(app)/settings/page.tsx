@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AddressBook, Bell, CreditCard, Gear, PaperPlaneTilt } from "@phosphor-icons/react/dist/ssr";
+import { AddressBook, Bell, CopySimple, CreditCard, Gear, Key, PaperPlaneTilt, TrashSimple } from "@phosphor-icons/react/dist/ssr";
+import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api/apiKeys";
 import { createCheckout, getMyPlan, type UserPlan } from "@/lib/api/payments";
 import { deleteProfile, getProfile, updateProfile } from "@/lib/api/profile";
 import { createTelegramLink, getTelegramStatus, unlinkTelegram, type TelegramLink, type TelegramStatus } from "@/lib/api/telegram";
-import type { ActivityLevel, Goal, Sex, UserProfile } from "@/lib/api/types";
+import type { ActivityLevel, ApiKeyRow, Goal, IssuedApiKey, Sex, UserProfile } from "@/lib/api/types";
 import { CheckRow, PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 import { sexLabels, activityLabels, goalLabels } from "@/lib/enumLabels";
 import { useToast } from "@/lib/toast";
@@ -62,10 +63,17 @@ function listFromCsv(value: string) {
   return value.split(",").map((item) => item.trim()).filter(Boolean);
 }
 
+function formatDate(value: string | null) {
+  return value ? new Date(value).toLocaleDateString() : "Never";
+}
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const [form, setForm] = useState<ProfileForm>(formFromProfile());
   const [plan, setPlan] = useState<UserPlan | null>(null);
+  const [apiKeys, setApiKeys] = useState<ApiKeyRow[]>([]);
+  const [apiKeyName, setApiKeyName] = useState("");
+  const [issuedApiKey, setIssuedApiKey] = useState<IssuedApiKey | null>(null);
   const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null);
   const [telegramLink, setTelegramLink] = useState<TelegramLink | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -78,12 +86,14 @@ export default function SettingsPage() {
       getProfile(),
       getMyPlan().catch(() => null),
       getTelegramStatus().catch(() => null),
+      listApiKeys().catch(() => []),
     ])
-      .then(([apiProfile, apiPlan, tgStatus]) => {
+      .then(([apiProfile, apiPlan, tgStatus, keys]) => {
         if (cancelled) return;
         setForm(formFromProfile(apiProfile));
         setPlan(apiPlan);
         setTelegramStatus(tgStatus);
+        setApiKeys(keys);
         setSource("live");
       })
       .catch(() => setSource("error"));
@@ -104,8 +114,32 @@ export default function SettingsPage() {
     return { bmr, tdee: Math.round(bmr * activityMultiplier) };
   }, [form]);
 
+  const recalculatedTargets = useMemo(() => {
+    const weight = numberOrNull(form.weightKg) ?? 0;
+    if (!derived.tdee || !weight) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    const calories = form.goal === "LOSE" ? derived.tdee - 350 : form.goal === "GAIN" ? derived.tdee + 250 : derived.tdee;
+    return {
+      calories,
+      protein: Math.round(weight * 2),
+      carbs: Math.round((calories * 0.42) / 4),
+      fat: Math.round((calories * 0.28) / 9),
+    };
+  }, [derived.tdee, form.goal, form.weightKg]);
+
   function updateField<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function applyCalculatedTargets() {
+    if (!recalculatedTargets.calories) return;
+    setForm((current) => ({
+      ...current,
+      dailyCalorieTarget: String(recalculatedTargets.calories),
+      proteinTargetG: String(recalculatedTargets.protein),
+      carbsTargetG: String(recalculatedTargets.carbs),
+      fatTargetG: String(recalculatedTargets.fat),
+    }));
+    toast("success", "Targets recalculated. Save profile to apply.");
   }
 
   async function handleSave() {
@@ -184,6 +218,53 @@ export default function SettingsPage() {
       toast("success", "Telegram disconnected.");
     } catch {
       toast("error", "Could not disconnect Telegram.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateApiKey() {
+    const name = apiKeyName.trim();
+    if (!name) {
+      toast("error", "Add a key name first.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const key = await createApiKey({
+        name,
+        scopes: ["calories:read"],
+        rateLimitPerMin: 60,
+      });
+      setApiKeys((current) => [key, ...current]);
+      setIssuedApiKey(key);
+      setApiKeyName("");
+      toast("success", "API key created.");
+    } catch {
+      toast("error", "Could not create API key.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCopyApiKey() {
+    if (!issuedApiKey?.token) return;
+    try {
+      await navigator.clipboard.writeText(issuedApiKey.token);
+      toast("success", "API key copied.");
+    } catch {
+      toast("error", "Could not copy API key.");
+    }
+  }
+
+  async function handleRevokeApiKey(id: string) {
+    setSaving(true);
+    try {
+      const revoked = await revokeApiKey(id);
+      setApiKeys((current) => current.map((key) => key.id === id ? { ...key, revokedAt: revoked.revokedAt } : key));
+      toast("success", "API key revoked.");
+    } catch {
+      toast("error", "Could not revoke API key.");
     } finally {
       setSaving(false);
     }
@@ -317,7 +398,19 @@ export default function SettingsPage() {
             </div>
           </Panel>
           <Panel className="p-5">
-            <h2 className="mb-4 text-[22px] font-bold tracking-tight text-forest">Macro targets</h2>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-[22px] font-bold tracking-tight text-forest">Macro targets</h2>
+                <p className="mt-1 text-[12px] leading-5 text-muted">Recalculate after changing weight, activity, or goal.</p>
+              </div>
+              <button
+                onClick={applyCalculatedTargets}
+                disabled={!recalculatedTargets.calories}
+                className="shrink-0 rounded-lg border border-border bg-white px-3 py-2 text-[11px] font-bold text-forest transition-colors hover:bg-surface-alt disabled:opacity-40"
+              >
+                Recalculate
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {[
                 ["Calories", form.dailyCalorieTarget],
@@ -326,7 +419,7 @@ export default function SettingsPage() {
                 ["Fat", `${form.fatTargetG}g`],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-border bg-surface-alt p-3.5">
-                  <p className="text-[18px] font-bold text-forest">{value}</p>
+                  <p className="text-[18px] font-bold text-forest">{value === "g" ? "-" : value || "-"}</p>
                   <p className="text-[11px] font-medium text-muted">{label}</p>
                 </div>
               ))}
@@ -350,6 +443,68 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <button onClick={() => updateField("notifyStreakRisk", !form.notifyStreakRisk)} className="w-full text-left"><CheckRow>{form.notifyStreakRisk ? "Streak risk email on" : "Streak risk email off"}</CheckRow></button>
               <button onClick={() => updateField("notifyWeeklyDigest", !form.notifyWeeklyDigest)} className="w-full text-left"><CheckRow>{form.notifyWeeklyDigest ? "Weekly digest on" : "Weekly digest off"}</CheckRow></button>
+            </div>
+          </Panel>
+          <Panel className="p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-surface-alt text-forest">
+                <Key size={19} weight="bold" />
+              </span>
+              <div>
+                <h2 className="text-[20px] font-bold tracking-tight text-forest">Developer keys</h2>
+                <p className="mt-1 text-[12px] font-semibold text-muted">Public calorie API access</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={apiKeyName}
+                onChange={(event) => setApiKeyName(event.target.value)}
+                placeholder="Key name"
+                className="min-w-0 flex-1 rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-[13px] font-semibold outline-none transition-colors focus:border-teal"
+              />
+              <button
+                onClick={handleCreateApiKey}
+                disabled={saving}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-forest px-4 py-2.5 text-[12px] font-bold text-white disabled:opacity-60"
+              >
+                <Key size={14} weight="bold" />
+                Create
+              </button>
+            </div>
+            {issuedApiKey ? (
+              <div className="mt-4 rounded-lg border border-[#d7ff68]/60 bg-[#f8f8f3] p-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5f675f]">Copy now</p>
+                <p className="mt-2 break-all rounded-md bg-white p-3 font-mono text-[11px] text-forest">{issuedApiKey.token}</p>
+                <button onClick={handleCopyApiKey} className="mt-3 inline-flex items-center gap-2 rounded-md bg-[#d7ff68] px-3 py-2 text-[12px] font-bold text-forest">
+                  <CopySimple size={14} weight="bold" />
+                  Copy key
+                </button>
+              </div>
+            ) : null}
+            <div className="mt-4 space-y-2">
+              {apiKeys.map((key) => (
+                <div key={key.id} className="rounded-lg border border-border bg-surface-alt p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-bold text-forest">{key.name}</p>
+                      <p className="mt-1 text-[11px] font-semibold text-muted">{key.prefix} · {key.revokedAt ? "Revoked" : "Active"} · {key.rateLimitPerMin}/min</p>
+                      <p className="mt-1 text-[11px] text-muted">Last used {formatDate(key.lastUsedAt)}</p>
+                    </div>
+                    {!key.revokedAt ? (
+                      <button
+                        onClick={() => handleRevokeApiKey(key.id)}
+                        disabled={saving}
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-white text-[#b7791f] disabled:opacity-60"
+                        aria-label={`Revoke ${key.name}`}
+                        title="Revoke key"
+                      >
+                        <TrashSimple size={15} weight="bold" />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+              {!apiKeys.length ? <p className="text-[13px] font-semibold text-muted">No API keys yet.</p> : null}
             </div>
           </Panel>
           <Panel className="p-5">

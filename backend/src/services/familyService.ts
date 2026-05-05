@@ -3,6 +3,7 @@ import type { FamilyInvite, FamilyMember, User } from '@prisma/client';
 import { FamilyInviteStatus, FamilyRole } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors';
+import { addUtcDays } from '../utils/date';
 import { dailyAnalytics, macroAnalytics, streakAnalytics } from './analyticsService';
 
 const INVITE_TTL_DAYS = 14;
@@ -17,12 +18,6 @@ const publicUser = (user: Pick<User, 'id' | 'email' | 'name' | 'avatarUrl'>) => 
   name: user.name,
   avatarUrl: user.avatarUrl,
 });
-
-const addDays = (date: Date, days: number) => {
-  const out = new Date(date);
-  out.setUTCDate(out.getUTCDate() + days);
-  return out;
-};
 
 export const getOrCreateOwnedFamily = async (userId: string, ownerName?: string | null) => {
   const existing = await prisma.family.findFirst({
@@ -133,7 +128,7 @@ export const createFamilyInvite = async (
       inviterId,
       email: normalizedEmail,
       tokenHash: hashToken(token),
-      expiresAt: addDays(new Date(), INVITE_TTL_DAYS),
+      expiresAt: addUtcDays(new Date(), INVITE_TTL_DAYS),
     },
   });
 

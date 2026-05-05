@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
-import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import {
   deleteProfile,
   getProfile,
@@ -42,20 +42,20 @@ export const upsertProfileSchema = z.object({
 export type UpsertProfileBody = z.infer<typeof upsertProfileSchema>;
 
 export const getProfileHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  const profile = await getProfile(req.user.id);
+  const user = requireUser(req);
+  const profile = await getProfile(user.id);
   res.json(profile);
 };
 
 export const upsertProfileHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const body = req.body as UpsertProfileBody;
-  const profile = await upsertProfile(req.user.id, body);
+  const profile = await upsertProfile(user.id, body);
   res.json(profile);
 };
 
 export const deleteProfileHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  await deleteProfile(req.user.id);
+  const user = requireUser(req);
+  await deleteProfile(user.id);
   res.status(204).send();
 };

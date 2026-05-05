@@ -12,13 +12,16 @@ export interface CheckoutResponse {
   paymentId: string;
 }
 
-export function getMyPlan(): Promise<UserPlan> {
-  return apiFetch<UserPlan>("/payments/plan");
+export function getMyPlan(options: { silent?: boolean } = {}): Promise<UserPlan> {
+  return apiFetch<UserPlan>("/payments/plan", {
+    silent: options.silent,
+  });
 }
 
-export function createCheckout(plan: "monthly" | "lifetime"): Promise<CheckoutResponse> {
+export function createCheckout(plan: "monthly" | "lifetime", options: { silent?: boolean } = {}): Promise<CheckoutResponse> {
   return apiFetch<CheckoutResponse>("/payments/checkout", {
     method: "POST",
     body: { plan },
+    silent: options.silent,
   });
 }

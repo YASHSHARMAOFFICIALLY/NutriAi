@@ -9,3 +9,4 @@ coverage
 .vscode
 .idea
 BACKEND_LEARNING_GUIDE.md
+tests/

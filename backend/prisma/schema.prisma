@@ -117,6 +117,20 @@ model UserSession {
   @@index([ipAddress])
 }
 
+model PageVisit {
+  id         String   @id @default(uuid())
+  visitorId String?
+  path       String
+  referrer   String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([visitorId, createdAt])
+  @@index([path, createdAt])
+}
+
 enum FoodInputType {
   TEXT
   IMAGE

@@ -55,28 +55,28 @@ export const adminAiSettingsHandler: RequestHandler = async (_req, res) => {
 };
 
 export const updateAdminAiSettingsHandler: RequestHandler = async (req, res) => {
-  const body = adminAiSettingsSchema.parse(req.body);
+  const body = req.body as z.infer<typeof adminAiSettingsSchema>;
   res.json(await saveAdminAiSettings(body));
 };
 
 export const adminUsersHandler: RequestHandler = async (req, res) => {
-  const query = adminUsersQuerySchema.parse(req.query);
+  const query = req.query as unknown as z.infer<typeof adminUsersQuerySchema>;
   res.json(await listAdminUsers(query));
 };
 
 export const adminUserDetailHandler: RequestHandler = async (req, res) => {
-  const params = adminUserParamsSchema.parse(req.params);
+  const params = req.params as z.infer<typeof adminUserParamsSchema>;
   const detail = await getAdminUserDetail(params.id);
   if (!detail) throw new NotFoundError('User not found');
   res.json(detail);
 };
 
 export const adminUsageHandler: RequestHandler = async (req, res) => {
-  const query = adminUsageQuerySchema.parse(req.query);
+  const query = req.query as unknown as z.infer<typeof adminUsageQuerySchema>;
   res.json(await getAdminUsage(query));
 };
 
 export const adminActivityHandler: RequestHandler = async (req, res) => {
-  const query = adminActivityQuerySchema.parse(req.query);
+  const query = req.query as unknown as z.infer<typeof adminActivityQuerySchema>;
   res.json(await getAdminActivity(query.limit));
 };

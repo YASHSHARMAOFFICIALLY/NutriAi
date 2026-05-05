@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { withQuery } from "./query";
 import type {
   DailyAnalytics,
   FamilyInviteResponse,
@@ -8,13 +9,6 @@ import type {
   StreakInfo,
 } from "./types";
 import type { DateRangeQuery } from "./analytics";
-
-function qs(q: DateRangeQuery): string {
-  const parts: string[] = [];
-  if (q.from) parts.push(`from=${encodeURIComponent(q.from)}`);
-  if (q.to) parts.push(`to=${encodeURIComponent(q.to)}`);
-  return parts.length ? `?${parts.join("&")}` : "";
-}
 
 export function getFamilyOverview(): Promise<FamilyOverview> {
   return apiFetch<FamilyOverview>("/family");
@@ -42,11 +36,11 @@ export function removeFamilyMember(memberId: string): Promise<void> {
 }
 
 export function getFamilyDailyAnalytics(memberId: string, q: DateRangeQuery = {}): Promise<DailyAnalytics> {
-  return apiFetch<DailyAnalytics>(`/family/members/${memberId}/analytics/daily${qs(q)}`);
+  return apiFetch<DailyAnalytics>(withQuery(`/family/members/${memberId}/analytics/daily`, q));
 }
 
 export function getFamilyMacrosSummary(memberId: string, q: DateRangeQuery = {}): Promise<MacrosSummary> {
-  return apiFetch<MacrosSummary>(`/family/members/${memberId}/analytics/macros${qs(q)}`);
+  return apiFetch<MacrosSummary>(withQuery(`/family/members/${memberId}/analytics/macros`, q));
 }
 
 export function getFamilyStreak(memberId: string): Promise<StreakInfo> {

@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
-import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import { listHistory } from '../services/historyService';
 
 export const historyQuerySchema = z.object({
@@ -15,11 +15,11 @@ export const historyQuerySchema = z.object({
 export type HistoryQuery = z.infer<typeof historyQuerySchema>;
 
 export const listHistoryHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const q = req.query as unknown as HistoryQuery;
 
   const result = await listHistory(
-    req.user.id,
+    user.id,
     { from: q.from, to: q.to, minCalories: q.minCalories, maxCalories: q.maxCalories },
     { page: q.page, pageSize: q.pageSize },
   );

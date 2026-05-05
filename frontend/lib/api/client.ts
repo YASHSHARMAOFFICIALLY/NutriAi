@@ -1,4 +1,5 @@
-import { clearAccessToken, getAccessToken, getApiUrl, setAccessToken } from "./auth";
+import { clearAccessToken, getAccessToken, setAccessToken } from "./auth";
+import { apiUrl } from "./config";
 
 export class ApiError extends Error {
   status: number;
@@ -27,7 +28,7 @@ async function tryRefresh(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
     try {
-      const res = await fetch(`${getApiUrl()}/auth/refresh`, {
+      const res = await fetch(apiUrl("/auth/refresh"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -75,7 +76,7 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
   };
   if (body !== undefined) init.body = JSON.stringify(body);
 
-  const res = await fetch(`${getApiUrl()}${path}`, init);
+  const res = await fetch(apiUrl(path), init);
 
   if (res.status === 401 && retry) {
     const ok = await tryRefresh();

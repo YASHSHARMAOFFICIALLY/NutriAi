@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import "lenis/dist/lenis.css";
 import "./globals.css";
 import { JsonLd } from "./JsonLd";
+import { LenisProvider } from "./lenis-provider";
+import { SiteVisitTracker } from "./SiteVisitTracker";
 import {
   organizationJsonLd,
   seoKeywords,
@@ -35,6 +38,11 @@ export const metadata: Metadata = {
   authors: [{ name: "NutriAI" }],
   creator: "NutriAI",
   publisher: "NutriAI",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
   alternates: {
     canonical: "/",
   },
@@ -83,7 +91,10 @@ export default function RootLayout({
       <head>
         <JsonLd data={[websiteJsonLd(), organizationJsonLd(), siteNavigationJsonLd()]} />
       </head>
-      <body>{children}</body>
+      <body>
+        <SiteVisitTracker />
+        <LenisProvider>{children}</LenisProvider>
+      </body>
     </html>
   );
 }

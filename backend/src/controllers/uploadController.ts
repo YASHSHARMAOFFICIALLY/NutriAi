@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
-import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import { confirmUpload, presignUpload } from '../services/uploadService';
 
 export const presignSchema = z.object({
@@ -16,10 +16,10 @@ export type PresignBody = z.infer<typeof presignSchema>;
 export type ConfirmBody = z.infer<typeof confirmSchema>;
 
 export const presignHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const body = req.body as PresignBody;
   const result = await presignUpload({
-    userId: req.user.id,
+    userId: user.id,
     contentType: body.contentType,
     size: body.size,
   });
@@ -27,8 +27,8 @@ export const presignHandler: RequestHandler = async (req, res) => {
 };
 
 export const confirmHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const body = req.body as ConfirmBody;
-  const result = await confirmUpload({ userId: req.user.id, assetId: body.assetId });
+  const result = await confirmUpload({ userId: user.id, assetId: body.assetId });
   res.json(result);
 };

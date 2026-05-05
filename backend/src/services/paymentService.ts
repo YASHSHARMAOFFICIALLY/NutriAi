@@ -17,7 +17,58 @@ function requireDodo(): DodoPayments {
   return dodo;
 }
 
-// ── Subscription helpers ─────────────────────────────────────────────────
+const DEFAULT_BILLING = {
+  city: 'NA',
+  country: 'US',
+  state: 'NA',
+  street: 'NA',
+  zipcode: '00000',
+} as const;
+
+const customerFor = (email: string) => ({ email, name: email });
+
+const productIdFor = (plan: 'monthly' | 'lifetime'): string => {
+  const productId = plan === 'monthly'
+    ? env.DODO_PRODUCT_PRO_MONTHLY
+    : env.DODO_PRODUCT_PRO_LIFETIME;
+
+  if (!productId) throw new BadRequestError(`Product not configured for plan: ${plan}`);
+  return productId;
+};
+
+const requirePaymentLink = (paymentLink?: string | null): string => {
+  if (!paymentLink) {
+    throw new BadRequestError('Payment provider did not return a checkout link');
+  }
+  return paymentLink;
+};
+
+const upsertPendingPayment = async (args: {
+  userId: string;
+  dodoPaymentId: string;
+  type: 'SUBSCRIPTION' | 'ONE_TIME';
+  amountCents: number;
+  currency: string;
+  productId: string;
+}) => {
+  const data = {
+    status: 'PENDING' as const,
+    amountCents: args.amountCents,
+    currency: args.currency,
+    productId: args.productId,
+  };
+
+  await prisma.payment.upsert({
+    where: { dodoPaymentId: args.dodoPaymentId },
+    create: {
+      userId: args.userId,
+      dodoPaymentId: args.dodoPaymentId,
+      type: args.type,
+      ...data,
+    },
+    update: data,
+  });
+};
 
 export async function getOrCreateSubscription(userId: string) {
   return prisma.subscription.upsert({
@@ -49,56 +100,31 @@ export async function createCheckoutSession(
   plan: 'monthly' | 'lifetime',
 ) {
   const client = requireDodo();
-
-  const productId =
-    plan === 'monthly'
-      ? env.DODO_PRODUCT_PRO_MONTHLY
-      : env.DODO_PRODUCT_PRO_LIFETIME;
-
-  if (!productId) {
-    throw new BadRequestError(`Product not configured for plan: ${plan}`);
-  }
-
+  const productId = productIdFor(plan);
   const returnUrl = `${env.FRONTEND_URL}/checkout/success`;
+  const checkoutBase = {
+    billing: DEFAULT_BILLING,
+    customer: customerFor(email),
+    payment_link: true,
+    return_url: returnUrl,
+    metadata: { userId, plan },
+  };
 
   if (plan === 'monthly') {
     const subscription = await client.subscriptions.create({
-      billing: {
-        city: 'NA',
-        country: 'US',
-        state: 'NA',
-        street: 'NA',
-        zipcode: '00000',
-      },
-      customer: { email, name: email },
+      ...checkoutBase,
       product_id: productId,
       quantity: 1,
-      payment_link: true,
-      return_url: returnUrl,
-      metadata: { userId, plan },
     });
+    const paymentLink = requirePaymentLink(subscription.payment_link);
 
-    if (!subscription.payment_link) {
-      throw new BadRequestError('Payment provider did not return a checkout link');
-    }
-
-    await prisma.payment.upsert({
-      where: { dodoPaymentId: subscription.payment_id },
-      create: {
-        userId,
-        dodoPaymentId: subscription.payment_id,
-        type: 'SUBSCRIPTION',
-        status: 'PENDING',
-        amountCents: subscription.recurring_pre_tax_amount,
-        currency: 'USD',
-        productId,
-      },
-      update: {
-        status: 'PENDING',
-        amountCents: subscription.recurring_pre_tax_amount,
-        currency: 'USD',
-        productId,
-      },
+    await upsertPendingPayment({
+      userId,
+      dodoPaymentId: subscription.payment_id,
+      type: 'SUBSCRIPTION',
+      amountCents: subscription.recurring_pre_tax_amount,
+      currency: 'USD',
+      productId,
     });
 
     await prisma.subscription.upsert({
@@ -116,51 +142,26 @@ export async function createCheckoutSession(
       },
     });
 
-    return { paymentLink: subscription.payment_link, paymentId: subscription.payment_id };
+    return { paymentLink, paymentId: subscription.payment_id };
   }
 
   const payment = await client.payments.create({
-    billing: {
-      city: 'NA',
-      country: 'US',
-      state: 'NA',
-      street: 'NA',
-      zipcode: '00000',
-    },
-    customer: { email, name: email },
+    ...checkoutBase,
     product_cart: [{ product_id: productId, quantity: 1 }],
-    payment_link: true,
-    return_url: returnUrl,
-    metadata: { userId, plan },
+  });
+  const paymentLink = requirePaymentLink(payment.payment_link);
+
+  await upsertPendingPayment({
+    userId,
+    dodoPaymentId: payment.payment_id,
+    type: 'ONE_TIME',
+    amountCents: payment.total_amount,
+    currency: 'USD',
+    productId,
   });
 
-  if (!payment.payment_link) {
-    throw new BadRequestError('Payment provider did not return a checkout link');
-  }
-
-  await prisma.payment.upsert({
-    where: { dodoPaymentId: payment.payment_id },
-    create: {
-      userId,
-      dodoPaymentId: payment.payment_id,
-      type: 'ONE_TIME',
-      status: 'PENDING',
-      amountCents: payment.total_amount,
-      currency: 'USD',
-      productId,
-    },
-    update: {
-      status: 'PENDING',
-      amountCents: payment.total_amount,
-      currency: 'USD',
-      productId,
-    },
-  });
-
-  return { paymentLink: payment.payment_link, paymentId: payment.payment_id };
+  return { paymentLink, paymentId: payment.payment_id };
 }
-
-// ── Webhook processing ───────────────────────────────────────────────────
 
 interface WebhookHeaders {
   'webhook-id': string;

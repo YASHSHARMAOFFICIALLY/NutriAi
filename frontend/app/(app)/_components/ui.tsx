@@ -39,16 +39,16 @@ export function PageHeader({
   action?: { label: string; href: string };
 }) {
   return (
-    <header className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <header className="mb-6 flex flex-col gap-4 md:mb-7 md:flex-row md:items-end md:justify-between">
       <div className="max-w-2xl">
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-teal">{eyebrow}</p>
-        <h1 className="mt-2 text-[32px] font-bold leading-[1.08] tracking-tight text-forest md:text-[42px]">{title}</h1>
+        <h1 className="mt-2 text-[28px] font-bold leading-[1.08] tracking-tight text-forest sm:text-[32px] md:text-[42px]">{title}</h1>
         {description ? <p className="mt-3 text-[14px] leading-6 text-muted">{description}</p> : null}
       </div>
       {action ? (
         <Link
           href={action.href}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-forest px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-forest-soft"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-forest px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-forest-soft sm:w-auto"
         >
           {action.label}
           <ArrowRight size={16} weight="bold" />
@@ -94,7 +94,7 @@ export function Stat({
     <Panel className={`border-t-4 p-5 ${tones[tone]}`}>
       <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p>
       <div className="mt-3 flex items-baseline gap-1">
-        <p className="text-[30px] font-bold leading-none tracking-tight text-forest">{value}</p>
+        <p className="max-w-full break-words text-[26px] font-bold leading-none tracking-tight text-forest sm:text-[30px]">{value}</p>
       </div>
       {sub ? <p className="mt-2 text-[12px] font-medium text-muted/80">{sub}</p> : null}
     </Panel>
@@ -127,7 +127,7 @@ export function BudgetBar({
 
   return (
     <div className="group">
-      <div className="mb-2.5 flex justify-between text-[13px]">
+      <div className="mb-2.5 flex flex-wrap justify-between gap-x-3 gap-y-1 text-[13px]">
         <span className="font-bold text-forest">{label}</span>
         <span className="font-medium text-muted">
           <span className="text-forest font-bold">{safeValue}</span>
@@ -148,8 +148,8 @@ export function BudgetBar({
 export function MealLine({ meal, expanded = false, action }: { meal: Meal; expanded?: boolean; action?: React.ReactNode }) {
   return (
     <div className="group/meal rounded-lg border border-border bg-surface-alt transition-colors hover:border-teal/25">
-      <div className="flex items-center justify-between gap-4 p-4">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3 sm:flex-1">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-forest shadow-sm transition-colors group-hover/meal:bg-forest group-hover/meal:text-white">
             <ForkKnife size={17} weight="bold" />
           </span>
@@ -160,8 +160,8 @@ export function MealLine({ meal, expanded = false, action }: { meal: Meal; expan
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
-            <div className="grid grid-cols-2 gap-3 text-right text-[12px] sm:grid-cols-4">
+        <div className="flex w-full shrink-0 items-center justify-between gap-3 sm:w-auto sm:justify-end">
+            <div className="grid flex-1 grid-cols-2 gap-3 text-left text-[12px] sm:flex-none sm:grid-cols-4 sm:text-right">
             <span><b className="block text-[14px] text-[#101510]">{meal.totals.calories}</b>kcal</span>
             <span><b className="block text-[14px] text-[#101510]">{meal.totals.protein}g</b>pro</span>
             <span className="hidden sm:block"><b className="block text-[14px] text-[#101510]">{meal.totals.carbs}g</b>carb</span>
@@ -172,8 +172,8 @@ export function MealLine({ meal, expanded = false, action }: { meal: Meal; expan
       </div>
       {expanded ? (
         <div className="border-t border-border px-4 pb-4">
-          <div className="mt-3 overflow-hidden rounded-lg border border-border bg-white">
-            <table className="w-full text-left text-[12px]">
+          <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-white">
+            <table className="w-full min-w-[520px] text-left text-[12px]">
               <thead className="bg-surface-alt text-muted">
                 <tr>
                   <th className="px-3 py-2 font-semibold">Item</th>
@@ -256,11 +256,11 @@ export function EmptyState({
       <h3 className="text-[16px] font-bold text-forest">{title}</h3>
       <p className="mt-2 max-w-sm text-[13px] leading-6 text-muted">{description}</p>
       {(action || secondaryAction) && (
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <div className="mt-5 flex w-full flex-col justify-center gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
           {action && (
             <Link
               href={action.href}
-              className="inline-flex items-center gap-2 rounded-lg bg-forest px-5 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-forest-soft"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-forest px-5 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-forest-soft"
             >
               {action.label}
               <ArrowRight size={14} weight="bold" />
@@ -269,7 +269,7 @@ export function EmptyState({
           {secondaryAction && (
             <Link
               href={secondaryAction.href}
-              className="inline-flex items-center rounded-lg border border-border bg-white px-5 py-2.5 text-[13px] font-bold text-forest transition-colors hover:bg-surface-alt"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-white px-5 py-2.5 text-[13px] font-bold text-forest transition-colors hover:bg-surface-alt"
             >
               {secondaryAction.label}
             </Link>

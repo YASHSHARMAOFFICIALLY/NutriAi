@@ -1,18 +1,13 @@
 import { BadRequestError, RateLimitError } from '../utils/errors';
+import { countWords } from '../utils/text';
+
+export { startOfUtcDay } from '../utils/date';
+export { countWords };
 
 export interface ChatPolicyConfig {
   dailyMessageLimit: number;
   maxWordsPerMessage: number;
 }
-
-export const countWords = (message: string): number => {
-  const trimmed = message.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).length;
-};
-
-export const startOfUtcDay = (now: Date = new Date()): Date =>
-  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
 export const assertChatMessageAllowed = (
   message: string,

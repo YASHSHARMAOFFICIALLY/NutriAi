@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-
-const AUTH_SESSION_COOKIE = "nutriai_auth";
+import { AUTH_SESSION_COOKIE } from "./lib/authSession";
 
 const protectedPrefixes = [
   "/admin",

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { AIProvider, ChatInput, FoodAnalysisInput, FoodAnalysisResult } from './provider';
+import { roundToTenth } from '../utils/number';
 
 // Deterministic stub for local dev and tests. Never hits the network.
 // Values are derived from input so they are stable but realistic-ish.
@@ -24,8 +25,6 @@ const pickFoods = (seed: string): Array<[string, number, number, number, number]
   return out;
 };
 
-const round = (n: number) => Math.round(n * 10) / 10;
-
 export const stubProvider: AIProvider = {
   name: 'stub',
 
@@ -45,10 +44,10 @@ export const stubProvider: AIProvider = {
 
     const totals = items.reduce(
       (acc, it) => ({
-        calories: round(acc.calories + it.calories),
-        protein: round(acc.protein + it.protein),
-        carbs: round(acc.carbs + it.carbs),
-        fat: round(acc.fat + it.fat),
+        calories: roundToTenth(acc.calories + it.calories),
+        protein: roundToTenth(acc.protein + it.protein),
+        carbs: roundToTenth(acc.carbs + it.carbs),
+        fat: roundToTenth(acc.fat + it.fat),
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0 },
     );

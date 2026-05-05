@@ -16,6 +16,9 @@ import {
   ShieldCheck,
   Sparkle,
 } from "@phosphor-icons/react/dist/ssr";
+import { UnauthorizedError } from "@/lib/api/client";
+import { createCheckout } from "@/lib/api/payments";
+import { withNextParam } from "@/lib/safeRedirect";
 import { seoPages } from "../seoPages";
 import { PublicMealEstimator } from "./PublicMealEstimator";
 
@@ -115,41 +118,41 @@ const faqs = [
 ];
 
 const pricing: Array<{
+  id: "free" | "monthly" | "lifetime";
   name: string;
   price: string;
   period: string;
   subtitle: string;
   featured?: boolean;
   cta: string;
-  href: string;
   items: string[];
 }> = [
   {
+    id: "free",
     name: "Free",
     price: "$0",
     period: "forever",
     subtitle: "For the first meal habit",
     cta: "Start free",
-    href: "/signup",
     items: ["Meal logging", "Daily macro targets", "3 food analyses per day", "Saved meal history"],
   },
   {
+    id: "monthly",
     name: "Pro",
-    price: "$9",
+    price: "$4.99",
     period: "/month",
     subtitle: "For daily coaching",
     featured: true,
     cta: "Start Pro",
-    href: "#pricing",
     items: ["Unlimited analysis", "Coach Ria", "Meal recommendations", "Weight tracking", "Challenges", "Weekly digest"],
   },
   {
+    id: "lifetime",
     name: "Pro Lifetime",
-    price: "$79",
+    price: "$25",
     period: "one-time",
     subtitle: "Pay once, use forever",
     cta: "Get lifetime",
-    href: "#pricing",
     items: ["Everything in Pro", "Lifetime access", "All future features", "No recurring charges"],
   },
 ];
@@ -243,7 +246,7 @@ function Nav() {
 
 function Hero() {
   return (
-    <section className="relative min-h-[100svh] overflow-hidden bg-[#101510] text-white">
+    <section className="relative isolate overflow-hidden bg-[#101510] text-white">
       <Image
         src={heroImage}
         alt="Colorful nutrition bowl with grains and vegetables"
@@ -252,27 +255,29 @@ function Hero() {
         sizes="100vw"
         className="absolute inset-0 object-cover"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,16,0.96)_0%,rgba(16,21,16,0.82)_46%,rgba(16,21,16,0.28)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,21,16,0.98)_0%,rgba(16,21,16,0.88)_38%,rgba(16,21,16,0.54)_68%,rgba(16,21,16,0.34)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_42%,rgba(215,255,104,0.24),rgba(215,255,104,0.06)_28%,transparent_54%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_18%,rgba(255,255,255,0.08),transparent_30%)]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#101510] to-transparent" />
 
-      <div className="relative z-10 mx-auto grid min-h-[100svh] max-w-7xl items-center gap-8 px-5 pb-20 pt-24 sm:pb-24 sm:pt-28 lg:grid-cols-[0.82fr_1fr] lg:px-8 xl:grid-cols-[0.72fr_1.28fr]">
-        <div className="max-w-3xl">
-          <div className="hero-reveal mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-bold uppercase tracking-[0.12em] backdrop-blur-md">
+      <div className="relative z-10 mx-auto grid min-h-[100svh] max-w-7xl items-center gap-12 px-5 pb-20 pt-24 sm:pb-24 sm:pt-28 lg:min-h-[760px] lg:grid-cols-[minmax(0,0.88fr)_minmax(48%,1.12fr)] lg:gap-8 lg:px-8 xl:grid-cols-[minmax(0,0.82fr)_minmax(52%,1.18fr)]">
+        <div className="max-w-[720px] lg:pb-8">
+          <div className="hero-reveal mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-bold uppercase tracking-[0.12em] shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-md">
             <Sparkle size={14} weight="fill" className="text-[#d7ff68]" />
             AI meal scanner and macro tracker
           </div>
-          <h1 className="hero-reveal hero-delay-1 display-heading max-w-4xl text-[44px] font-semibold leading-[0.98] md:text-[64px] xl:text-[80px]">
+          <h1 className="hero-reveal hero-delay-1 display-heading max-w-[760px] text-[46px] font-semibold leading-[0.96] tracking-normal md:text-[64px] lg:text-[64px] xl:text-[88px]">
             Track real meals with an AI calorie scanner.
           </h1>
           <p className="hero-reveal hero-delay-2 mt-6 max-w-2xl text-[16px] leading-7 text-white/78 md:text-[18px] xl:mt-7 xl:text-[20px] xl:leading-8">
             Scan a food photo, review editable calories and macros, then see what fits your calorie and protein targets next.
           </p>
           <div className="hero-reveal hero-delay-3 mt-8 flex flex-col gap-3 sm:flex-row">
-            <a href="#estimate" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d7ff68] px-6 py-3.5 text-[15px] font-bold text-[#101510] shadow-[0_18px_44px_rgba(215,255,104,0.22)] transition hover:bg-white">
+            <a href="#estimate" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d7ff68] px-6 py-3.5 text-[15px] font-bold text-[#101510] shadow-[0_18px_44px_rgba(215,255,104,0.22)] transition duration-300 hover:scale-[1.03] hover:bg-white active:scale-[0.98]">
               Try meal estimate
               <ArrowRight size={16} weight="bold" />
             </a>
-            <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/24 bg-white/10 px-6 py-3.5 text-[15px] font-bold text-white backdrop-blur-md transition hover:bg-white/16">
+            <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/24 bg-white/10 px-6 py-3.5 text-[15px] font-bold text-white shadow-[0_18px_44px_rgba(0,0,0,0.18)] backdrop-blur-md transition duration-300 hover:scale-[1.03] hover:bg-white/16 active:scale-[0.98]">
               Create account
             </Link>
           </div>
@@ -323,12 +328,7 @@ function Hero() {
           </div>
         </div>
 
-        <div className="hero-stage hidden lg:block lg:scale-[0.82] lg:-translate-x-4 xl:translate-x-0 xl:scale-100">
-          <NutritionHUD />
-          <FloatingPhone />
-          <CoachBubble />
-          <StreakCard />
-        </div>
+        <HeroVisual />
       </div>
 
       <div className="absolute bottom-4 left-1/2 z-20 hidden -translate-x-1/2 text-[11px] font-bold uppercase tracking-[0.22em] text-white/55 md:block">
@@ -338,90 +338,110 @@ function Hero() {
   );
 }
 
+function HeroVisual() {
+  return (
+    <div className="hero-reveal hero-delay-2 hidden w-full items-center justify-end lg:flex lg:-translate-y-[4%]">
+      <div className="relative flex aspect-[1.08/1] w-full items-center justify-center">
+        <div className="absolute left-1/2 top-1/2 h-[74%] w-[74%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d7ff68]/18 blur-[90px]" />
+        <div className="absolute right-[6%] top-[14%] h-[44%] w-[44%] rounded-full bg-[#d7ff68]/14 blur-[70px]" />
+        <div className="absolute inset-[10%] rounded-full border border-white/10 bg-white/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]" />
+        <NutritionHUD />
+        <FloatingPhone />
+        <CoachBubble />
+        <StreakCard />
+      </div>
+    </div>
+  );
+}
+
 function FloatingPhone() {
   return (
-    <div className="float-slow absolute left-[210px] top-4 z-30 h-[560px] w-[286px] rounded-[42px] bg-[linear-gradient(145deg,#333b33,#080c08_42%,#1a211a)] p-[9px] shadow-[0_50px_120px_rgba(0,0,0,0.6),0_0_60px_rgba(215,255,104,0.08),0_0_0_1px_rgba(255,255,255,0.18)] xl:left-[260px]">
-      <span className="absolute -left-1 top-24 h-14 w-1 rounded-l-full bg-white/24" />
-      <span className="absolute -left-1 top-44 h-20 w-1 rounded-l-full bg-white/20" />
-      <span className="absolute -right-1 top-36 h-24 w-1 rounded-r-full bg-black/45" />
-      <div className="pointer-events-none absolute inset-[9px] z-20 rounded-[33px] bg-[linear-gradient(115deg,rgba(255,255,255,0.22),transparent_28%,transparent_68%,rgba(255,255,255,0.10))]" />
+    <div className="absolute left-[52%] top-[34%] z-30 w-[31%] -translate-x-1/2 -translate-y-1/2">
+      <div className="float-slow">
+        <div className="relative aspect-[304/590] w-full rotate-[2deg] rounded-[14%] bg-[linear-gradient(145deg,#333b33,#080c08_42%,#1a211a)] p-[3%] shadow-[0_60px_160px_rgba(0,0,0,0.7),0_0_80px_rgba(215,255,104,0.12),0_0_0_1px_rgba(255,255,255,0.18)] transition duration-500 hover:rotate-0">
+          <span className="absolute -left-1 top-[18%] h-[9%] w-1 rounded-l-full bg-white/24" />
+          <span className="absolute -left-1 top-[31%] h-[13%] w-1 rounded-l-full bg-white/20" />
+          <span className="absolute -right-1 top-[24%] h-[16%] w-1 rounded-r-full bg-black/45" />
+          <div className="pointer-events-none absolute inset-[3%] z-20 rounded-[12%] bg-[linear-gradient(115deg,rgba(255,255,255,0.22),transparent_28%,transparent_68%,rgba(255,255,255,0.10))]" />
 
-      <div className="relative h-full overflow-hidden rounded-[33px] bg-[#f8f8f3] text-[#101510]">
-        <div className="absolute left-1/2 top-3 z-30 h-7 w-[92px] -translate-x-1/2 rounded-full bg-[#090d09] shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]" />
-        <div className="absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-between bg-[linear-gradient(180deg,rgba(16,21,16,0.72),rgba(16,21,16,0))] px-5 pt-2 text-[10px] font-bold text-white">
-          <span>9:41</span>
-          <span className="flex items-center gap-1">
-            <span className="h-1.5 w-4 rounded-full border border-white/80" />
-            <span className="h-1.5 w-1 rounded-full bg-white/80" />
-          </span>
-        </div>
-
-        <div className="relative h-[184px] overflow-hidden">
-          <Image
-            src={phoneImage}
-            alt="Healthy meal ingredients"
-            fill
-            sizes="286px"
-            className="object-cover saturate-[1.12] contrast-[1.04]"
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.05),rgba(0,0,0,0.28))]" />
-          <div className="absolute bottom-3 left-4 flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1.5 text-[10px] font-bold text-[#173c2b] shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-md">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#16a34a]" />
-            Analyzed
-          </div>
-        </div>
-
-        <div className="p-4">
-          <div className="rounded-[18px] bg-white p-4 shadow-[0_14px_36px_rgba(16,21,16,0.10)]">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#6f796f]">Lunch analysis</p>
-                <h3 className="mt-1 text-[20px] font-semibold leading-tight">Greek bowl</h3>
-              </div>
-              <span className="rounded-full bg-[#d7ff68] px-2.5 py-1 text-[10px] font-bold text-[#101510] shadow-[0_8px_18px_rgba(215,255,104,0.30)]">
-                92% sure
+          <div className="relative h-full overflow-hidden rounded-[12%] bg-[#f8f8f3] text-[#101510]">
+            <div className="absolute left-1/2 top-[2%] z-30 h-[5%] w-[32%] -translate-x-1/2 rounded-full bg-[#090d09] shadow-[inset_0_-1px_0_rgba(255,255,255,0.18)]" />
+            <div className="absolute inset-x-0 top-0 z-20 flex h-[9%] items-center justify-between bg-[linear-gradient(180deg,rgba(16,21,16,0.72),rgba(16,21,16,0))] px-[7%] pt-[2%] text-[10px] font-bold text-white">
+              <span>9:41</span>
+              <span className="flex items-center gap-1">
+                <span className="h-1.5 w-4 rounded-full border border-white/80" />
+                <span className="h-1.5 w-1 rounded-full bg-white/80" />
               </span>
             </div>
 
-            <div className="mt-4 rounded-[16px] bg-[#101510] p-3 text-white shadow-[0_16px_34px_rgba(16,21,16,0.18)]">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-[11px] text-white/55">Estimated calories</p>
-                  <p className="mt-0.5 text-[30px] font-semibold leading-none">612</p>
-                </div>
-                <p className="pb-1 text-[12px] font-semibold text-[#d7ff68]">kcal</p>
-              </div>
-              <div className="mt-3 h-1.5 rounded-full bg-white/16">
-                <div className="h-full w-[68%] rounded-full bg-[#d7ff68] shadow-[0_0_18px_rgba(215,255,104,0.42)]" />
+            <div className="relative h-[31%] overflow-hidden">
+              <Image
+                src={phoneImage}
+                alt="Healthy meal ingredients"
+                fill
+                sizes="(min-width: 1024px) 18vw, 80vw"
+                className="object-cover saturate-[1.12] contrast-[1.04]"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.05),rgba(0,0,0,0.28))]" />
+              <div className="absolute bottom-[8%] left-[7%] flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1.5 text-[10px] font-bold text-[#173c2b] shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-md">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#16a34a]" />
+                Analyzed
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {[
-                ["42g", "Protein"],
-                ["58g", "Carbs"],
-                ["19g", "Fat"],
-              ].map(([value, label]) => (
-                <div key={label} className="rounded-[14px] bg-[#f1f5ef] p-2.5 text-center">
-                  <p className="text-[15px] font-semibold">{value}</p>
-                  <p className="mt-0.5 text-[9px] font-semibold text-[#6f796f]">{label}</p>
+            <div className="p-[5%]">
+              <div className="rounded-[18px] bg-white p-[6%] shadow-[0_14px_36px_rgba(16,21,16,0.10)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#6f796f]">Lunch analysis</p>
+                    <h3 className="mt-1 text-[18px] font-semibold leading-tight xl:text-[20px]">Greek bowl</h3>
+                  </div>
+                  <span className="rounded-full bg-[#d7ff68] px-2.5 py-1 text-[10px] font-bold text-[#101510] shadow-[0_8px_18px_rgba(215,255,104,0.30)]">
+                    92% sure
+                  </span>
                 </div>
-              ))}
+
+                <div className="mt-3 rounded-[16px] bg-[#101510] p-[6%] text-white shadow-[0_16px_34px_rgba(16,21,16,0.18)]">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-[11px] text-white/55">Estimated calories</p>
+                      <p className="mt-0.5 text-[26px] font-semibold leading-none xl:text-[30px]">612</p>
+                    </div>
+                    <p className="pb-1 text-[12px] font-semibold text-[#d7ff68]">kcal</p>
+                  </div>
+                  <div className="mt-3 h-1.5 rounded-full bg-white/16">
+                    <div className="h-full w-[68%] rounded-full bg-[#d7ff68] shadow-[0_0_18px_rgba(215,255,104,0.42)]" />
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {[
+                    ["42g", "Protein"],
+                    ["58g", "Carbs"],
+                    ["19g", "Fat"],
+                  ].map(([value, label]) => (
+                    <div key={label} className="rounded-[14px] bg-[#f1f5ef] p-2 text-center">
+                      <p className="text-[14px] font-semibold xl:text-[15px]">{value}</p>
+                      <p className="mt-0.5 text-[9px] font-semibold text-[#6f796f]">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-[18px] bg-[#eef5f2] p-[5%] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] font-semibold text-[#173c2b]">Saved to today</p>
+                  <Check size={15} weight="bold" className="text-[#16a34a]" />
+                </div>
+                <p className="mt-1 text-[12px] leading-5 text-[#5f675f]">Dinner recommendation updated.</p>
+              </div>
+
+              <button className="mt-3 w-full rounded-[16px] bg-[#173c2b] py-[4%] text-[13px] font-semibold text-white shadow-[0_14px_28px_rgba(23,60,43,0.24)]">
+                Confirm meal
+              </button>
+              <div className="mx-auto mt-3 h-1 w-[34%] rounded-full bg-[#101510]/22" />
             </div>
           </div>
-
-          <div className="mt-3 rounded-[18px] bg-[#eef5f2] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-            <div className="flex items-center justify-between">
-              <p className="text-[12px] font-semibold text-[#173c2b]">Saved to today</p>
-              <Check size={15} weight="bold" className="text-[#16a34a]" />
-            </div>
-            <p className="mt-1 text-[12px] leading-5 text-[#5f675f]">Dinner recommendation updated.</p>
-          </div>
-
-          <button className="mt-3 w-full rounded-[16px] bg-[#173c2b] py-3 text-[13px] font-semibold text-white shadow-[0_14px_28px_rgba(23,60,43,0.24)]">
-            Confirm meal
-          </button>
-          <div className="mx-auto mt-3 h-1 w-24 rounded-full bg-[#101510]/22" />
         </div>
       </div>
     </div>
@@ -430,7 +450,7 @@ function FloatingPhone() {
 
 function NutritionHUD() {
   return (
-    <div className="float-fast absolute -left-5 top-14 z-20 w-[258px] rounded-xl border border-white/[0.15] bg-white/[0.12] p-5 text-white shadow-[0_30px_90px_rgba(0,0,0,0.4),0_0_40px_rgba(215,255,104,0.06)] backdrop-blur-2xl">
+    <div className="float-fast absolute left-[0%] top-[12%] z-20 w-[34%] rounded-xl border border-white/[0.15] bg-white/[0.12] p-4 text-white shadow-[0_30px_90px_rgba(0,0,0,0.4),0_0_40px_rgba(215,255,104,0.06)] backdrop-blur-2xl xl:p-5">
       <div className="mb-4 flex items-center justify-between">
         <p className="font-semibold">Today&apos;s targets</p>
         <span className="rounded-full bg-[#d7ff68] px-3 py-1 text-[12px] font-bold text-[#101510]">86%</span>
@@ -456,7 +476,7 @@ function NutritionHUD() {
 
 function CoachBubble() {
   return (
-    <div className="pulse-card absolute bottom-[180px] left-[470px] z-40 w-[250px] rotate-2 rounded-xl border border-white/[0.15] bg-[#101510]/80 p-4 text-white shadow-[0_30px_90px_rgba(0,0,0,0.45),0_0_50px_rgba(215,255,104,0.12)] backdrop-blur-2xl xl:left-[570px]">
+    <div className="pulse-card absolute bottom-[24%] right-[0%] z-40 w-[31%] rotate-2 rounded-xl border border-white/[0.15] bg-[#101510]/80 p-4 text-white shadow-[0_30px_90px_rgba(0,0,0,0.45),0_0_50px_rgba(215,255,104,0.12)] backdrop-blur-2xl">
       <div className="mb-3 flex items-center gap-3">
         <span className="grid h-9 w-9 place-items-center rounded-md bg-[#d7ff68] text-[#101510]">
           <Sparkle size={18} weight="fill" />
@@ -475,7 +495,7 @@ function CoachBubble() {
 
 function StreakCard() {
   return (
-    <div className="absolute -bottom-3 left-6 z-10 w-[220px] -rotate-3 rounded-xl border border-white/18 bg-[#d7ff68] p-4 text-[#101510] shadow-[0_34px_90px_rgba(0,0,0,0.35),0_0_40px_rgba(215,255,104,0.18)] xl:-bottom-6">
+    <div className="absolute bottom-[12%] left-[5%] z-10 w-[30%] -rotate-3 rounded-xl border border-white/18 bg-[#d7ff68] p-4 text-[#101510] shadow-[0_34px_90px_rgba(0,0,0,0.35),0_0_40px_rgba(215,255,104,0.18)]">
       <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Consistency</p>
       <div className="mt-3 flex items-end justify-between">
         <div>
@@ -682,12 +702,40 @@ function Personalization() {
 }
 
 function Pricing() {
+  const [loading, setLoading] = useState<"monthly" | "lifetime" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCheckout = async (planId: "monthly" | "lifetime") => {
+    setLoading(planId);
+    setError(null);
+
+    try {
+      const { paymentLink } = await createCheckout(planId, { silent: true });
+      if (paymentLink) {
+        window.location.href = paymentLink;
+      }
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        window.location.href = withNextParam("/login", `/pricing?checkout=${planId}`);
+        return;
+      }
+      setError(err instanceof Error ? err.message : "Could not start checkout.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <section id="pricing" className="border-t border-black/10 bg-[#f1f5ef] px-5 py-24 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <Header eyebrow="Pricing" title="Simple plans that match the product today." />
+        {error && (
+          <div className="mt-8 rounded-lg border border-[#b7791f]/25 bg-white px-4 py-3 text-[14px] font-semibold text-[#8a5514]">
+            {error}
+          </div>
+        )}
         <div className="mt-12 grid gap-4 lg:grid-cols-3">
-          {pricing.map(({ name, price, period, subtitle, items, featured, cta, href }) => (
+          {pricing.map(({ id, name, price, period, subtitle, items, featured, cta }) => (
             <div key={name} className={`pricing-tile relative rounded-xl border p-7 ${featured ? "border-[#101510] bg-[#101510] text-white shadow-[0_30px_80px_rgba(16,21,16,0.24)]" : "border-black/10 bg-white"}`}>
               {featured && <span className="absolute -top-3 left-6 rounded-full bg-[#d7ff68] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[#101510]">Popular</span>}
               <p className="text-[18px] font-semibold">{name}</p>
@@ -704,13 +752,25 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <Link
-                href={href}
-                className={`mt-8 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition ${featured ? "bg-[#d7ff68] text-[#101510] hover:bg-white" : "bg-[#101510] text-white hover:bg-[#173c2b]"}`}
-              >
-                {cta}
-                <ArrowRight size={14} weight="bold" />
-              </Link>
+              {id === "free" ? (
+                <Link
+                  href="/signup"
+                  className={`mt-8 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition ${featured ? "bg-[#d7ff68] text-[#101510] hover:bg-white" : "bg-[#101510] text-white hover:bg-[#173c2b]"}`}
+                >
+                  {cta}
+                  <ArrowRight size={14} weight="bold" />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleCheckout(id)}
+                  disabled={loading !== null}
+                  className={`mt-8 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${featured ? "bg-[#d7ff68] text-[#101510] hover:bg-white" : "bg-[#101510] text-white hover:bg-[#173c2b]"}`}
+                >
+                  {loading === id ? "Redirecting..." : cta}
+                  {loading !== id && <ArrowRight size={14} weight="bold" />}
+                </button>
+              )}
             </div>
           ))}
         </div>

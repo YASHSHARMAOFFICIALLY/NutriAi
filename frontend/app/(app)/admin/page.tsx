@@ -1,13 +1,17 @@
 "use client";
 
+import { notFound, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AddressBook, Gauge, Key, MagnifyingGlass, Pulse, SealWarning, Sparkle } from "@phosphor-icons/react";
+import { fetchMe } from "@/lib/api/account";
 import { getAdminActivity, getAdminAiSettings, getAdminOverview, getAdminRuntime, getAdminUsage, getAdminUserDetail, listAdminUsers, updateAdminAiSettings } from "@/lib/api/admin";
+import { ApiError } from "@/lib/api/client";
 import type { AdminActivityItem, AdminAiSettings, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserDetail, AdminUserRow, UserRole } from "@/lib/api/types";
 import { PageHeader, Panel, Stat } from "../_components/ui";
 
 const emptyOverview: AdminOverview = {
-  users: { total: 0, newThisWeek: 0 },
+  users: { total: 0, newThisWeek: 0, premium: 0, free: 0, activeToday: 0 },
+  visits: { today: 0, uniqueToday: 0 },
   meals: { today: 0, thisWeek: 0 },
   ai: { requestsToday: 0, tokensToday: 0, costTodayUsd: 0, costThisWeekUsd: 0 },
   api: { activeKeys: 0, failedCallsToday: 0 },
@@ -66,6 +70,13 @@ function formatDateTime(value: string | null) {
   return new Date(value).toLocaleString();
 }
 
+function formatMoney(amountCents: number, currency: string) {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: currency || "USD",
+  }).format(amountCents / 100);
+}
+
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-md bg-[#f8f8f3] p-3">
@@ -99,7 +110,12 @@ function formatFeatureName(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+type AdminAccess = "checking" | "authorized" | "denied";
+const adminOwnerEmail = "yashsharmaofficially@gmail.com";
+
 export default function AdminPage() {
+  const router = useRouter();
+  const [access, setAccess] = useState<AdminAccess>("checking");
   const [overview, setOverview] = useState(emptyOverview);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [usage, setUsage] = useState(emptyUsage);
@@ -116,10 +132,31 @@ export default function AdminPage() {
   const [savingAiSettings, setSavingAiSettings] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUserDetail | null>(null);
   const [userDetailsById, setUserDetailsById] = useState<Record<string, AdminUserDetail>>({});
-  const [tableDetailsLoading, setTableDetailsLoading] = useState(false);
   const [userDetailStatus, setUserDetailStatus] = useState<"idle" | "loading" | "error">("idle");
 
   useEffect(() => {
+    let cancelled = false;
+    fetchMe()
+      .then((user) => {
+        if (cancelled) return;
+        if (user.email.toLowerCase() === adminOwnerEmail) {
+          setAccess("authorized");
+          return;
+        }
+        setAccess("denied");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAccess("denied");
+        router.replace("/login?next=/admin");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  useEffect(() => {
+    if (access !== "authorized") return;
     let cancelled = false;
     Promise.all([
       getAdminOverview(),
@@ -129,7 +166,7 @@ export default function AdminPage() {
       getAdminRuntime(),
       getAdminAiSettings(),
     ])
-      .then(async ([apiOverview, apiUsers, apiUsage, apiActivity, apiRuntime, apiAiSettings]) => {
+      .then(([apiOverview, apiUsers, apiUsage, apiActivity, apiRuntime, apiAiSettings]) => {
         if (cancelled) return;
         setOverview(apiOverview);
         setUsers(apiUsers.items);
@@ -139,32 +176,24 @@ export default function AdminPage() {
         setRuntime(apiRuntime);
         setAiSettings(apiAiSettings);
         setSource("live");
-        if (!apiUsers.items.length) {
-          setSelectedUser(null);
-          setUserDetailsById({});
-          setUserDetailStatus("idle");
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        if (error instanceof ApiError && error.status === 403) {
+          setAccess("denied");
           return;
         }
-        setTableDetailsLoading(true);
-        const detailResults = await Promise.allSettled(apiUsers.items.map((user) => getAdminUserDetail(user.id)));
-        if (cancelled) return;
-        const details = detailResults.reduce<Record<string, AdminUserDetail>>((acc, result) => {
-          if (result.status === "fulfilled") acc[result.value.id] = result.value;
-          return acc;
-        }, {});
-        setUserDetailsById(details);
-        setSelectedUser(details[apiUsers.items[0].id] ?? null);
-        setUserDetailStatus(Object.keys(details).length ? "idle" : "error");
-        setTableDetailsLoading(false);
-      })
-      .catch(() => {
+        if (error instanceof ApiError && error.status === 401) {
+          setAccess("denied");
+          router.replace("/login?next=/admin");
+          return;
+        }
         setSource("error");
-        setTableDetailsLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [page, role, search, usageFrom, usageTo]);
+  }, [access, page, role, router, search, usageFrom, usageTo]);
 
   const filteredUsers = useMemo(() => users, [users]);
 
@@ -201,6 +230,21 @@ export default function AdminPage() {
     }
   }
 
+  if (access === "checking") {
+    return (
+      <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+        <PageHeader eyebrow="Admin" title="Checking admin access" />
+        <Panel className="p-5">
+          <p className="text-[13px] font-semibold text-[#5f675f]">Verifying your account role before loading operations data.</p>
+        </Panel>
+      </div>
+    );
+  }
+
+  if (access === "denied") {
+    notFound();
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow={`Admin · ${source}`} title="Operations, users, usage" />
@@ -211,9 +255,16 @@ export default function AdminPage() {
       ) : null}
 
       <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Users" value={`${overview.users.total}`} sub={`+${overview.users.newThisWeek} this week`} />
+        <Stat label="Total accounts" value={`${overview.users.total}`} sub={`+${overview.users.newThisWeek} this week`} />
+        <Stat label="Premium accounts" value={`${overview.users.premium}`} sub={`${overview.users.free} free accounts`} />
+        <Stat label="Website visits" value={`${overview.visits.today}`} sub={`${overview.visits.uniqueToday} unique today`} />
+        <Stat label="Active accounts" value={`${overview.users.activeToday}`} sub={`${overview.meals.today} meals logged today`} />
+      </section>
+
+      <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Stat label="Meals today" value={`${overview.meals.today}`} sub={`${overview.meals.thisWeek} this week`} />
         <Stat label="Usage today" value={`$${overview.ai.costTodayUsd.toFixed(2)}`} sub={`${overview.ai.requestsToday} requests`} />
+        <Stat label="Tokens today" value={`${overview.ai.tokensToday.toLocaleString()}`} sub={`$${overview.ai.costThisWeekUsd.toFixed(2)} this week`} />
         <Stat label="API keys" value={`${overview.api.activeKeys}`} sub={`${overview.api.failedCallsToday} failed calls today`} />
       </section>
 
@@ -240,6 +291,7 @@ export default function AdminPage() {
                 <tr>
                   <th className="px-5 py-3 font-semibold">Email</th>
                   <th className="px-5 py-3 font-semibold">Role</th>
+                  <th className="px-5 py-3 font-semibold">Plan</th>
                   <th className="px-5 py-3 font-semibold">Verified</th>
                   <th className="px-5 py-3 font-semibold">Location</th>
                   <th className="px-5 py-3 font-semibold">IP</th>
@@ -258,22 +310,27 @@ export default function AdminPage() {
               <tbody>
                 {filteredUsers.map((user) => {
                   const detail = userDetailsById[user.id];
-                  const latestSession = detail?.sessions[0];
+                  const latestSession = detail?.sessions[0] ?? user.latestSession;
                   const device = [latestSession?.deviceModel, latestSession?.os, latestSession?.browser].filter(Boolean).join(" · ");
                   return (
                     <tr key={user.id} className={`border-t border-black/8 ${selectedUser?.id === user.id ? "bg-[#eef5f2]" : ""}`}>
                       <td className="px-5 py-4 font-semibold">{user.email}</td>
                       <td className="px-5 py-4">{user.role}</td>
+                      <td className="px-5 py-4">
+                        <span className={`rounded px-2 py-1 text-[11px] font-bold ${user.subscription.tier === "PRO" ? "bg-[#d7ff68] text-[#173c2b]" : "bg-[#f8f8f3] text-[#5f675f]"}`}>
+                          {user.subscription.tier}
+                        </span>
+                      </td>
                       <td className="px-5 py-4">{user.emailVerified ? "Yes" : "No"}</td>
                       <td className="max-w-[180px] px-5 py-4">
-                        <span className="line-clamp-2">{latestSession?.location || (tableDetailsLoading ? "Loading..." : "-")}</span>
+                        <span className="line-clamp-2">{latestSession?.location || "-"}</span>
                       </td>
                       <td className="px-5 py-4 font-mono text-[12px]">{latestSession?.ipAddress || "-"}</td>
                       <td className="max-w-[210px] px-5 py-4">
                         <span className="line-clamp-2">{device || "-"}</span>
                       </td>
                       <td className="px-5 py-4">{latestSession ? timeAgo(latestSession.lastSeenAt) : "-"}</td>
-                      <td className="px-5 py-4 text-right">{detail?._count.sessions ?? "-"}</td>
+                      <td className="px-5 py-4 text-right">{detail?._count.sessions ?? user.counts.sessions}</td>
                       <td className="px-5 py-4 text-right">{user.counts.meals}</td>
                       <td className="px-5 py-4 text-right">{user.counts.apiKeys}</td>
                       <td className="px-5 py-4 text-right">{user.counts.weightEntries}</td>
@@ -367,6 +424,8 @@ export default function AdminPage() {
                 <div className="grid gap-3 md:grid-cols-3">
                   <Field label="Name" value={selectedUser.name || "-"} />
                   <Field label="Role" value={selectedUser.role} />
+                  <Field label="Plan" value={`${selectedUser.subscription.tier} · ${selectedUser.subscription.status}`} />
+                  <Field label="Plan period end" value={formatDateTime(selectedUser.subscription.currentPeriodEnd)} />
                   <Field label="Verified" value={selectedUser.emailVerified ? "Yes" : "No"} />
                   <Field label="Verified at" value={formatDateTime(selectedUser.emailVerifiedAt)} />
                   <Field label="Google ID" value={selectedUser.googleId || "-"} />
@@ -374,6 +433,37 @@ export default function AdminPage() {
                   <Field label="Created" value={formatDateTime(selectedUser.createdAt)} />
                   <Field label="Updated" value={formatDateTime(selectedUser.updatedAt)} />
                 </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-[18px] font-semibold">Subscription and payments</h3>
+                <div className="mb-3 grid gap-3 md:grid-cols-3">
+                  <Field label="Tier" value={selectedUser.subscription.tier} />
+                  <Field label="Status" value={selectedUser.subscription.status} />
+                  <Field label="Dodo customer" value={selectedUser.subscription.dodoCustomerId || "-"} />
+                  <Field label="Dodo subscription" value={selectedUser.subscription.dodoSubscriptionId || "-"} />
+                  <Field label="Period start" value={formatDateTime(selectedUser.subscription.currentPeriodStart)} />
+                  <Field label="Period end" value={formatDateTime(selectedUser.subscription.currentPeriodEnd)} />
+                  <Field label="Cancelled at" value={formatDateTime(selectedUser.subscription.cancelledAt)} />
+                  <Field label="Subscription created" value={formatDateTime(selectedUser.subscription.createdAt)} />
+                  <Field label="Subscription updated" value={formatDateTime(selectedUser.subscription.updatedAt)} />
+                </div>
+                <DetailList title="Payment history" empty={!selectedUser.payments.length}>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {selectedUser.payments.map((payment) => (
+                      <div key={payment.id} className="rounded-md border border-black/8 bg-white p-4">
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <Field label="Amount" value={formatMoney(payment.amountCents, payment.currency)} />
+                          <Field label="Status" value={payment.status} />
+                          <Field label="Type" value={payment.type} />
+                          <Field label="Created" value={formatDateTime(payment.createdAt)} />
+                          <Field label="Dodo payment" value={payment.dodoPaymentId} />
+                          <Field label="Product" value={payment.productId || "-"} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DetailList>
               </section>
 
               <section>

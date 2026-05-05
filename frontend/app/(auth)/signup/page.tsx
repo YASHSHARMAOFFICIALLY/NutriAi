@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ForkKnife, SealWarning } from "@phosphor-icons/react/dist/ssr";
 import { register } from "@/lib/api/emailAuth";
 import { ApiError } from "@/lib/api/client";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { getGoogleAuthUrl } from "@/lib/api/config";
+import { rememberPostLoginNext, safeNextPath, withNextParam } from "@/lib/safeRedirect";
 
 function GoogleIcon() {
   return (
@@ -57,8 +57,11 @@ function SignupShell({
   );
 }
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter();
+  const params = useSearchParams();
+  const nextPath = safeNextPath(params.get("next"));
+  const loginHref = withNextParam("/login", nextPath);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -75,7 +78,8 @@ export default function SignupPage() {
     setError(null);
     try {
       await register({ email, password, name: name.trim() || undefined });
-      router.replace(`/verify-pending?email=${encodeURIComponent(email)}`);
+      rememberPostLoginNext(nextPath);
+      router.replace(withNextParam(`/verify-pending?email=${encodeURIComponent(email)}`, nextPath));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Couldn't create your account. Try again.");
       setLoading(false);
@@ -89,14 +93,15 @@ export default function SignupPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-teal hover:underline">
+          <Link href={loginHref} className="font-semibold text-teal hover:underline">
             Sign in
           </Link>
         </>
       }
     >
       <a
-        href={`${API_URL}/auth/google`}
+        href={getGoogleAuthUrl()}
+        onClick={() => rememberPostLoginNext(nextPath)}
         className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-white px-5 py-3.5 text-[15px] font-semibold text-foreground shadow-sm transition-shadow hover:shadow-md"
       >
         <GoogleIcon />
@@ -182,6 +187,24 @@ export default function SignupPage() {
         }
       `}</style>
     </SignupShell>
+  );
+}
+
+function SignupFallback() {
+  return (
+    <SignupShell title="Create your account" subtitle="Preparing sign up.">
+      <div className="h-2 overflow-hidden rounded-full bg-border">
+        <div className="h-full w-1/2 rounded-full bg-forest" />
+      </div>
+    </SignupShell>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<SignupFallback />}>
+      <SignupContent />
+    </Suspense>
   );
 }
 

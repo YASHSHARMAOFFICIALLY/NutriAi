@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { withQuery } from "./query";
 import type {
   AdminActivityResponse,
   AdminAiSettings,
@@ -9,15 +10,6 @@ import type {
   AdminUsersResponse,
   UserRole,
 } from "./types";
-
-function query(params: Record<string, string | number | undefined>): string {
-  const sp = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== "") sp.set(key, String(value));
-  }
-  const s = sp.toString();
-  return s ? `?${s}` : "";
-}
 
 export function getAdminOverview(): Promise<AdminOverview> {
   return apiFetch<AdminOverview>("/admin/overview");
@@ -33,7 +25,7 @@ export function listAdminUsers(params: {
   page?: number;
   limit?: number;
 } = {}): Promise<AdminUsersResponse> {
-  return apiFetch<AdminUsersResponse>(`/admin/users${query(params)}`);
+  return apiFetch<AdminUsersResponse>(withQuery("/admin/users", params));
 }
 
 export function getAdminUserDetail(id: string): Promise<AdminUserDetail> {
@@ -44,11 +36,11 @@ export function getAdminUsage(params: {
   from?: string;
   to?: string;
 } = {}): Promise<AdminUsageResponse> {
-  return apiFetch<AdminUsageResponse>(`/admin/usage${query(params)}`);
+  return apiFetch<AdminUsageResponse>(withQuery("/admin/usage", params));
 }
 
 export function getAdminActivity(limit = 20): Promise<AdminActivityResponse> {
-  return apiFetch<AdminActivityResponse>(`/admin/activity${query({ limit })}`);
+  return apiFetch<AdminActivityResponse>(withQuery("/admin/activity", { limit }));
 }
 
 export function getAdminAiSettings(): Promise<AdminAiSettings> {

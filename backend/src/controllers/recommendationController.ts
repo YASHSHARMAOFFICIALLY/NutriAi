@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
 import type { MealType } from '@prisma/client';
-import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import { recommendMeals } from '../services/recommendationService';
 
 const MealTypeSchema = z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']);
@@ -18,7 +18,7 @@ export const recommendQuerySchema = z.object({
 export type RecommendQuery = z.infer<typeof recommendQuerySchema>;
 
 export const recommendMealsHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const q = req.query as unknown as RecommendQuery;
 
   // If the client supplied any remaining-* overrides we build a complete
@@ -40,7 +40,7 @@ export const recommendMealsHandler: RequestHandler = async (req, res) => {
     : undefined;
 
   const result = await recommendMeals({
-    userId: req.user.id,
+    userId: user.id,
     mealType: q.mealType as MealType | undefined,
     limit: q.limit,
     remainingOverride,

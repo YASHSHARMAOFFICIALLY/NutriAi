@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { withQuery } from "./query";
 import type {
   ChallengeCategory,
   ChallengePreset,
@@ -11,18 +12,13 @@ export function listPresets(filters?: {
   category?: ChallengeCategory;
   durationDays?: number;
 }): Promise<ChallengePreset[]> {
-  const params = new URLSearchParams();
-  if (filters?.category) params.set("category", filters.category);
-  if (filters?.durationDays) params.set("durationDays", String(filters.durationDays));
-  const qs = params.toString();
   return apiFetch<{ challenges: ChallengePreset[] }>(
-    `/challenges${qs ? `?${qs}` : ""}`,
+    withQuery("/challenges", filters ?? {}),
   ).then((r) => r.challenges);
 }
 
 export function listMyChallenge(status?: ChallengeStatus): Promise<UserChallengeDTO[]> {
-  const qs = status ? `?status=${status}` : "";
-  return apiFetch<{ challenges: UserChallengeDTO[] }>(`/challenges/me${qs}`).then(
+  return apiFetch<{ challenges: UserChallengeDTO[] }>(withQuery("/challenges/me", { status })).then(
     (r) => r.challenges,
   );
 }

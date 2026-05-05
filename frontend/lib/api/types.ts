@@ -7,6 +7,10 @@ export type Goal = "LOSE" | "MAINTAIN" | "GAIN";
 export type MessageRole = "USER" | "ASSISTANT" | "SYSTEM";
 export type FoodInputType = "TEXT" | "IMAGE";
 export type UserRole = "USER" | "ADMIN";
+export type PlanTier = "FREE" | "PRO";
+export type SubscriptionStatus = "ACTIVE" | "CANCELLED" | "PAST_DUE" | "EXPIRED";
+export type PaymentType = "SUBSCRIPTION" | "ONE_TIME";
+export type PaymentStatus = "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED";
 
 export interface User {
   id: string;
@@ -83,6 +87,8 @@ export interface DailySummary {
   totalProtein: number;
   totalCarbs: number;
   totalFat: number;
+  totals: { calories: number; protein: number; carbs: number; fat: number };
+  byMealType: Record<MealType, { calories: number; protein: number; carbs: number; fat: number; count: number }>;
   mealCount: number;
 }
 
@@ -381,7 +387,8 @@ export interface IssuedApiKey extends ApiKeyRow {
 
 // ── /admin ──
 export interface AdminOverview {
-  users: { total: number; newThisWeek: number };
+  users: { total: number; newThisWeek: number; premium: number; free: number; activeToday: number };
+  visits: { today: number; uniqueToday: number };
   meals: { today: number; thisWeek: number };
   ai: {
     requestsToday: number;
@@ -399,6 +406,17 @@ export interface AdminUserRow {
   role: UserRole;
   createdAt: string;
   emailVerified: boolean;
+  subscription: {
+    tier: PlanTier;
+    status: SubscriptionStatus;
+    dodoSubscriptionId: string | null;
+    dodoCustomerId: string | null;
+    currentPeriodStart: string | null;
+    currentPeriodEnd: string | null;
+    cancelledAt: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
   goal: Goal | null;
   notifications: { streakRisk: boolean; weeklyDigest: boolean };
   counts: {
@@ -406,7 +424,21 @@ export interface AdminUserRow {
     apiKeys: number;
     weightEntries: number;
     challenges: number;
+    sessions: number;
   };
+  latestSession: {
+    id: string;
+    ipAddress: string | null;
+    userAgent: string | null;
+    deviceType: string | null;
+    deviceModel: string | null;
+    os: string | null;
+    browser: string | null;
+    location: string | null;
+    createdAt: string;
+    lastSeenAt: string;
+    revokedAt: string | null;
+  } | null;
   lastMealAt: string | null;
   ai: { requests: number; totalTokens: number; costUsd: number };
 }
@@ -440,6 +472,17 @@ export interface AdminUserDetail extends AdminUserRow {
     refreshToken: { expiresAt: string; revokedAt: string | null; createdAt: string };
   }>;
   refreshTokens: Array<{ id: string; expiresAt: string; revokedAt: string | null; createdAt: string }>;
+  payments: Array<{
+    id: string;
+    dodoPaymentId: string;
+    type: PaymentType;
+    status: PaymentStatus;
+    amountCents: number;
+    currency: string;
+    productId: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   meals: MealDTO[];
   foodQueries: Array<HistoryEntry & { asset: unknown | null }>;
   weightEntries: Array<{ id: string; weightKg: number; note: string | null; recordedAt: string; createdAt: string }>;

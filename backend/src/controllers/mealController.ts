@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
-import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import { createMeal, dailySummary, deleteMeal, listMealsForDate } from '../services/mealService';
 
 const MealTypeSchema = z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']);
@@ -33,10 +33,10 @@ export const mealDateQuerySchema = z.object({
 });
 
 export const createMealHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const body = req.body as CreateMealBody;
   const meal = await createMeal({
-    userId: req.user.id,
+    userId: user.id,
     mealType: body.mealType,
     loggedAt: body.loggedAt ?? new Date(),
     notes: body.notes ?? null,
@@ -47,21 +47,21 @@ export const createMealHandler: RequestHandler = async (req, res) => {
 };
 
 export const listMealsHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const { date } = req.query as unknown as z.infer<typeof mealDateQuerySchema>;
-  const meals = await listMealsForDate(req.user.id, date);
+  const meals = await listMealsForDate(user.id, date);
   res.json({ date: date.toISOString().slice(0, 10), meals });
 };
 
 export const dailySummaryHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
+  const user = requireUser(req);
   const { date } = req.query as unknown as z.infer<typeof mealDateQuerySchema>;
-  const summary = await dailySummary(req.user.id, date);
+  const summary = await dailySummary(user.id, date);
   res.json(summary);
 };
 
 export const deleteMealHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  await deleteMeal(req.user.id, req.params.id);
+  const user = requireUser(req);
+  await deleteMeal(user.id, req.params.id);
   res.status(204).end();
 };

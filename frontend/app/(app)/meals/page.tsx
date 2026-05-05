@@ -125,6 +125,7 @@ export default function MealsPage() {
   ), [days]);
 
   async function handleDeleteMeal(id: string) {
+    if (!window.confirm("Delete this meal from your diary?")) return;
     const previous = meals;
     setMeals((current) => current.filter((meal) => meal.id !== id));
     try {
@@ -138,8 +139,19 @@ export default function MealsPage() {
     }
   }
 
+  const filtersActive =
+    activeFilter !== "Today" || Boolean(historyFrom || historyTo || minCalories || maxCalories);
+
+  function clearFilters() {
+    setActiveFilter("Today");
+    setHistoryFrom("");
+    setHistoryTo("");
+    setMinCalories("");
+    setMaxCalories("");
+  }
+
   return (
-    <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-5 sm:py-8 lg:px-8">
       <PageHeader
         eyebrow="Meals"
         title="Food diary"
@@ -152,12 +164,21 @@ export default function MealsPage() {
         </Panel>
       ) : null}
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {["Today", "7 days", "30 days", "Breakfast", "Lunch", "Dinner", "Photo source"].map((filter) => (
-          <button key={filter} onClick={() => setActiveFilter(filter)} className={`rounded-lg border px-3 py-1.5 text-[12px] font-bold transition-colors ${activeFilter === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f] hover:border-teal/30 hover:text-forest"}`}>
-            {filter}
-          </button>
-        ))}
+      <div className="mb-5 flex flex-col gap-3 rounded-lg border border-border bg-white p-3 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 md:flex-wrap md:overflow-visible md:pb-0">
+          {["Today", "7 days", "30 days", "Breakfast", "Lunch", "Dinner", "Photo source"].map((filter) => (
+            <button key={filter} onClick={() => setActiveFilter(filter)} className={`min-h-10 shrink-0 rounded-lg border px-3 py-1.5 text-[12px] font-bold transition-colors ${activeFilter === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f] hover:border-teal/30 hover:text-forest"}`}>
+              {filter}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={clearFilters}
+          disabled={!filtersActive}
+          className="min-h-10 rounded-lg border border-border bg-surface-alt px-3 py-2 text-[12px] font-bold text-forest transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Reset filters
+        </button>
       </div>
 
       {source === "loading" ? (
@@ -204,14 +225,14 @@ export default function MealsPage() {
                   <SourceBadge label="editable items" />
                 </div>
               </div>
-              <div className="space-y-3 p-5">
+              <div className="space-y-3 p-3 sm:p-5">
                 {day.meals.map((meal, index) => (
                   <MealLine
                     key={meal.id}
                     meal={meal}
                     expanded={index === 1}
                     action={
-                      <button onClick={() => handleDeleteMeal(meal.id)} className="rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#b7791f]">
+                      <button onClick={() => handleDeleteMeal(meal.id)} className="min-h-9 rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#b7791f] transition-colors hover:border-[#b7791f]/30 hover:bg-amber-50">
                         Delete
                       </button>
                     }
@@ -231,8 +252,8 @@ export default function MealsPage() {
             />
             {meals.length ? (
               <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <button onClick={() => setActiveFilter("Today")} className="rounded-lg border border-black/10 bg-white px-4 py-3 text-[13px] font-bold text-[#173c2b]">
-                Show today
+              <button onClick={clearFilters} className="rounded-lg border border-black/10 bg-white px-4 py-3 text-[13px] font-bold text-[#173c2b]">
+                Reset filters
               </button>
               <Link href="/snap" className="rounded-lg bg-[#173c2b] px-4 py-3 text-[13px] font-bold text-white">
                 Scan meal

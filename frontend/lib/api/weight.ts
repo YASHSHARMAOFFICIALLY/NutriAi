@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { withQuery } from "./query";
 
 export interface WeightEntry {
   id: string;
@@ -27,12 +28,7 @@ export function createWeight(input: {
 }
 
 export function listWeight(params: { from?: string; to?: string; limit?: number } = {}) {
-  const q = new URLSearchParams();
-  if (params.from) q.set("from", params.from);
-  if (params.to) q.set("to", params.to);
-  if (params.limit) q.set("limit", String(params.limit));
-  const suffix = q.toString() ? `?${q.toString()}` : "";
-  return apiFetch<WeightListResponse>(`/weight${suffix}`);
+  return apiFetch<WeightListResponse>(withQuery("/weight", params));
 }
 
 export function deleteWeight(id: string): Promise<void> {

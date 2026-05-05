@@ -1,5 +1,6 @@
 import type { RequestHandler } from 'express';
 import { UnauthorizedError } from '../utils/errors';
+import { requireUser } from '../utils/requestUser';
 import { env, isProd } from '../config/env';
 import {
   createTelegramLink,
@@ -9,20 +10,20 @@ import {
 import { handleTelegramUpdate, type TelegramUpdate } from '../services/telegramService';
 
 export const telegramStatusHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  const status = await getTelegramStatus(req.user.id);
+  const user = requireUser(req);
+  const status = await getTelegramStatus(user.id);
   res.json(status);
 };
 
 export const createTelegramLinkHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  const link = await createTelegramLink(req.user.id);
+  const user = requireUser(req);
+  const link = await createTelegramLink(user.id);
   res.status(201).json(link);
 };
 
 export const unlinkTelegramHandler: RequestHandler = async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  await unlinkTelegramAccount(req.user.id);
+  const user = requireUser(req);
+  await unlinkTelegramAccount(user.id);
   res.status(204).end();
 };
 

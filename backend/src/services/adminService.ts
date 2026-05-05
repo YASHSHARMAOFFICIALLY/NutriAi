@@ -2,6 +2,7 @@ import type { Prisma, Role } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { getAiGuardState } from '../ai/guard';
 import { getRuntimeMetrics } from './runtimeMetrics';
+import { roundMoney } from '../utils/number';
 import {
   getAiSettings,
   type UpdateAiSettingsInput,
@@ -15,8 +16,6 @@ const startOfToday = (): Date => {
 };
 
 const daysAgo = (days: number): Date => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-
-const roundMoney = (n: number): number => Math.round(n * 10_000) / 10_000;
 
 export interface AdminListUsersInput {
   search?: string;
@@ -45,6 +44,10 @@ export async function getAdminOverview() {
   const [
     totalUsers,
     newUsersThisWeek,
+    premiumUsers,
+    visitsToday,
+    uniqueVisitorsToday,
+    activeAccountsToday,
     mealsToday,
     mealsThisWeek,
     aiToday,
@@ -54,6 +57,16 @@ export async function getAdminOverview() {
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: week } } }),
+    prisma.subscription.count({
+      where: { tier: 'PRO', status: { in: ['ACTIVE', 'PAST_DUE'] } },
+    }),
+    prisma.pageVisit.count({ where: { createdAt: { gte: today } } }),
+    prisma.pageVisit.findMany({
+      where: { createdAt: { gte: today }, visitorId: { not: null } },
+      distinct: ['visitorId'],
+      select: { visitorId: true },
+    }),
+    prisma.userSession.count({ where: { lastSeenAt: { gte: today } } }),
     prisma.meal.count({ where: { loggedAt: { gte: today } } }),
     prisma.meal.count({ where: { loggedAt: { gte: week } } }),
     prisma.tokenUsage.aggregate({
@@ -71,7 +84,17 @@ export async function getAdminOverview() {
   ]);
 
   return {
-    users: { total: totalUsers, newThisWeek: newUsersThisWeek },
+    users: {
+      total: totalUsers,
+      newThisWeek: newUsersThisWeek,
+      premium: premiumUsers,
+      free: Math.max(totalUsers - premiumUsers, 0),
+      activeToday: activeAccountsToday,
+    },
+    visits: {
+      today: visitsToday,
+      uniqueToday: uniqueVisitorsToday.length,
+    },
     meals: { today: mealsToday, thisWeek: mealsThisWeek },
     ai: {
       requestsToday: aiToday._count._all,
@@ -164,7 +187,37 @@ export async function listAdminUsers(input: AdminListUsersInput) {
         role: true,
         createdAt: true,
         emailVerified: true,
+        subscription: {
+          select: {
+            tier: true,
+            status: true,
+            dodoSubscriptionId: true,
+            dodoCustomerId: true,
+            currentPeriodStart: true,
+            currentPeriodEnd: true,
+            cancelledAt: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
         profile: { select: { goal: true, notifyStreakRisk: true, notifyWeeklyDigest: true } },
+        sessions: {
+          orderBy: { lastSeenAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            ipAddress: true,
+            userAgent: true,
+            deviceType: true,
+            deviceModel: true,
+            os: true,
+            browser: true,
+            location: true,
+            createdAt: true,
+            lastSeenAt: true,
+            revokedAt: true,
+          },
+        },
         meals: {
           orderBy: { loggedAt: 'desc' },
           take: 1,
@@ -176,6 +229,7 @@ export async function listAdminUsers(input: AdminListUsersInput) {
             apiKeys: true,
             weightEntries: true,
             userChallenges: true,
+            sessions: true,
           },
         },
       },
@@ -200,6 +254,18 @@ export async function listAdminUsers(input: AdminListUsersInput) {
       role: user.role,
       createdAt: user.createdAt,
       emailVerified: user.emailVerified,
+      subscription:
+        user.subscription ?? {
+          tier: 'FREE',
+          status: 'ACTIVE',
+          dodoSubscriptionId: null,
+          dodoCustomerId: null,
+          currentPeriodStart: null,
+          currentPeriodEnd: null,
+          cancelledAt: null,
+          createdAt: null,
+          updatedAt: null,
+        },
       goal: user.profile?.goal ?? null,
       notifications: {
         streakRisk: user.profile?.notifyStreakRisk ?? false,
@@ -210,7 +276,9 @@ export async function listAdminUsers(input: AdminListUsersInput) {
         apiKeys: user._count.apiKeys,
         weightEntries: user._count.weightEntries,
         challenges: user._count.userChallenges,
+        sessions: user._count.sessions,
       },
+      latestSession: user.sessions[0] ?? null,
       lastMealAt: user.meals[0]?.loggedAt ?? null,
       ai: {
         requests: usage[i]._count._all,
@@ -239,6 +307,34 @@ export async function getAdminUserDetail(userId: string) {
       role: true,
       createdAt: true,
       updatedAt: true,
+      subscription: {
+        select: {
+          tier: true,
+          status: true,
+          dodoSubscriptionId: true,
+          dodoCustomerId: true,
+          currentPeriodStart: true,
+          currentPeriodEnd: true,
+          cancelledAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+      payments: {
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          dodoPaymentId: true,
+          type: true,
+          status: true,
+          amountCents: true,
+          currency: true,
+          productId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
       profile: true,
       sessions: {
         orderBy: { lastSeenAt: 'desc' },
@@ -392,6 +488,18 @@ export async function getAdminUserDetail(userId: string) {
   return {
     ...user,
     goal: user.profile?.goal ?? null,
+    subscription:
+      user.subscription ?? {
+        tier: 'FREE',
+        status: 'ACTIVE',
+        dodoSubscriptionId: null,
+        dodoCustomerId: null,
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+        cancelledAt: null,
+        createdAt: null,
+        updatedAt: null,
+      },
     notifications: {
       streakRisk: user.profile?.notifyStreakRisk ?? false,
       weeklyDigest: user.profile?.notifyWeeklyDigest ?? false,
@@ -401,7 +509,9 @@ export async function getAdminUserDetail(userId: string) {
       apiKeys: user._count.apiKeys,
       weightEntries: user._count.weightEntries,
       challenges: user._count.userChallenges,
+      sessions: user._count.sessions,
     },
+    latestSession: user.sessions[0] ?? null,
     lastMealAt: user.meals[0]?.loggedAt ?? null,
     ai: {
       requests: aiAggregate._count._all,

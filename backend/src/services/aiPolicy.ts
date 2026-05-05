@@ -1,12 +1,7 @@
 import { prisma } from '../config/prisma';
 import { AppError, BadRequestError, RateLimitError } from '../utils/errors';
-import { startOfUtcDay } from './chatPolicy';
-
-export const countWords = (text: string): number => {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).length;
-};
+import { startOfUtcDay } from '../utils/date';
+import { countWords } from '../utils/text';
 
 export const assertFoodTextAllowed = (text: string, maxWords: number): void => {
   const words = countWords(text);

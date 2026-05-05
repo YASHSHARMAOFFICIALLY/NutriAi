@@ -2,6 +2,7 @@ import type { MealType } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { getProfileOrNull } from './profileService';
 import { dayWindow } from './mealService';
+import { roundToTenth } from '../utils/number';
 
 const LOOKBACK_DAYS = 45;
 const MAX_CANDIDATES = 200;
@@ -24,8 +25,6 @@ export interface MealRecommendation {
   lastLoggedAt: string;
   reasons: string[];
 }
-
-const round = (n: number) => Math.round(n * 10) / 10;
 
 // Normalize an item name so near-duplicates cluster together.
 const normalizeName = (name: string): string =>
@@ -201,16 +200,16 @@ export const recommendMeals = async ({
         sampleMealId: m.id,
         items: m.items.map((it) => ({
           name: it.name,
-          calories: round(it.calories),
-          protein: round(it.protein),
-          carbs: round(it.carbs),
-          fat: round(it.fat),
+          calories: roundToTenth(it.calories),
+          protein: roundToTenth(it.protein),
+          carbs: roundToTenth(it.carbs),
+          fat: roundToTenth(it.fat),
         })),
         totals: {
-          calories: round(m.totalCalories),
-          protein: round(m.totalProtein),
-          carbs: round(m.totalCarbs),
-          fat: round(m.totalFat),
+          calories: roundToTenth(m.totalCalories),
+          protein: roundToTenth(m.totalProtein),
+          carbs: roundToTenth(m.totalCarbs),
+          fat: roundToTenth(m.totalFat),
         },
         frequency: 1,
         lastLoggedAt: m.loggedAt,

@@ -14,29 +14,31 @@ import {
   Gear,
   House,
   Medal,
+  ShieldCheck,
   SidebarSimple,
   Sparkle,
   Star,
 } from "@phosphor-icons/react/dist/ssr";
+import { fetchMe } from "@/lib/api/account";
 import { getDailySummary } from "@/lib/api/meals";
 import { getProfile } from "@/lib/api/profile";
 import { getMyPlan } from "@/lib/api/payments";
 
-const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: House },
-  { href: "/snap", label: "Log Meal", icon: Camera },
-  { href: "/coach", label: "Coach", icon: Sparkle },
-  { href: "/recommendations", label: "Next Meal", icon: Star },
-  { href: "/meals", label: "Meals", icon: ForkKnife },
-  { href: "/analytics", label: "Progress", icon: ChartBar },
-  { href: "/family", label: "Family", icon: AddressBook },
-  { href: "/challenges", label: "Challenges", icon: Medal },
-  { href: "/weight", label: "Weight", icon: Barbell },
-  { href: "/settings", label: "Account", icon: Gear },
+const baseNav = [
+  { href: "/dashboard", label: "Dashboard", shortLabel: "Home", icon: House },
+  { href: "/snap", label: "Log Meal", shortLabel: "Log", icon: Camera },
+  { href: "/coach", label: "Coach", shortLabel: "Coach", icon: Sparkle },
+  { href: "/recommendations", label: "Next Meal", shortLabel: "Ideas", icon: Star },
+  { href: "/meals", label: "Meals", shortLabel: "Meals", icon: ForkKnife },
+  { href: "/analytics", label: "Progress", shortLabel: "Stats", icon: ChartBar },
+  { href: "/family", label: "Family", shortLabel: "Family", icon: AddressBook },
+  { href: "/challenges", label: "Challenges", shortLabel: "Goals", icon: Medal },
+  { href: "/weight", label: "Weight", shortLabel: "Weight", icon: Barbell },
+  { href: "/settings", label: "Account", shortLabel: "Account", icon: Gear },
 ] as const;
 
-const mobileNav = nav.slice(0, 4);
-const moreNav = nav.slice(4);
+const adminNavItem = { href: "/admin", label: "Admin", shortLabel: "Admin", icon: ShieldCheck } as const;
+const adminOwnerEmail = "yashsharmaofficially@gmail.com";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -45,9 +47,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    fetchMe()
+      .then((user) => { if (!cancelled) setIsAdmin(user.email.toLowerCase() === adminOwnerEmail); })
+      .catch(() => { if (!cancelled) setIsAdmin(false); });
     getMyPlan()
       .then((p) => { if (!cancelled) setIsPro(p.tier === "PRO" && (p.status === "ACTIVE" || p.status === "PAST_DUE")); })
       .catch(() => {});
@@ -73,6 +79,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  const nav = useMemo(() => isAdmin ? [...baseNav, adminNavItem] : baseNav, [isAdmin]);
+  const mobileNav = useMemo(() => nav.slice(0, 4), [nav]);
+  const moreNav = useMemo(() => nav.slice(4), [nav]);
 
   const remaining = useMemo(() => ({
     calories: Math.max(0, targets.calories - totals.calories),
@@ -176,7 +186,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-h-screen pb-24 transition-[margin] duration-300 ease-out lg:ml-[86px] lg:pb-0">
+      <main className="min-h-screen pb-[calc(6.5rem+env(safe-area-inset-bottom))] transition-[margin] duration-300 ease-out lg:ml-[86px] lg:pb-0">
+        <header className="sticky top-0 z-30 border-b border-border bg-white/94 px-4 py-2.5 backdrop-blur-xl lg:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/dashboard" className="flex min-w-0 items-center gap-3" aria-label="NutriAI dashboard">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-forest text-white shadow-sm">
+                <ForkKnife size={20} weight="bold" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[16px] font-bold text-forest">NutriAI</span>
+                <span className="block truncate text-[11px] font-semibold text-muted">
+                  {targets.calories > 0 ? `${remaining.calories} kcal left today` : "Set targets for daily guidance"}
+                </span>
+              </span>
+            </Link>
+            <Link
+              href="/snap"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-lime px-3 text-[13px] font-bold text-forest shadow-sm"
+            >
+              <Camera size={16} weight="bold" />
+              Scan
+            </Link>
+          </div>
+        </header>
         <div className="mx-auto max-w-[1600px] w-full">
           {children}
         </div>
@@ -186,7 +218,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-[60] lg:hidden" onClick={() => setMoreOpen(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="absolute inset-x-3 bottom-20 rounded-lg border border-border bg-white p-4 shadow-xl"
+            className="absolute inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] max-h-[62dvh] overflow-y-auto rounded-lg border border-border bg-white p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -195,8 +227,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 &times;
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[...moreNav, { href: "/pricing", label: "Pricing", icon: CrownSimple }].map(({ href, label, icon: Icon }) => {
+            <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
+              {[...moreNav, { href: "/pricing", label: "Pricing", shortLabel: "Pricing", icon: CrownSimple }].map(({ href, shortLabel, icon: Icon }) => {
                 const active = pathname === href;
                 return (
                   <Link
@@ -204,12 +236,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     href={href}
                     onClick={() => setMoreOpen(false)}
                     className={[
-                      "flex flex-col items-center gap-2 rounded-lg p-3 text-[12px] font-bold transition-all",
+                      "flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg p-3 text-center text-[12px] font-bold transition-all",
                       active ? "bg-forest text-white" : "bg-surface-alt text-muted hover:text-forest",
                     ].join(" ")}
                   >
                     <Icon size={22} weight={active ? "fill" : "bold"} />
-                    {label}
+                    {shortLabel}
                   </Link>
                 );
               })}
@@ -218,28 +250,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 glass border-t border-border px-3 py-3 lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 glass border-t border-border px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:hidden">
         <div className="grid grid-cols-5 gap-2">
-          {mobileNav.map(({ href, label, icon: Icon }) => {
+          {mobileNav.map(({ href, label, shortLabel, icon: Icon }) => {
             const active = pathname === href;
             return (
               <Link
                 key={href}
                 href={href}
+                aria-label={label}
                 className={[
-                  "flex h-12 flex-col items-center justify-center gap-1 rounded-lg transition-all",
+                  "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg transition-all",
                   active ? "bg-forest text-white shadow-premium" : "text-muted",
                 ].join(" ")}
               >
-                <Icon size={20} weight={active ? "fill" : "bold"} />
-                <span className="text-[10px] font-bold">{label}</span>
+                <Icon size={21} weight={active ? "fill" : "bold"} />
+                <span className="max-w-full truncate px-1 text-[10px] font-bold">{shortLabel}</span>
               </Link>
             );
           })}
           <button
             onClick={() => setMoreOpen((o) => !o)}
+            aria-expanded={moreOpen}
+            aria-label="Open more navigation"
             className={[
-              "flex h-12 flex-col items-center justify-center gap-1 rounded-lg transition-all",
+              "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg transition-all",
               moreOpen || moreNav.some((n) => pathname === n.href)
                 ? "bg-forest text-white shadow-premium"
                 : "text-muted",

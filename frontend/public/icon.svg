@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">myNutriAI</title>
+  <desc id="desc">myNutriAI nutrition bowl and intelligence spark logo.</desc>
+  <rect width="512" height="512" rx="112" fill="#101510"/>
+  <circle cx="256" cy="256" r="164" fill="#D7FF68"/>
+  <path d="M143 284c17 58 72 100 140 100s123-42 140-100H143Z" fill="#173C2B"/>
+  <path d="M190 231c15-52 64-89 122-89 17 0 33 3 48 9-20 21-32 48-37 78-38-17-84-15-133 2Z" fill="#0F8B8D"/>
+  <path d="M160 268c56-28 122-33 190-7 29 11 56 14 86 5" stroke="#101510" stroke-width="28" stroke-linecap="round"/>
+  <path d="M322 105l20 45 46 20-46 20-20 46-20-46-45-20 45-20 20-45Z" fill="#FFFFFF"/>
+</svg>

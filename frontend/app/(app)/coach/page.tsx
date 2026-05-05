@@ -172,7 +172,7 @@ export default function CoachPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-5 sm:py-8 lg:px-8">
       <PageHeader eyebrow="Coach Ria" title="Chat with nutrition context" />
       {loadError ? (
         <Panel className="mb-5 p-4">
@@ -180,7 +180,7 @@ export default function CoachPage() {
         </Panel>
       ) : null}
 
-      <section className="grid min-h-[720px] gap-5 xl:grid-cols-[260px_1fr_360px]">
+      <section className="grid gap-5 xl:min-h-[720px] xl:grid-cols-[260px_1fr_360px]">
         <Panel className="hidden p-4 xl:block">
           <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#0f8b8d]">Conversations</p>
           <div className="space-y-2">
@@ -198,12 +198,12 @@ export default function CoachPage() {
           </div>
         </Panel>
 
-        <Panel className="flex flex-col p-5">
-          <div className="mb-5 flex items-center gap-3 border-b border-border pb-4">
+        <Panel className="flex min-h-[calc(100dvh-15rem)] flex-col p-4 sm:p-5 xl:min-h-0">
+          <div className="mb-5 flex items-start gap-3 border-b border-border pb-4 sm:items-center">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-lime shadow-sm">
               <Sparkle size={20} weight="fill" />
             </span>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-[20px] font-semibold">{chatTitle}</h2>
               <p className="text-[12px] text-[#5f675f]">{hasTargets ? "Uses your meals, targets, preferences, and active challenge." : "Add targets in settings for sharper meal guidance."}</p>
             </div>
@@ -233,7 +233,7 @@ export default function CoachPage() {
               const user = message.role === "user";
               return (
                 <div key={index} className={`flex ${user ? "justify-end" : "justify-start"}`}>
-                  <p className={`max-w-[78%] rounded-2xl px-5 py-3.5 text-[14px] leading-6 ${user ? "bg-forest text-white shadow-sm" : "bg-surface-alt border border-border"}`}>
+                  <p className={`max-w-[90%] rounded-2xl px-4 py-3 text-[14px] leading-6 sm:max-w-[78%] sm:px-5 sm:py-3.5 ${user ? "bg-forest text-white shadow-sm" : "bg-surface-alt border border-border"}`}>
                     {message.text}
                   </p>
                 </div>
@@ -241,7 +241,7 @@ export default function CoachPage() {
             })}
             {sending ? (
               <div className="flex justify-start">
-                <p className="max-w-[78%] rounded-2xl border border-border bg-surface-alt px-5 py-3.5 text-[14px] font-semibold leading-6 text-muted">
+                <p className="max-w-[90%] rounded-2xl border border-border bg-surface-alt px-4 py-3 text-[14px] font-semibold leading-6 text-muted sm:max-w-[78%] sm:px-5 sm:py-3.5">
                   Preparing reply...
                 </p>
               </div>
@@ -253,9 +253,9 @@ export default function CoachPage() {
               </div>
             ) : null}
           </div>
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {quickPrompts.map((prompt) => (
-              <button key={prompt} onClick={() => handleSend(prompt)} disabled={sending || contextStatus === "loading"} className="rounded-full border border-border bg-surface-alt px-3 py-1.5 text-[12px] font-bold text-muted transition-all hover:border-teal/30 hover:bg-white hover:text-forest disabled:opacity-50">
+              <button key={prompt} onClick={() => handleSend(prompt)} disabled={sending || contextStatus === "loading"} className="min-h-10 shrink-0 rounded-full border border-border bg-surface-alt px-3 py-1.5 text-[12px] font-bold text-muted transition-all hover:border-teal/30 hover:bg-white hover:text-forest disabled:opacity-50">
                 {prompt}
               </button>
             ))}
@@ -266,10 +266,10 @@ export default function CoachPage() {
               event.preventDefault();
               handleSend();
             }}
-            className="mt-4 flex items-end gap-3 rounded-2xl border border-border bg-surface-alt p-3 transition-all focus-within:border-teal/30 focus-within:ring-2 focus-within:ring-teal/10"
+            className="mt-4 flex items-end gap-2 rounded-2xl border border-border bg-surface-alt p-2.5 transition-all focus-within:border-teal/30 focus-within:ring-2 focus-within:ring-teal/10 sm:gap-3 sm:p-3"
           >
             <textarea className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1 text-[14px] outline-none" rows={1} placeholder="Ask Ria..." value={input} onChange={(event) => setInput(event.target.value)} />
-            <button disabled={sending || contextStatus === "loading" || !input.trim()} className="grid h-9 w-9 place-items-center rounded-xl bg-forest text-white transition-all hover:bg-forest-soft active:scale-95 disabled:opacity-60">
+            <button disabled={sending || contextStatus === "loading" || !input.trim()} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-forest text-white transition-all hover:bg-forest-soft active:scale-95 disabled:opacity-60 sm:h-9 sm:w-9">
               <PaperPlaneTilt size={16} weight="fill" />
             </button>
           </form>
