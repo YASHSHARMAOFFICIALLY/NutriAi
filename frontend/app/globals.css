@@ -185,38 +185,63 @@ button:disabled,
   }
 }
 
-@keyframes float-slow {
+@keyframes spin-ring {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes scan-line {
+  0%, 100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  18%, 72% {
+    opacity: 1;
+  }
+  86% {
+    opacity: 0;
+    transform: translateY(118px);
+  }
+}
+
+@keyframes cta-pulse {
+  0%, 100% {
+    box-shadow: 0 24px 60px rgba(215, 255, 104, 0.28), 0 0 0 0 rgba(215, 255, 104, 0.18);
+  }
+  50% {
+    box-shadow: 0 28px 70px rgba(215, 255, 104, 0.36), 0 0 0 8px rgba(215, 255, 104, 0);
+  }
+}
+
+@keyframes float-soft {
   0%, 100% {
     transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(-4px, -14px, 0);
+    transform: translate3d(0, -8px, 0);
   }
 }
 
-@keyframes float-fast {
+@keyframes phone-glow {
   0%, 100% {
-    transform: translate3d(0, 0, 0) rotate(-3deg);
+    opacity: 0.82;
+    transform: translate(-50%, -50%) scale(1);
   }
   50% {
-    transform: translate3d(10px, 14px, 0) rotate(-1deg);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.04);
   }
 }
 
-@keyframes pulse-card {
-  0%, 100% {
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.36), 0 0 0 rgba(215, 255, 104, 0);
-    transform: translateY(0) rotate(2deg);
+@keyframes flow-line {
+  0% {
+    transform: scaleX(0);
+    opacity: 0.2;
   }
-  50% {
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.36), 0 0 50px rgba(215, 255, 104, 0.28);
-    transform: translateY(-8px) rotate(2deg);
-  }
-}
-
-@keyframes spin-ring {
-  to {
-    transform: translate(-50%, -50%) rotate(360deg);
+  45%, 100% {
+    transform: scaleX(1);
+    opacity: 1;
   }
 }
 
@@ -247,20 +272,32 @@ button:disabled,
   animation-delay: 0.6s;
 }
 
-.float-slow {
-  animation: float-slow 7s ease-in-out infinite;
-}
-
-.float-fast {
-  animation: float-fast 5.5s ease-in-out infinite;
-}
-
-.pulse-card {
-  animation: pulse-card 3.8s ease-in-out infinite;
-}
-
 .spin-ring {
   animation: spin-ring 24s linear infinite;
+}
+
+.scan-line {
+  animation: scan-line 3.2s ease-in-out infinite;
+}
+
+.cta-pulse {
+  animation: cta-pulse 2.8s ease-in-out infinite;
+}
+
+.float-soft {
+  animation: float-soft 6.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+.float-soft-delayed {
+  animation: float-soft 6.8s ease-in-out infinite;
+  animation-delay: 0.7s;
+  will-change: transform;
+}
+
+.phone-glow {
+  animation: phone-glow 5.6s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 .bar-grow {
@@ -273,6 +310,11 @@ button:disabled,
   text-wrap: balance;
 }
 
+.flow-line {
+  transform-origin: left;
+  animation: flow-line 1.4s ease-out both;
+}
+
 .faq-item {
   transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
 }
@@ -283,10 +325,6 @@ button:disabled,
   transform: translateY(-2px);
 }
 
-.faq-item summary::-webkit-details-marker {
-  display: none;
-}
-
 .hero-stage {
   position: relative;
   min-height: 650px;
@@ -295,16 +333,22 @@ button:disabled,
 }
 
 .story-tile,
-.pricing-tile,
 .routine-card {
   transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
 }
 
 .story-tile:hover,
-.pricing-tile:hover,
 .routine-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 22px 64px rgba(16, 21, 16, 0.13);
+}
+
+.pricing-tile {
+  transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
+}
+
+.pricing-tile:hover {
+  box-shadow: 0 26px 78px rgba(16, 21, 16, 0.16);
 }
 
 @media (prefers-reduced-motion: reduce) {

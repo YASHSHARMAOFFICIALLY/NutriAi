@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { ArrowRight, Check, Crown, Lightning } from "@phosphor-icons/react/dist/ssr";
 import { UnauthorizedError } from "@/lib/api/client";
 import { createCheckout, type UserPlan } from "@/lib/api/payments";
@@ -60,10 +59,6 @@ const plans = [
 ];
 
 function PricingContent() {
-  const searchParams = useSearchParams();
-  const requestedCheckout = searchParams.get("checkout");
-  const checkoutIntent = requestedCheckout === "monthly" || requestedCheckout === "lifetime" ? requestedCheckout : null;
-  const autoCheckoutStarted = useRef(false);
   const [plan, setPlan] = useState<UserPlan | null>(null);
   const [planLoaded, setPlanLoaded] = useState(false);
   const [loading, setLoading] = useState<"monthly" | "lifetime" | null>(null);
@@ -102,12 +97,6 @@ function PricingContent() {
     { label: "Decision support", value: "Coach + next meal", copy: "Turn logged food, targets, and preferences into the next practical choice." },
     { label: "Habit loop", value: "Trends + digests", copy: "Keep weight, streaks, challenges, and weekly summaries in one routine." },
   ];
-
-  useEffect(() => {
-    if (!checkoutIntent || !planLoaded || isPro || loading || autoCheckoutStarted.current) return;
-    autoCheckoutStarted.current = true;
-    handleCheckout(checkoutIntent);
-  }, [checkoutIntent, handleCheckout, isPro, loading, planLoaded]);
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">

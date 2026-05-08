@@ -87,7 +87,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <JsonLd data={[websiteJsonLd(), organizationJsonLd(), siteNavigationJsonLd()]} />
       </head>

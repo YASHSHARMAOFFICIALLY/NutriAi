@@ -1,11 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, CheckCircle, ImageSquare, ListChecks, PencilSimple, Sparkle, Trash } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, Camera, CheckCircle, Crown, ImageSquare, ListChecks, Lock, PencilSimple, Sparkle, Trash, X } from "@phosphor-icons/react/dist/ssr";
 import { analyzeFood } from "@/lib/api/food";
 import { ApiError } from "@/lib/api/client";
 import { createMeal, inferMealType } from "@/lib/api/meals";
+import { getMyPlan, type UserPlan } from "@/lib/api/payments";
 import { uploadFoodImage } from "@/lib/api/uploads";
 import type { AnalyzeFoodResponse, MealType } from "@/lib/api/types";
 import { EmptyState, PageHeader, Panel } from "../_components/ui";
@@ -75,7 +77,13 @@ export default function SnapPage() {
   const [inputMode, setInputMode] = useState<"photo" | "text">("photo");
   const [errorMessage, setErrorMessage] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [plan, setPlan] = useState<UserPlan | null>(null);
+  const [planLoaded, setPlanLoaded] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const previewUrlRef = useRef("");
+
+  const isPro = plan?.tier === "PRO" && (plan.status === "ACTIVE" || plan.status === "PAST_DUE");
+  const photoLocked = planLoaded && !isPro;
 
   const sourceSteps = useMemo(() => [
     { label: assetId ? "Photo ready" : selectedFile ? "Photo selected" : "Prompt ready", icon: ImageSquare },
@@ -89,7 +97,18 @@ export default function SnapPage() {
     };
   }, []);
 
+  useEffect(() => {
+    getMyPlan({ silent: true })
+      .then(setPlan)
+      .catch(() => setPlan({ tier: "FREE", status: "ACTIVE", currentPeriodEnd: null, cancelledAt: null }))
+      .finally(() => setPlanLoaded(true));
+  }, []);
+
   function handleFileChange(file: File | null) {
+    if (photoLocked && file) {
+      setUpgradeModalOpen(true);
+      return;
+    }
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     const nextPreviewUrl = file ? URL.createObjectURL(file) : "";
     previewUrlRef.current = nextPreviewUrl;
@@ -102,6 +121,10 @@ export default function SnapPage() {
 
   async function handleAnalyze() {
     if (!text.trim() && !selectedFile && !assetId) return;
+    if ((selectedFile || assetId) && photoLocked) {
+      setUpgradeModalOpen(true);
+      return;
+    }
     try {
       setErrorMessage("");
       let confirmedAssetId = assetId;
@@ -250,32 +273,51 @@ export default function SnapPage() {
 
             <AnimatePresence mode="wait">
               {inputMode === "photo" ? (
-                <motion.label 
+                <motion.div
                   key="photo"
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
-                  className="group relative flex h-[260px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-alt/60 p-5 text-center transition-colors hover:border-teal/50 hover:bg-surface-alt sm:h-[340px] sm:p-8"
+                  onClick={() => {
+                    if (photoLocked) setUpgradeModalOpen(true);
+                  }}
+                  className={`group relative flex h-[260px] flex-col items-center justify-center rounded-lg border border-dashed p-5 text-center transition-colors sm:h-[340px] sm:p-8 ${
+                    photoLocked
+                      ? "cursor-pointer border-[#d7ff68]/50 bg-[#173c2b] text-white shadow-[0_22px_60px_rgba(23,60,43,0.16)]"
+                      : "cursor-pointer border-border bg-surface-alt/60 hover:border-teal/50 hover:bg-surface-alt"
+                  }`}
                 >
-                  <span className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-lg bg-white text-forest shadow-sm">
+                  <span className={`relative grid h-16 w-16 place-items-center overflow-hidden rounded-lg shadow-sm ${photoLocked ? "bg-white/12 text-[#d7ff68]" : "bg-white text-forest"}`}>
                     {previewUrl ? (
                       <Image src={previewUrl} alt="Selected meal" fill className="rounded-lg object-cover" unoptimized />
+                    ) : photoLocked ? (
+                      <Lock size={30} weight="duotone" />
                     ) : (
                       <ImageSquare size={32} weight="duotone" />
                     )}
                   </span>
-                  <p className="mt-6 text-[18px] font-bold text-forest">
-                    {selectedFile ? "Change photo" : "Drop food photo"}
+                  <p className={`mt-6 text-[18px] font-bold ${photoLocked ? "text-white" : "text-forest"}`}>
+                    {photoLocked ? "Photo scans are Pro" : selectedFile ? "Change photo" : "Drop food photo"}
                   </p>
-                  <p className="mt-2 text-[13px] leading-relaxed text-muted">
-                    {selectedFile ? `${selectedFile.name} ready` : "Upload a photo to estimate nutrition"}
+                  <p className={`mt-2 max-w-[260px] text-[13px] leading-relaxed ${photoLocked ? "text-white/72" : "text-muted"}`}>
+                    {photoLocked ? "Upgrade to analyze meals from images. You can still type meals for free." : selectedFile ? `${selectedFile.name} ready` : "Upload a photo to estimate nutrition"}
                   </p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
-                  />
+                  {!photoLocked && (
+                    <label className="absolute inset-0 cursor-pointer" aria-label="Upload food photo">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                  )}
+                  {photoLocked && (
+                    <span className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#d7ff68] px-4 py-2 text-[12px] font-bold text-forest">
+                      <Crown size={14} weight="fill" />
+                      Unlock photo scan
+                    </span>
+                  )}
                   {selectedFile ? (
                     <button
                       type="button"
@@ -289,7 +331,7 @@ export default function SnapPage() {
                       &times;
                     </button>
                   ) : null}
-                </motion.label>
+                </motion.div>
               ) : (
                 <motion.div 
                   key="text"
@@ -612,6 +654,77 @@ export default function SnapPage() {
           </AnimatePresence>
         </div>
       </section>
+
+      <AnimatePresence>
+        {upgradeModalOpen && (
+          <motion.div
+            className="fixed inset-0 z-[90] grid place-items-center bg-[#101510]/58 px-4 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="photo-upgrade-title"
+            onClick={() => setUpgradeModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 260, damping: 24 }}
+              className="relative w-full max-w-[460px] overflow-hidden rounded-xl border border-white/12 bg-white p-6 text-forest shadow-[0_34px_100px_rgba(16,21,16,0.34)] sm:p-7"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="absolute inset-x-0 top-0 h-1 bg-[#d7ff68]" />
+              <button
+                type="button"
+                onClick={() => setUpgradeModalOpen(false)}
+                className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-lg border border-border bg-surface-alt text-forest transition-colors hover:bg-white"
+                aria-label="Close upgrade popup"
+              >
+                <X size={16} weight="bold" />
+              </button>
+              <div className="grid h-14 w-14 place-items-center rounded-lg bg-[#173c2b] text-[#d7ff68] shadow-[0_16px_34px_rgba(23,60,43,0.18)]">
+                <Crown size={28} weight="fill" />
+              </div>
+              <p className="mt-6 text-[12px] font-bold uppercase tracking-[0.16em] text-teal">Pro feature</p>
+              <h2 id="photo-upgrade-title" className="mt-2 text-[28px] font-bold tracking-tight text-forest">
+                Photo meal scans are for Premium.
+              </h2>
+              <p className="mt-3 text-[14px] leading-6 text-muted">
+                Upgrade to scan food images, get editable nutrition estimates, and keep every meal synced with your dashboard.
+              </p>
+              <div className="mt-5 grid gap-2">
+                {["Image-based meal analysis", "Editable calories and macros", "Unlimited Pro workflow"].map((item) => (
+                  <div key={item} className="flex items-center gap-3 rounded-lg border border-border bg-surface-alt px-3 py-2.5 text-[13px] font-bold text-forest">
+                    <CheckCircle size={16} weight="fill" className="text-teal" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]">
+                <Link
+                  href="/pricing"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-forest px-5 text-[14px] font-bold text-white transition-colors hover:bg-forest-soft"
+                >
+                  View Premium
+                  <ArrowRight size={15} weight="bold" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUpgradeModalOpen(false);
+                    setInputMode("text");
+                  }}
+                  className="inline-flex min-h-12 items-center justify-center rounded-lg border border-border bg-white px-5 text-[14px] font-bold text-forest transition-colors hover:bg-surface-alt"
+                >
+                  Type meal instead
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
