@@ -1,9 +1,8 @@
 import { apiFetch } from "./client";
-import { setAccessToken } from "./auth";
+import { setAuthSessionMarker } from "./auth";
 import type { User } from "./types";
 
 interface AuthResponse {
-  accessToken: string;
   user: Pick<User, "id" | "email" | "role"> & { name?: string | null };
 }
 
@@ -29,7 +28,7 @@ export async function login(input: {
     silent: true,
     retry: false,
   });
-  setAccessToken(res.accessToken);
+  setAuthSessionMarker();
   return res.user;
 }
 
@@ -40,7 +39,7 @@ export async function verifyEmail(token: string): Promise<AuthResponse["user"]> 
     silent: true,
     retry: false,
   });
-  setAccessToken(res.accessToken);
+  setAuthSessionMarker();
   return res.user;
 }
 
@@ -72,6 +71,6 @@ export async function resetPassword(input: {
     silent: true,
     retry: false,
   });
-  setAccessToken(res.accessToken);
+  setAuthSessionMarker();
   return res.user;
 }

@@ -1,34 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { fetchMe } from "@/lib/api/account";
-import { setAccessToken } from "@/lib/api/auth";
 import { POST_LOGIN_NEXT_KEY, safeNextPath } from "@/lib/safeRedirect";
 import { AuthCard } from "../_components/AuthCard";
 
 export default function CallbackPage() {
-  const router = useRouter();
   const [status, setStatus] = useState<"loading" | "error">("loading");
 
   useEffect(() => {
     let cancelled = false;
-    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const queryParams = new URLSearchParams(window.location.search);
-    const accessToken = hashParams.get("access_token");
     const storedNext = window.localStorage.getItem(POST_LOGIN_NEXT_KEY);
     const redirectPath = safeNextPath(queryParams.get("next"), safeNextPath(storedNext));
-    if (accessToken) {
-      setAccessToken(accessToken);
-      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
-    }
 
     fetchMe()
       .then(() => {
         if (!cancelled) {
           window.localStorage.removeItem(POST_LOGIN_NEXT_KEY);
-          router.push(redirectPath);
+          window.location.replace(redirectPath);
         }
       })
       .catch(() => {
@@ -37,7 +28,7 @@ export default function CallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, []);
 
   return (
     <AuthCard title="Finishing sign in" subtitle="Connecting your authenticated session to NutriAI.">

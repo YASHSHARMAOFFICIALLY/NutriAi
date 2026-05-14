@@ -1,4 +1,4 @@
-import { clearAccessToken, getAccessToken, setAccessToken } from "./auth";
+import { clearAccessToken, setAuthSessionMarker } from "./auth";
 import { apiUrl } from "./config";
 
 export class ApiError extends Error {
@@ -34,9 +34,9 @@ async function tryRefresh(): Promise<boolean> {
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) return false;
-      const data = (await res.json()) as { accessToken?: string };
-      if (!data.accessToken) return false;
-      setAccessToken(data.accessToken);
+      const data = (await res.json()) as { ok?: boolean };
+      if (!data.ok) return false;
+      setAuthSessionMarker();
       return true;
     } catch {
       return false;
@@ -63,14 +63,12 @@ interface FetchOptions extends Omit<RequestInit, "body"> {
 
 export async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const { body, retry = true, silent = false, headers, ...rest } = options;
-  const token = getAccessToken();
 
   const init: RequestInit = {
     ...rest,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(headers ?? {}),
     },
   };

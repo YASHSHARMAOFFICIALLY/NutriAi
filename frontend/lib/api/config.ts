@@ -13,8 +13,10 @@ export function apiUrl(path: string): string {
   return `${getApiUrl()}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-export function getGoogleAuthUrl(): string {
-  return apiUrl("/auth/google");
+export function getGoogleAuthUrl(next?: string | null): string {
+  const url = new URL(apiUrl("/auth/google"));
+  if (next) url.searchParams.set("next", next);
+  return url.toString();
 }
 
 export function isLocalApiUrl(url = getApiUrl()): boolean {

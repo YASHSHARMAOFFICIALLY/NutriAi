@@ -100,7 +100,7 @@ function SignupContent() {
       }
     >
       <a
-        href={getGoogleAuthUrl()}
+        href={getGoogleAuthUrl(nextPath)}
         onClick={() => rememberPostLoginNext(nextPath)}
         className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-white px-5 py-3.5 text-[15px] font-semibold text-foreground shadow-sm transition-shadow hover:shadow-md"
       >

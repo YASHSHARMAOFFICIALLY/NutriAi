@@ -194,7 +194,7 @@ function LoginContent() {
           </div>
 
           <motion.a
-            href={getGoogleAuthUrl()}
+            href={getGoogleAuthUrl(nextPath)}
             onClick={() => rememberPostLoginNext(nextPath)}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}

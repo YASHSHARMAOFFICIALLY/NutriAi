@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import { clearAccessToken, setAccessToken } from "./auth";
+import { clearAccessToken, setAuthSessionMarker } from "./auth";
 import type { User } from "./types";
 
 export async function fetchMe(): Promise<User> {
@@ -17,12 +17,12 @@ export async function logout(): Promise<void> {
 
 /** Dev-only: exchange an email for tokens. Backend only allows this outside production. */
 export async function devLogin(email: string): Promise<User> {
-  const data = await apiFetch<{ accessToken: string; user: User }>("/auth/dev-login", {
+  const data = await apiFetch<{ user: User }>("/auth/dev-login", {
     method: "POST",
     body: { email },
     silent: true,
     retry: false,
   });
-  setAccessToken(data.accessToken);
+  setAuthSessionMarker();
   return data.user;
 }

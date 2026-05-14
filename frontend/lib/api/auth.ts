@@ -4,20 +4,7 @@ const STORAGE_KEY = "nutriai.access_token";
 export { AUTH_SESSION_COOKIE } from "../authSession";
 export { getApiUrl } from "./config";
 
-let accessToken: string | null = null;
-
-export function getAccessToken(): string | null {
-  return accessToken;
-}
-
-export function setAccessToken(token: string): void {
-  accessToken = token;
-  setAuthSessionMarker();
-  clearLegacyStoredToken();
-}
-
 export function clearAccessToken(): void {
-  accessToken = null;
   clearAuthSessionMarker();
   clearLegacyStoredToken();
 }
@@ -32,7 +19,7 @@ function cookieSecureAttribute(): string {
   return window.location.protocol === "https:" ? "; Secure" : "";
 }
 
-function setAuthSessionMarker(): void {
+export function setAuthSessionMarker(): void {
   if (typeof document === "undefined") return;
   document.cookie = `${AUTH_SESSION_COOKIE}=1; Path=/; Max-Age=${AUTH_SESSION_MAX_AGE_SECONDS}; SameSite=Lax${cookieSecureAttribute()}`;
 }

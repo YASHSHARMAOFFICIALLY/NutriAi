@@ -2,7 +2,15 @@ import type { CookieOptions, Response } from 'express';
 import { isProd } from '../config/env';
 
 export const REFRESH_COOKIE = 'nutriai_rt';
+export const ACCESS_COOKIE = 'nutriai_at';
 export const OAUTH_STATE_COOKIE = 'nutriai_oauth_state';
+
+const accessCookieOptions = (): CookieOptions => ({
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? 'none' : 'lax',
+  path: '/',
+});
 
 const refreshCookieOptions = (expiresAt?: Date): CookieOptions => ({
   httpOnly: true,
@@ -18,6 +26,14 @@ const oauthStateCookieOptions = (): CookieOptions => ({
   sameSite: 'lax',
   path: '/auth/google/callback',
 });
+
+export const setAccessCookie = (res: Response, token: string): void => {
+  res.cookie(ACCESS_COOKIE, token, accessCookieOptions());
+};
+
+export const clearAccessCookie = (res: Response): void => {
+  res.clearCookie(ACCESS_COOKIE, accessCookieOptions());
+};
 
 export const setRefreshCookie = (res: Response, token: string, expiresAt: Date): void => {
   res.cookie(REFRESH_COOKIE, token, refreshCookieOptions(expiresAt));

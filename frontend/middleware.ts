@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_SESSION_COOKIE } from "./lib/authSession";
+import { AUTH_SESSION_COOKIE, AUTH_SESSION_MAX_AGE_SECONDS } from "./lib/authSession";
+import { safeNextPath } from "./lib/safeRedirect";
 
 const protectedPrefixes = [
   "/admin",
@@ -29,8 +30,21 @@ function isGuestOnlyPath(pathname: string): boolean {
 }
 
 export function middleware(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
+  const { pathname, search, searchParams } = request.nextUrl;
   const hasSession = request.cookies.get(AUTH_SESSION_COOKIE)?.value === "1";
+
+  if (pathname === "/auth/callback" && searchParams.get("session") === "1") {
+    const redirectUrl = new URL(safeNextPath(searchParams.get("next")), request.url);
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.set(AUTH_SESSION_COOKIE, "1", {
+      httpOnly: true,
+      maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
+      path: "/",
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+    });
+    return response;
+  }
 
   if (isProtectedPath(pathname) && !hasSession) {
     const loginUrl = new URL("/login", request.url);

@@ -8,9 +8,11 @@ import { googleConfigured } from '../config/passport';
 import { issueAuthSession, issueTokens, revokeRefresh, rotateRefresh } from '../services/authService';
 import {
   clearOAuthStateCookie,
+  clearAccessCookie,
   clearRefreshCookie,
   OAUTH_STATE_COOKIE,
   REFRESH_COOKIE,
+  setAccessCookie,
   setOAuthStateCookie,
   setRefreshCookie,
 } from '../utils/authCookies';
@@ -22,6 +24,32 @@ const stateMatches = (actual: string, expected: string): boolean => {
   const actualBuffer = Buffer.from(actual);
   const expectedBuffer = Buffer.from(expected);
   return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
+};
+
+const safeFrontendPath = (value: unknown): string | null => {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) {
+    return null;
+  }
+  try {
+    const parsed = new URL(value, 'https://nutriai.local');
+    if (parsed.origin !== 'https://nutriai.local') return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+};
+
+const encodeOAuthState = (nonce: string, nextPath: string | null): string =>
+  nextPath ? `${nonce}.${Buffer.from(nextPath).toString('base64url')}` : nonce;
+
+const decodeOAuthNextPath = (state: string): string | null => {
+  const encoded = state.split('.')[1];
+  if (!encoded) return null;
+  try {
+    return safeFrontendPath(Buffer.from(encoded, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
 };
 
 type GoogleAuthenticateOptions = {
@@ -50,7 +78,7 @@ export const googleStart: RequestHandler = (req, res, next) => {
   if (!googleConfigured()) {
     throw new AppError(503, 'OAUTH_NOT_CONFIGURED', 'Google OAuth is not configured');
   }
-  const state = randomBytes(32).toString('base64url');
+  const state = encodeOAuthState(randomBytes(32).toString('base64url'), safeFrontendPath(req.query.next));
   setOAuthStateCookie(res, state);
   const options: GoogleAuthenticateOptions = {
     callbackURL: googleCallbackUrl(req),
@@ -77,10 +105,13 @@ export const googleCallback: RequestHandler = (req, res, next) => {
     if (!user) return next(new UnauthorizedError('Google authentication failed'));
     try {
       const tokens = await issueTokens(user, getSessionMetadata(req));
+      setAccessCookie(res, tokens.accessToken);
       setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
-      // Redirect back to frontend with access token in fragment (not query) to avoid server logs.
-      const redirectUrl = `${env.FRONTEND_POST_LOGIN_URL}#access_token=${tokens.accessToken}`;
-      res.redirect(redirectUrl);
+      const redirectUrl = new URL(env.FRONTEND_POST_LOGIN_URL);
+      redirectUrl.searchParams.set('session', '1');
+      const nextPath = decodeOAuthNextPath(actualState);
+      if (nextPath) redirectUrl.searchParams.set('next', nextPath);
+      res.redirect(redirectUrl.toString());
     } catch (e) {
       next(e);
     }
@@ -91,13 +122,15 @@ export const refresh: RequestHandler = async (req, res) => {
   const presented = req.cookies?.[REFRESH_COOKIE] as string | undefined;
   if (!presented) throw new UnauthorizedError('Missing refresh token');
   const tokens = await rotateRefresh(presented, getSessionMetadata(req));
+  setAccessCookie(res, tokens.accessToken);
   setRefreshCookie(res, tokens.refreshToken, tokens.refreshExpiresAt);
-  res.json({ accessToken: tokens.accessToken });
+  res.json({ ok: true });
 };
 
 export const logout: RequestHandler = async (req, res) => {
   const presented = req.cookies?.[REFRESH_COOKIE] as string | undefined;
   if (presented) await revokeRefresh(presented);
+  clearAccessCookie(res);
   clearRefreshCookie(res);
   res.status(204).end();
 };
@@ -135,9 +168,9 @@ export const devLogin: RequestHandler = async (req: Request, res) => {
     user,
     getSessionMetadata(req),
   );
+  setAccessCookie(res, accessToken);
   setRefreshCookie(res, refreshToken, refreshExpiresAt);
   res.json({
-    accessToken,
     user: { id: authUser.id, email: authUser.email, role: authUser.role },
   });
 };

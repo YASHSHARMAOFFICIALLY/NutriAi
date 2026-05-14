@@ -9,7 +9,7 @@ import {
   resetPasswordWithToken,
   verifyEmailWithToken,
 } from '../services/emailAuthService';
-import { setRefreshCookie } from '../utils/authCookies';
+import { setAccessCookie, setRefreshCookie } from '../utils/authCookies';
 import { getSessionMetadata } from '../utils/sessionMetadata';
 
 const sendAuthResponse = async (req: Request, res: Response, user: User): Promise<void> => {
@@ -17,9 +17,9 @@ const sendAuthResponse = async (req: Request, res: Response, user: User): Promis
     user,
     getSessionMetadata(req),
   );
+  setAccessCookie(res, accessToken);
   setRefreshCookie(res, refreshToken, refreshExpiresAt);
   res.json({
-    accessToken,
     user: { id: authUser.id, email: authUser.email, name: user.name, role: authUser.role },
   });
 };
