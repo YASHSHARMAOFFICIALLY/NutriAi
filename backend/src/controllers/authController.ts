@@ -16,7 +16,7 @@ import {
   setOAuthStateCookie,
   setRefreshCookie,
 } from '../utils/authCookies';
-import { AppError, BadRequestError, NotFoundError, UnauthorizedError } from '../utils/errors';
+import { BadRequestError, NotFoundError, UnauthorizedError } from '../utils/errors';
 import { requireUser } from '../utils/requestUser';
 import { getSessionMetadata } from '../utils/sessionMetadata';
 
@@ -76,7 +76,7 @@ const googleCallbackUrl = (req: Request): string => configuredGoogleCallbackUrl(
 
 export const googleStart: RequestHandler = (req, res, next) => {
   if (!googleConfigured()) {
-    throw new AppError(503, 'OAUTH_NOT_CONFIGURED', 'Google OAuth is not configured');
+    return res.redirect(`${env.FRONTEND_URL}/login?error=oauth_not_configured`);
   }
   const state = encodeOAuthState(randomBytes(32).toString('base64url'), safeFrontendPath(req.query.next));
   setOAuthStateCookie(res, state);
@@ -90,19 +90,26 @@ export const googleStart: RequestHandler = (req, res, next) => {
 };
 
 export const googleCallback: RequestHandler = (req, res, next) => {
+  const loginErrorUrl = (reason: string) => {
+    const url = new URL(`${env.FRONTEND_URL}/login`);
+    url.searchParams.set('error', reason);
+    return url.toString();
+  };
+
   if (!googleConfigured()) {
-    throw new AppError(503, 'OAUTH_NOT_CONFIGURED', 'Google OAuth is not configured');
+    return res.redirect(loginErrorUrl('oauth_not_configured'));
   }
   const expectedState = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
   const actualState = typeof req.query.state === 'string' ? req.query.state : '';
   clearOAuthStateCookie(res);
   if (!expectedState || !actualState || !stateMatches(actualState, expectedState)) {
-    throw new UnauthorizedError('Invalid OAuth state');
+    return res.redirect(loginErrorUrl('invalid_state'));
   }
   const options: GoogleAuthenticateOptions = { callbackURL: googleCallbackUrl(req), session: false };
   passport.authenticate('google', options, async (err: unknown, user: User | false) => {
-    if (err) return next(err);
-    if (!user) return next(new UnauthorizedError('Google authentication failed'));
+    if (err || !user) {
+      return res.redirect(loginErrorUrl('auth_failed'));
+    }
     try {
       const tokens = await issueTokens(user, getSessionMetadata(req));
       setAccessCookie(res, tokens.accessToken);
@@ -112,8 +119,8 @@ export const googleCallback: RequestHandler = (req, res, next) => {
       const nextPath = decodeOAuthNextPath(actualState);
       if (nextPath) redirectUrl.searchParams.set('next', nextPath);
       res.redirect(redirectUrl.toString());
-    } catch (e) {
-      next(e);
+    } catch {
+      res.redirect(loginErrorUrl('server_error'));
     }
   })(req, res, next);
 };

@@ -90,17 +90,25 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease } },
 };
 
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  oauth_not_configured: "Google sign-in is temporarily unavailable.",
+  invalid_state: "Session expired. Please try signing in again.",
+  auth_failed: "Google sign-in failed. Please try again.",
+  server_error: "Something went wrong. Please try again.",
+};
+
 function LoginContent() {
   const router = useRouter();
   const params = useSearchParams();
   const nextPath = safeNextPath(params.get("next"));
   const signupHref = withNextParam("/signup", nextPath);
+  const oauthError = params.get("error");
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(oauthError ? (OAUTH_ERROR_MESSAGES[oauthError] ?? "Sign-in failed. Please try again.") : null);
 
   const handleDevLogin = async () => {
     setDevLoading(true);
