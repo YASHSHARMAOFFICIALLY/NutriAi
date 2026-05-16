@@ -34,7 +34,7 @@ const plans = [
     features: [
       "Everything in Free",
       "Unlimited food analysis",
-      "Coach Ria AI chat",
+      "Coach Cuckoo AI chat",
       "Meal recommendations",
       "Weight tracking & trends",
       "Challenges & streaks",

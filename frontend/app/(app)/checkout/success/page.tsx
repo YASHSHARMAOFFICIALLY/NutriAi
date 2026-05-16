@@ -60,7 +60,7 @@ export default function CheckoutSuccessPage() {
               href="/coach"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-6 py-3 text-[14px] font-bold text-forest transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              Try Coach Ria
+              Try Coach Cuckoo
             </Link>
           </div>
         ) : (

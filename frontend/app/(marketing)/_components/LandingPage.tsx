@@ -36,7 +36,7 @@ const proof = [
   },
   {
     title: "Know the next meal",
-    body: "Coach Ria and recommendations use the user's day, goals, preferences, and remaining targets.",
+    body: "Coach Cuckoo and recommendations use the user's day, goals, preferences, and remaining targets.",
     icon: ChatCircleText,
   },
   {
@@ -92,9 +92,9 @@ const faqs = [
       "That is the core positioning. myNutriAI is built for real plates, including hostel meals, home-cooked thalis, rolls, rice bowls, and mixed Indian food.",
   },
   {
-    question: "Does Coach Ria use my daily targets?",
+    question: "Does Coach Cuckoo use my daily targets?",
     answer:
-      "Yes. Coach Ria uses saved meals, calorie target, macro gaps, preferences, allergies, and goal context before suggesting the next meal.",
+      "Yes. Coach Cuckoo uses saved meals, calorie target, macro gaps, preferences, allergies, and goal context before suggesting the next meal.",
   },
   {
     question: "How is my data stored?",
@@ -135,7 +135,7 @@ const pricing: Array<{
     subtitle: "Best for consistent users",
     featured: true,
     cta: "Start Pro",
-    items: ["Unlimited analysis", "Coach Ria", "Meal recommendations", "Weight tracking", "Challenges", "Weekly digest"],
+    items: ["Unlimited analysis", "Coach Cuckoo", "Meal recommendations", "Weight tracking", "Challenges", "Weekly digest"],
   },
   {
     id: "lifetime",
@@ -497,7 +497,7 @@ function CoachBubble() {
           <Sparkle size={18} weight="fill" />
         </span>
         <div>
-          <p className="font-semibold">Coach Ria</p>
+          <p className="font-semibold">Coach Cuckoo</p>
           <p className="text-[12px] text-white/58">next meal recommendation</p>
         </div>
       </div>
@@ -630,7 +630,7 @@ function ImmersiveProduct() {
 
               <div className="grid gap-4">
                 <div className="float-soft-delayed rounded-xl border border-white/16 bg-[#d7ff68] p-5 text-[#101510] shadow-[0_28px_80px_rgba(0,0,0,0.26)]">
-                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Ria recommendation • just now</p>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Cuckoo recommendation • just now</p>
                   <h3 className="mt-2 text-[24px] font-semibold">Make dinner protein-led.</h3>
                   <p className="mt-4 text-[14px] leading-6 opacity-76">You have enough carbs today. Add lean protein and vegetables, keep oils light.</p>
                   <div className="mt-5 grid grid-cols-3 gap-2">
@@ -847,7 +847,7 @@ function Pricing() {
               {featured && <span className="absolute -top-3 left-6 rounded-full bg-[#d7ff68] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[#101510]">Most popular</span>}
               <p className="text-[18px] font-semibold">{name}</p>
               <p className={featured ? "mt-2 text-[14px] text-white/62" : "mt-2 text-[14px] text-[#5f675f]"}>{subtitle}</p>
-              {featured && <p className="mt-5 rounded-lg border border-white/10 bg-white/8 px-3 py-2 text-[12px] font-bold text-[#d7ff68]">Best for consistent meal logging and Coach Ria.</p>}
+              {featured && <p className="mt-5 rounded-lg border border-white/10 bg-white/8 px-3 py-2 text-[12px] font-bold text-[#d7ff68]">Best for consistent meal logging and Coach Cuckoo.</p>}
               <p className="mt-8 flex items-baseline gap-1">
                 <span className="text-[48px] font-semibold leading-none">{price}</span>
                 <span className={featured ? "text-[14px] font-semibold text-white/58" : "text-[14px] font-semibold text-[#5f675f]"}>{period}</span>
@@ -986,7 +986,7 @@ function Final() {
             <h2 className="display-heading mt-4 max-w-3xl text-[50px] font-semibold leading-[0.98] md:text-[54px]">
               Turn the next meal into the next right decision.
             </h2>
-            <p className="mt-5 max-w-xl text-[16px] leading-7 opacity-70">Start tracking meals with myNutriAI, get coached by Ria, and build a nutrition habit that lasts.</p>
+            <p className="mt-5 max-w-xl text-[16px] leading-7 opacity-70">Start tracking meals with myNutriAI, get coached by Cuckoo, and build a nutrition habit that lasts.</p>
           </div>
           <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#101510] px-8 py-4 text-[15px] font-semibold text-white shadow-[0_16px_40px_rgba(16,21,16,0.18)] transition hover:bg-[#173c2b] hover:shadow-[0_20px_50px_rgba(16,21,16,0.24)]">
             Log your first meal

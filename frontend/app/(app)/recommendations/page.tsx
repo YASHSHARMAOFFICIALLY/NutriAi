@@ -99,7 +99,7 @@ export default function RecommendationsPage() {
         eyebrow="Next meal"
         title="Ideas from your own history"
         description="Suggestions are ranked against what is left today, your saved profile, and meals you already like."
-        action={{ label: "Ask Ria", href: "/coach" }}
+        action={{ label: "Ask Cuckoo", href: "/coach" }}
       />
       {source === "error" ? (
         <Panel className="mb-5 p-4">

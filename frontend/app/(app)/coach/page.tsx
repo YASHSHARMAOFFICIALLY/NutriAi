@@ -173,7 +173,7 @@ export default function CoachPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-5 sm:py-8 lg:px-8">
-      <PageHeader eyebrow="Coach Ria" title="Chat with nutrition context" />
+      <PageHeader eyebrow="Coach Cuckoo" title="Chat with nutrition context" />
       {loadError ? (
         <Panel className="mb-5 p-4">
           <p className="text-[13px] font-semibold text-[#b7791f]">Could not load coach context. Sign in and try again.</p>
@@ -268,7 +268,7 @@ export default function CoachPage() {
             }}
             className="mt-4 flex items-end gap-2 rounded-2xl border border-border bg-surface-alt p-2.5 transition-all focus-within:border-teal/30 focus-within:ring-2 focus-within:ring-teal/10 sm:gap-3 sm:p-3"
           >
-            <textarea className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1 text-[14px] outline-none" rows={1} placeholder="Ask Ria..." value={input} onChange={(event) => setInput(event.target.value)} />
+            <textarea className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1 text-[14px] outline-none" rows={1} placeholder="Ask Cuckoo..." value={input} onChange={(event) => setInput(event.target.value)} />
             <button disabled={sending || contextStatus === "loading" || !input.trim()} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-forest text-white transition-all hover:bg-forest-soft active:scale-95 disabled:opacity-60 sm:h-9 sm:w-9">
               <PaperPlaneTilt size={16} weight="fill" />
             </button>

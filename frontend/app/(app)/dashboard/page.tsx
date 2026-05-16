@@ -94,7 +94,7 @@ export default function DashboardPage() {
   const actions: Array<{ href: string; label: string; icon: ElementType }> = [
     { href: "/snap", label: "Analyze food", icon: Camera },
     { href: "/recommendations", label: "Pick from history", icon: Star },
-    { href: "/coach", label: "Ask Coach Ria", icon: ChatCircleText },
+    { href: "/coach", label: "Ask Coach Cuckoo", icon: ChatCircleText },
     { href: "/challenges", label: "Check in challenge", icon: Medal },
   ];
 
@@ -177,7 +177,7 @@ export default function DashboardPage() {
   const activationSteps = [
     { label: "Set nutrition targets", done: hasTargets, href: "/settings" },
     { label: "Log first meal today", done: hasMeals, href: "/snap" },
-    { label: "Ask Coach Ria once", done: Boolean(liveRec || hasMeals), href: "/coach" },
+    { label: "Ask Coach Cuckoo once", done: Boolean(liveRec || hasMeals), href: "/coach" },
     { label: "Join a challenge", done: Boolean(activeChallenge), href: "/challenges" },
   ];
   const activationComplete = activationSteps.filter((step) => step.done).length;
@@ -304,7 +304,7 @@ export default function DashboardPage() {
                         {liveRec ? "Open suggestion" : "Scan meal"}
                       </Link>
                       <Link href={hasMeals ? "/coach" : "/meals"} className="min-h-11 rounded-lg border border-white/20 bg-white/5 px-6 py-3 text-center text-[14px] font-bold backdrop-blur-sm transition-colors hover:bg-white/10">
-                        {hasMeals ? "Ask Ria" : "Open diary"}
+                        {hasMeals ? "Ask Cuckoo" : "Open diary"}
                       </Link>
                     </div>
                   </div>
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                   title="No meals logged today"
                   description="Start with a photo scan or type a short meal description. Your diary and daily progress update immediately after saving."
                   action={{ label: "Log first meal", href: "/snap" }}
-                  secondaryAction={{ label: hasTargets ? "Ask Coach Ria" : "Set targets", href: hasTargets ? "/coach" : "/settings" }}
+                  secondaryAction={{ label: hasTargets ? "Ask Coach Cuckoo" : "Set targets", href: hasTargets ? "/coach" : "/settings" }}
                 />
               )}
             </div>

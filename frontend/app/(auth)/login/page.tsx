@@ -17,7 +17,7 @@ import {
 
 const FEATURES = [
   "Snap a meal - calories back in seconds",
-  "AI coach Ria adapts your plan daily",
+  "AI coach Cuckoo adapts your plan daily",
   "Streaks and insights that actually stick",
 ] as const;
 
