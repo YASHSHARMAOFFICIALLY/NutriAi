@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign in - NutriAI",
-  description: "Access your NutriAI nutrition workspace.",
+  title: "Sign in",
+  description: "Access your myNutriAI nutrition workspace.",
   robots: {
     index: false,
     follow: false,

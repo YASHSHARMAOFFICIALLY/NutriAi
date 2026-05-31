@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { CheckCircle, Flag, MinusCircle, Plus, X } from "@phosphor-icons/react/dist/ssr";
 import { ApiError } from "@/lib/api/client";
-import { abandonChallenge, checkInToday, listMyChallenge, listPresets, startChallenge } from "@/lib/api/challenges";
-import type { ChallengePreset, UserChallengeDTO } from "@/lib/api/types";
+import { abandonChallenge, checkInToday, startChallenge } from "@/lib/api/challenges";
+import type { UserChallengeDTO } from "@/lib/api/types";
+import { useActiveChallenges, useAllChallenges, useChallengePresets } from "@/lib/hooks/swr";
 import { PageHeader, Panel, Skeleton, SourceBadge } from "../_components/ui";
 
 type ActiveChallenge = {
@@ -32,36 +33,21 @@ function fromUserChallenge(item: UserChallengeDTO): ActiveChallenge {
 }
 
 export default function ChallengesPage() {
-  const [active, setActive] = useState<ActiveChallenge | null>(null);
-  const [presets, setPresets] = useState<ChallengePreset[]>([]);
-  const [past, setPast] = useState<UserChallengeDTO[]>([]);
-  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
+  const { data: activeChallenges, mutate: mutateActive } = useActiveChallenges();
+  const { data: allChallenges, mutate: mutateAll } = useAllChallenges();
+  const { data: presetsData } = useChallengePresets();
+
+  const active = activeChallenges?.[0] ? fromUserChallenge(activeChallenges[0]) : null;
+  const past = (allChallenges ?? []).filter((r) => r.status !== "ACTIVE");
+  const presets = presetsData ?? [];
+  const source = activeChallenges && allChallenges && presetsData ? "live" : "loading";
+
   const [busy, setBusy] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
   const [customDescription, setCustomDescription] = useState("");
   const [customDurationDays, setCustomDurationDays] = useState(14);
   const [formError, setFormError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      listMyChallenge("ACTIVE").catch(() => []),
-      listMyChallenge().catch(() => []),
-      listPresets(),
-    ])
-      .then(([activeRows, allRows, presetRows]) => {
-        if (cancelled) return;
-        setActive(activeRows[0] ? fromUserChallenge(activeRows[0]) : null);
-        setPast(allRows.filter((row) => row.status !== "ACTIVE"));
-        setPresets(presetRows);
-        setSource("live");
-      })
-      .catch(() => setSource("error"));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const canCheckIn = Boolean(active && active.lastCheckInDate !== new Date().toISOString().slice(0, 10));
   const pastRows = past.map((row) => ({
@@ -76,37 +62,28 @@ export default function ChallengesPage() {
     setBusy(true);
     try {
       if (!active) return;
-      const updated = await checkInToday(active.id);
-      if (updated.status === "ACTIVE") {
-        setActive(fromUserChallenge(updated));
-      } else {
-        setPast((current) => [updated, ...current]);
-        setActive(null);
-      }
-      setSource("live");
+      await checkInToday(active.id);
+      await Promise.all([mutateActive(), mutateAll()]);
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : "Could not check in today.");
-      setSource("error");
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleStart(preset: ChallengePreset) {
+  async function handleStart(preset: typeof presets[number]) {
     setBusy(true);
     try {
-      const created = await startChallenge({
+      await startChallenge({
         challengeId: preset.id,
         title: preset.title,
         description: preset.description,
         durationDays: preset.durationDays,
       });
-      setActive(fromUserChallenge(created));
-      setSource("live");
+      await Promise.all([mutateActive(), mutateAll()]);
       setFormError(null);
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : "Could not start this challenge.");
-      setSource("error");
     } finally {
       setBusy(false);
     }
@@ -129,20 +106,18 @@ export default function ChallengesPage() {
     setBusy(true);
     setFormError(null);
     try {
-      const created = await startChallenge({
+      await startChallenge({
         title,
         description: description || null,
         durationDays: customDurationDays,
       });
-      setActive(fromUserChallenge(created));
+      await Promise.all([mutateActive(), mutateAll()]);
       setCustomTitle("");
       setCustomDescription("");
       setCustomDurationDays(14);
       setCreateOpen(false);
-      setSource("live");
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : "Could not create this challenge.");
-      setSource("error");
     } finally {
       setBusy(false);
     }
@@ -152,12 +127,10 @@ export default function ChallengesPage() {
     if (!active) return;
     setBusy(true);
     try {
-      const abandoned = await abandonChallenge(active.id);
-      setPast((current) => [abandoned, ...current]);
-      setActive(null);
-      setSource("live");
+      await abandonChallenge(active.id);
+      await Promise.all([mutateActive(), mutateAll()]);
     } catch {
-      setSource("error");
+      setFormError("Could not abandon the challenge.");
     } finally {
       setBusy(false);
     }

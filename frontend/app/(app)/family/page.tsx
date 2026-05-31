@@ -1,43 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AddressBook, Check, LinkSimple, MinusCircle, Prohibit } from "@phosphor-icons/react/dist/ssr";
 import {
   acceptFamilyInvite,
   createFamilyInvite,
-  getFamilyOverview,
   removeFamilyMember,
   revokeFamilyInvite,
 } from "@/lib/api/family";
-import type { FamilyInviteResponse, FamilyOverview } from "@/lib/api/types";
+import { useFamilyOverview } from "@/lib/hooks/swr";
+import type { FamilyInviteResponse } from "@/lib/api/types";
 import { PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
 export default function FamilyPage() {
-  const [overview, setOverview] = useState<FamilyOverview | null>(null);
+  const { data: overview, error: overviewError, mutate } = useFamilyOverview();
   const [email, setEmail] = useState("");
   const [acceptToken, setAcceptToken] = useState("");
   const [latestInvite, setLatestInvite] = useState<FamilyInviteResponse | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "saving" | "error">("loading");
+  const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    getFamilyOverview()
-      .then((data) => {
-        if (cancelled) return;
-        setOverview(data);
-        setMessage("");
-        setStatus("idle");
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setStatus("error");
-        setMessage("Family sharing is unavailable right now.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const status: "idle" | "loading" | "saving" | "error" = isSaving
+    ? "saving"
+    : overviewError
+      ? "error"
+      : overview === undefined
+        ? "loading"
+        : "idle";
 
   const members = useMemo(() => {
     const all = overview?.families.flatMap((family) => family.members) ?? [];
@@ -49,63 +38,63 @@ export default function FamilyPage() {
 
   async function handleInvite() {
     if (!email.trim()) return;
-    setStatus("saving");
+    setIsSaving(true);
     setMessage("");
     try {
       const invite = await createFamilyInvite(email.trim());
       setLatestInvite(invite);
       setEmail("");
-      await getFamilyOverview().then(setOverview);
+      await mutate();
       setMessage("Invite created. Share the invite code with your family member.");
-      setStatus("idle");
     } catch {
-      setStatus("error");
       setMessage("Couldn't create the invite. Check the email or existing membership.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
   async function handleAccept() {
     if (!acceptToken.trim()) return;
-    setStatus("saving");
+    setIsSaving(true);
     setMessage("");
     try {
       await acceptFamilyInvite(acceptToken.trim());
       setAcceptToken("");
       setLatestInvite(null);
-      await getFamilyOverview().then(setOverview);
+      await mutate();
       setMessage("Invite accepted. Shared analytics are now available.");
-      setStatus("idle");
     } catch {
-      setStatus("error");
       setMessage("Couldn't accept that invite. It may be expired or for a different email.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
   async function handleRemove(memberId: string) {
-    setStatus("saving");
+    setIsSaving(true);
     setMessage("");
     try {
       await removeFamilyMember(memberId);
-      await getFamilyOverview().then(setOverview);
+      await mutate();
       setMessage("Family member removed.");
-      setStatus("idle");
     } catch {
-      setStatus("error");
       setMessage("Couldn't remove that member.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
   async function handleRevoke(inviteId: string) {
-    setStatus("saving");
+    setIsSaving(true);
     setMessage("");
     try {
       await revokeFamilyInvite(inviteId);
-      await getFamilyOverview().then(setOverview);
+      await mutate();
       setMessage("Invite canceled.");
-      setStatus("idle");
     } catch {
-      setStatus("error");
       setMessage("Couldn't cancel that invite.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -127,9 +116,9 @@ export default function FamilyPage() {
         </section>
       )}
 
-      {message ? (
+      {(message || (overviewError && !overview)) ? (
         <div className={`mb-5 rounded-lg border p-4 text-[13px] font-semibold ${status === "error" ? "border-[#b7791f]/30 bg-[#fff8e7] text-[#8a5a10]" : "border-[#173c2b]/20 bg-[#eef5f2] text-[#173c2b]"}`}>
-          {message}
+          {message || "Family sharing is unavailable right now."}
         </div>
       ) : null}
 

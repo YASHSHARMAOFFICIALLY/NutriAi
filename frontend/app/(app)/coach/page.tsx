@@ -1,21 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PaperPlaneTilt, Sparkle } from "@phosphor-icons/react/dist/ssr";
-import { getStreak } from "@/lib/api/analytics";
-import { listMyChallenge } from "@/lib/api/challenges";
-import { deleteConversation, getConversation, listConversations, sendChatMessage } from "@/lib/api/chat";
+import { deleteConversation, getConversation, sendChatMessage } from "@/lib/api/chat";
 import { ApiError } from "@/lib/api/client";
-import { getDailySummary, listMeals } from "@/lib/api/meals";
-import { getProfile } from "@/lib/api/profile";
-import { getMealRecommendations } from "@/lib/api/recommendations";
-import type { ConversationSummary, MealDTO, UserChallengeDTO } from "@/lib/api/types";
+import type { MealDTO } from "@/lib/api/types";
+import { useConversations, useDailySummary, useMeals, useProfile, useRecommendations, useActiveChallenges } from "@/lib/hooks/swr";
 import { BudgetBar, MealLine, PageHeader, Panel, Skeleton } from "../_components/ui";
 import type { Meal } from "../_components/ui";
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function mealFromApi(meal: MealDTO): Meal {
   return {
@@ -46,66 +38,44 @@ function mealFromApi(meal: MealDTO): Meal {
 }
 
 export default function CoachPage() {
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  // --- SWR data fetching ---
+  const { data: conversations = [], mutate: mutateConversations } = useConversations();
+  const { data: daily } = useDailySummary();
+  const { data: apiMeals } = useMeals();
+  const { data: apiProfile } = useProfile();
+  const { data: apiRecs } = useRecommendations({ limit: 1 });
+  const { data: apiChallenges } = useActiveChallenges();
+
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; text: string }>>([]);
   const [input, setInput] = useState("");
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-  const [targets, setTargets] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-  const [topMeal, setTopMeal] = useState("");
-  const [activeChallenge, setActiveChallenge] = useState<UserChallengeDTO | null>(null);
-  const [allergies, setAllergies] = useState<string[]>([]);
-  const [loadError, setLoadError] = useState(false);
-  const [contextStatus, setContextStatus] = useState<"loading" | "ready" | "error">("loading");
   const [conversationStatus, setConversationStatus] = useState<"idle" | "loading">("idle");
   const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      listConversations().catch(() => []),
-      getDailySummary(todayISO()).catch(() => null),
-      listMeals(todayISO()).catch(() => []),
-      getProfile().catch(() => null),
-      getMealRecommendations({ limit: 1 }).catch(() => ({ remaining: { calories: null, protein: null, carbs: null, fat: null }, recommendations: [] })),
-      listMyChallenge("ACTIVE").catch(() => []),
-      getStreak().catch(() => null),
-    ])
-      .then(([apiConversations, daily, apiMeals, apiProfile, apiRecs, apiChallenges]) => {
-        if (cancelled) return;
-        setConversations(apiConversations);
-        if (daily) {
-          setTotals({
-            calories: Math.round(daily.totalCalories),
-            protein: Math.round(daily.totalProtein),
-            carbs: Math.round(daily.totalCarbs),
-            fat: Math.round(daily.totalFat),
-          });
-        }
-        if (apiMeals.length) setMeals(apiMeals.map(mealFromApi));
-        if (apiProfile) {
-          setTargets({
-            calories: apiProfile.dailyCalorieTarget ?? 0,
-            protein: apiProfile.proteinTargetG ?? 0,
-            carbs: apiProfile.carbsTargetG ?? 0,
-            fat: apiProfile.fatTargetG ?? 0,
-          });
-          setAllergies(apiProfile.allergies ?? []);
-        }
-        if (apiRecs.recommendations[0]) setTopMeal(apiRecs.recommendations[0].items.map((item) => item.name).join(", "));
-        setActiveChallenge(apiChallenges[0] ?? null);
-        setLoadError(false);
-        setContextStatus("ready");
-      })
-      .catch(() => {
-        setLoadError(true);
-        setContextStatus("error");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // --- Derive state from SWR data ---
+  const totals = useMemo(() => daily
+    ? { calories: Math.round(daily.totalCalories), protein: Math.round(daily.totalProtein), carbs: Math.round(daily.totalCarbs), fat: Math.round(daily.totalFat) }
+    : { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  [daily]);
+
+  const meals = useMemo(() => apiMeals?.length ? apiMeals.map(mealFromApi) : [], [apiMeals]);
+
+  const targets = useMemo(() => apiProfile
+    ? { calories: apiProfile.dailyCalorieTarget ?? 0, protein: apiProfile.proteinTargetG ?? 0, carbs: apiProfile.carbsTargetG ?? 0, fat: apiProfile.fatTargetG ?? 0 }
+    : { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  [apiProfile]);
+
+  const allergies = useMemo(() => apiProfile?.allergies ?? [], [apiProfile]);
+
+  const topMeal = useMemo(() => {
+    const first = apiRecs?.recommendations?.[0];
+    return first ? first.items.map((item) => item.name).join(", ") : "";
+  }, [apiRecs]);
+
+  const activeChallenge = apiChallenges?.[0] ?? null;
+
+  const contextStatus = daily !== undefined ? "ready" : "loading";
+  const [loadError, setLoadError] = useState(false);
 
   const liveRemaining = useMemo(() => ({
     calories: Math.max(0, targets.calories - totals.calories),
@@ -163,7 +133,7 @@ export default function CoachPage() {
   async function handleDeleteConversation(id: string) {
     try {
       await deleteConversation(id);
-      setConversations((current) => current.filter((item) => item.id !== id));
+      await mutateConversations(conversations.filter((item) => item.id !== id), { revalidate: false });
       if (conversationId === id) {
         setConversationId(null);
         setMessages([]);

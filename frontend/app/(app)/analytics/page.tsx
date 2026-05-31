@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
 import { getDailyAnalytics, getMacrosSummary, getStreak } from "@/lib/api/analytics";
-import { getFamilyDailyAnalytics, getFamilyMacrosSummary, getFamilyOverview, getFamilyStreak } from "@/lib/api/family";
-import { getProfile } from "@/lib/api/profile";
-import type { FamilyMemberDTO } from "@/lib/api/types";
+import { getFamilyDailyAnalytics, getFamilyMacrosSummary, getFamilyStreak } from "@/lib/api/family";
+import { useFamilyOverview, useProfile } from "@/lib/hooks/swr";
 import { PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
 type DayRow = {
@@ -18,43 +18,25 @@ type DayRow = {
 };
 
 export default function AnalyticsPage() {
-  const [days, setDays] = useState<DayRow[]>([]);
-  const [targets, setTargets] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-  const [streak, setStreak] = useState(0);
-  const [macroShare, setMacroShare] = useState({ protein: 0, carbs: 0, fat: 0 });
-  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
-  const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState("me");
+
+  const { data: familyOverview } = useFamilyOverview();
+  const familyMembers = useMemo(() => {
+    if (!familyOverview) return [];
+    const members = familyOverview.families.flatMap((family) => family.members).filter((member) => member.analyticsAccess);
+    return Array.from(new Map(members.map((member) => [member.id, member])).values());
+  }, [familyOverview]);
+
   const selectedMember = useMemo(
     () => familyMembers.find((member) => member.id === selectedMemberId) ?? null,
     [familyMembers, selectedMemberId],
   );
   const viewerLabel = selectedMember ? selectedMember.user.name || selectedMember.user.email : "Me";
 
-  function handleViewerChange(value: string) {
-    setSource("loading");
-    setSelectedMemberId(value);
-  }
+  const { data: profileData } = useProfile();
 
-  useEffect(() => {
-    let cancelled = false;
-    getFamilyOverview()
-      .then((overview) => {
-        if (cancelled) return;
-        const members = overview.families.flatMap((family) => family.members).filter((member) => member.analyticsAccess);
-        const unique = Array.from(new Map(members.map((member) => [member.id, member])).values());
-        setFamilyMembers(unique);
-      })
-      .catch(() => {
-        if (!cancelled) setFamilyMembers([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
+  const analyticsKey = selectedMember ? `analytics:family:${selectedMember.id}` : "analytics:own";
+  const { data: analyticsBundle } = useSWR(analyticsKey, async () => {
     const to = new Date();
     const from = new Date();
     from.setDate(to.getDate() - 6);
@@ -62,42 +44,46 @@ export default function AnalyticsPage() {
     const dailyRequest = selectedMember ? getFamilyDailyAnalytics(selectedMember.id, range) : getDailyAnalytics(range);
     const macrosRequest = selectedMember ? getFamilyMacrosSummary(selectedMember.id, range).catch(() => null) : getMacrosSummary(range).catch(() => null);
     const streakRequest = selectedMember ? getFamilyStreak(selectedMember.id).catch(() => null) : getStreak().catch(() => null);
-    const profileRequest = selectedMember ? Promise.resolve(null) : getProfile().catch(() => null);
+    const [daily, macros, apiStreak] = await Promise.all([dailyRequest, macrosRequest, streakRequest]);
+    return { daily, macros, apiStreak };
+  });
 
-    Promise.all([dailyRequest, macrosRequest, streakRequest, profileRequest])
-      .then(([daily, macros, apiStreak, apiProfile]) => {
-        if (cancelled) return;
-        const liveTargets = {
-          calories: daily.targets.calories ?? apiProfile?.dailyCalorieTarget ?? 0,
-          protein: daily.targets.protein ?? apiProfile?.proteinTargetG ?? 0,
-          carbs: daily.targets.carbs ?? apiProfile?.carbsTargetG ?? 0,
-          fat: daily.targets.fat ?? apiProfile?.fatTargetG ?? 0,
-        };
-        setTargets(liveTargets);
-        setDays(daily.days.map((day) => ({
-          date: new Date(day.date).toLocaleDateString([], { weekday: "short" }),
-          calories: Math.round(day.calories),
-          protein: Math.round(day.protein),
-          carbs: Math.round(day.carbs),
-          fat: Math.round(day.fat),
-          mealCount: day.mealCount,
-          calorieTargetPct: liveTargets.calories ? (day.calories / liveTargets.calories) * 100 : 0,
-        })));
-        if (macros) {
-          setMacroShare({
-            protein: Math.round(macros.energyShare.protein),
-            carbs: Math.round(macros.energyShare.carbs),
-            fat: Math.round(macros.energyShare.fat),
-          });
-        }
-        if (apiStreak) setStreak(apiStreak.loggingStreak);
-        setSource("live");
-      })
-      .catch(() => setSource("error"));
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedMember]);
+  const apiProfile = selectedMember ? null : profileData;
+  const daily = analyticsBundle?.daily;
+  const macros = analyticsBundle?.macros;
+  const apiStreak = analyticsBundle?.apiStreak;
+
+  const targets = daily
+    ? {
+        calories: daily.targets.calories ?? apiProfile?.dailyCalorieTarget ?? 0,
+        protein: daily.targets.protein ?? apiProfile?.proteinTargetG ?? 0,
+        carbs: daily.targets.carbs ?? apiProfile?.carbsTargetG ?? 0,
+        fat: daily.targets.fat ?? apiProfile?.fatTargetG ?? 0,
+      }
+    : { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+  const days: DayRow[] = daily
+    ? daily.days.map((day) => ({
+        date: new Date(day.date).toLocaleDateString([], { weekday: "short" }),
+        calories: Math.round(day.calories),
+        protein: Math.round(day.protein),
+        carbs: Math.round(day.carbs),
+        fat: Math.round(day.fat),
+        mealCount: day.mealCount,
+        calorieTargetPct: targets.calories ? (day.calories / targets.calories) * 100 : 0,
+      }))
+    : [];
+
+  const macroShare = macros
+    ? { protein: Math.round(macros.energyShare.protein), carbs: Math.round(macros.energyShare.carbs), fat: Math.round(macros.energyShare.fat) }
+    : { protein: 0, carbs: 0, fat: 0 };
+
+  const streak = apiStreak?.loggingStreak ?? 0;
+  const source = analyticsBundle ? "live" : "loading";
+
+  function handleViewerChange(value: string) {
+    setSelectedMemberId(value);
+  }
 
   const averages = useMemo(() => {
     const count = Math.max(1, days.length);

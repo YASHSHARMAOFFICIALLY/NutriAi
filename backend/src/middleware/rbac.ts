@@ -1,9 +1,15 @@
 import type { RequestHandler } from 'express';
 import type { Role } from '@prisma/client';
+import { env } from '../config/env';
 import { ForbiddenError, NotFoundError } from '../utils/errors';
 import { requireUser } from '../utils/requestUser';
 
-export const ADMIN_OWNER_EMAIL = 'yashsharmaofficially@gmail.com';
+const adminEmails = (): Set<string> =>
+  new Set(
+    env.ADMIN_EMAILS.split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+  );
 
 export const requireRole =
   (...roles: Role[]): RequestHandler =>
@@ -15,7 +21,7 @@ export const requireRole =
 
 export const requireAdminOwner: RequestHandler = (req, _res, next) => {
   const user = requireUser(req);
-  if (user.email.toLowerCase() !== ADMIN_OWNER_EMAIL) {
+  if (!adminEmails().has(user.email.toLowerCase())) {
     throw new NotFoundError();
   }
   next();

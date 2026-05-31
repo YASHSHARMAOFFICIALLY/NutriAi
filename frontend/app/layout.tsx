@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "lenis/dist/lenis.css";
 import "./globals.css";
@@ -26,9 +26,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#101510",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: siteName,
+  manifest: "/manifest.json",
   title: {
     default: "myNutriAI - AI Meal Scanner for US and Indian Meals",
     template: `%s | ${siteName}`,
@@ -39,9 +46,12 @@ export const metadata: Metadata = {
   creator: "NutriAI",
   publisher: "NutriAI",
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
     shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    apple: { url: "/apple-touch-icon.png", sizes: "180x180" },
   },
   alternates: {
     canonical: "/",

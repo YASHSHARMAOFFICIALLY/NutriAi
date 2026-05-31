@@ -8,11 +8,11 @@ const protectedPrefixes = [
   "/challenges",
   "/checkout",
   "/coach",
+  // NOTE: /pricing is intentionally NOT protected — unauthenticated users must see prices.
   "/dashboard",
   "/family",
   "/meals",
   "/onboarding",
-  "/pricing",
   "/recommendations",
   "/settings",
   "/snap",

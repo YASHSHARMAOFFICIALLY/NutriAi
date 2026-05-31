@@ -1,6 +1,8 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
 import { requireUser } from '../utils/requestUser';
+import { ForbiddenError } from '../utils/errors';
+import { isUserPro } from '../services/aiPolicy';
 import { rangeQuerySchema } from './analyticsController';
 import {
   acceptFamilyInvite,
@@ -40,6 +42,10 @@ export const familyOverviewHandler: RequestHandler = async (req, res) => {
 
 export const createFamilyInviteHandler: RequestHandler = async (req, res) => {
   const user = requireUser(req);
+  const userPro = await isUserPro(user.id);
+  if (!userPro) {
+    throw new ForbiddenError('Family sharing requires a Pro subscription. Upgrade to invite family members.');
+  }
   const body = req.body as CreateFamilyInviteBody;
   const result = await createFamilyInvite(user.id, null, body.email);
   res.status(201).json(result);

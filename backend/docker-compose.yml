@@ -4,14 +4,14 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: nutriai
-      POSTGRES_PASSWORD: nutriai
+      POSTGRES_PASSWORD: nutriai_dev_x7k9m2
       POSTGRES_DB: nutriai
     ports:
       - "5432:5432"
     volumes:
       - nutriai_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nutriai -d nutriai"]
+      test: ["CMD-SHELL", "pg_isready -U nutriai"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -19,12 +19,13 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    command: redis-server --requirepass nutriai_dev_r4p8q1
     ports:
       - "6379:6379"
     volumes:
       - nutriai_redis:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "nutriai_dev_r4p8q1", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10

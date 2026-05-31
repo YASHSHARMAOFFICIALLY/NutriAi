@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
 import { Camera } from "@phosphor-icons/react/dist/ssr";
 import { listHistory } from "@/lib/api/history";
-import { deleteMeal, listMeals } from "@/lib/api/meals";
+import { deleteMeal } from "@/lib/api/meals";
 import type { HistoryEntry, MealDTO } from "@/lib/api/types";
+import { useMeals } from "@/lib/hooks/swr";
 import { EmptyState, PageHeader, MealLine, Panel, Skeleton, SourceBadge, Stat } from "../_components/ui";
 import type { Meal } from "../_components/ui";
 import { useToast } from "@/lib/toast";
@@ -55,38 +57,28 @@ function formatDiaryDate(value: string) {
 
 export default function MealsPage() {
   const { toast } = useToast();
-  const [meals, setMeals] = useState<DiaryMeal[]>([]);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [activeFilter, setActiveFilter] = useState("Today");
   const [historyFrom, setHistoryFrom] = useState("");
   const [historyTo, setHistoryTo] = useState("");
   const [minCalories, setMinCalories] = useState("");
   const [maxCalories, setMaxCalories] = useState("");
-  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      listMeals(),
-      listHistory({
-        pageSize: 8,
-        from: historyFrom || undefined,
-        to: historyTo || undefined,
-        minCalories: minCalories ? Number(minCalories) : undefined,
-        maxCalories: maxCalories ? Number(maxCalories) : undefined,
-      }).catch(() => ({ data: [], total: 0, page: 1, pageSize: 8, totalPages: 1 })),
-    ])
-      .then(([apiMeals, apiHistory]) => {
-        if (cancelled) return;
-        setMeals(apiMeals.map(mealFromApi));
-        setHistory(apiHistory.data);
-        setSource("live");
-      })
-      .catch(() => setSource("error"));
-    return () => {
-      cancelled = true;
-    };
-  }, [historyFrom, historyTo, maxCalories, minCalories]);
+  const { data: mealsData, mutate: mutateMeals } = useMeals();
+  const defaultPaginated = { data: [] as HistoryEntry[], total: 0, page: 1, pageSize: 8, totalPages: 1 };
+  const historyKey = `history:${historyFrom}:${historyTo}:${minCalories}:${maxCalories}`;
+  const { data: historyData } = useSWR(historyKey, () =>
+    listHistory({
+      pageSize: 8,
+      from: historyFrom || undefined,
+      to: historyTo || undefined,
+      minCalories: minCalories ? Number(minCalories) : undefined,
+      maxCalories: maxCalories ? Number(maxCalories) : undefined,
+    }).catch(() => defaultPaginated),
+  );
+
+  const meals = (mealsData ?? []).map(mealFromApi);
+  const history = historyData?.data ?? [];
+  const source = mealsData && historyData ? "live" : "loading";
 
   const days = useMemo(() => {
     const groups = new Map<string, Meal[]>();
@@ -126,16 +118,15 @@ export default function MealsPage() {
 
   async function handleDeleteMeal(id: string) {
     if (!window.confirm("Delete this meal from your diary?")) return;
-    const previous = meals;
-    setMeals((current) => current.filter((meal) => meal.id !== id));
+    const previous = mealsData;
+    await mutateMeals((current) => current?.filter((meal) => meal.id !== id), { revalidate: false });
     try {
       await deleteMeal(id);
       toast("success", "Meal deleted.");
-      setSource("live");
+      await mutateMeals();
     } catch {
-      setMeals(previous);
+      await mutateMeals(previous, { revalidate: false });
       toast("error", "Could not delete meal.");
-      setSource("error");
     }
   }
 

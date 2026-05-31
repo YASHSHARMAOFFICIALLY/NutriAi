@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { siteDescription, siteName, siteUrl } from "../seo";
+import { seoKeywords, siteDescription, siteName, siteUrl } from "../seo";
 
 export const metadata: Metadata = {
   title: "AI Meal Scanner for US and Indian Meals",
   description: siteDescription,
+  keywords: seoKeywords,
   alternates: {
     canonical: siteUrl,
   },
@@ -13,14 +14,6 @@ export const metadata: Metadata = {
     description: siteDescription,
     url: siteUrl,
     siteName,
-    images: [
-      {
-        url: "/screenshot.png",
-        width: 1200,
-        height: 630,
-        alt: "myNutriAI AI nutrition tracker dashboard",
-      },
-    ],
   },
 };
 

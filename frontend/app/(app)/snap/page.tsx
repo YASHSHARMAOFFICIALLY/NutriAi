@@ -7,7 +7,7 @@ import { ArrowRight, Camera, CheckCircle, Crown, ImageSquare, ListChecks, Lock, 
 import { analyzeFood } from "@/lib/api/food";
 import { ApiError } from "@/lib/api/client";
 import { createMeal, inferMealType } from "@/lib/api/meals";
-import { getMyPlan, type UserPlan } from "@/lib/api/payments";
+import { usePlan } from "@/lib/hooks/swr";
 import { uploadFoodImage } from "@/lib/api/uploads";
 import type { AnalyzeFoodResponse, MealType } from "@/lib/api/types";
 import { EmptyState, PageHeader, Panel } from "../_components/ui";
@@ -77,8 +77,8 @@ export default function SnapPage() {
   const [inputMode, setInputMode] = useState<"photo" | "text">("photo");
   const [errorMessage, setErrorMessage] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
-  const [plan, setPlan] = useState<UserPlan | null>(null);
-  const [planLoaded, setPlanLoaded] = useState(false);
+  const { data: plan } = usePlan();
+  const planLoaded = plan !== undefined;
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const previewUrlRef = useRef("");
 
@@ -95,13 +95,6 @@ export default function SnapPage() {
     return () => {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
-  }, []);
-
-  useEffect(() => {
-    getMyPlan({ silent: true })
-      .then(setPlan)
-      .catch(() => setPlan({ tier: "FREE", status: "ACTIVE", currentPeriodEnd: null, cancelledAt: null }))
-      .finally(() => setPlanLoaded(true));
   }, []);
 
   function handleFileChange(file: File | null) {
@@ -141,6 +134,11 @@ export default function SnapPage() {
       setCandidate(candidateFromApi(result));
       setStatus("ready");
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        setUpgradeModalOpen(true);
+        setStatus("ready");
+        return;
+      }
       setErrorMessage(
         error instanceof ApiError
           ? error.message
@@ -689,7 +687,7 @@ export default function SnapPage() {
               </div>
               <p className="mt-6 text-[12px] font-bold uppercase tracking-[0.16em] text-teal">Pro feature</p>
               <h2 id="photo-upgrade-title" className="mt-2 text-[28px] font-bold tracking-tight text-forest">
-                Photo meal scans are for Premium.
+                Photo meal scans are for Pro.
               </h2>
               <p className="mt-3 text-[14px] leading-6 text-muted">
                 Upgrade to scan food images, get editable nutrition estimates, and keep every meal synced with your dashboard.
@@ -707,7 +705,7 @@ export default function SnapPage() {
                   href="/pricing"
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-forest px-5 text-[14px] font-bold text-white transition-colors hover:bg-forest-soft"
                 >
-                  View Premium
+                  View Pro Plans
                   <ArrowRight size={15} weight="bold" />
                 </Link>
                 <button

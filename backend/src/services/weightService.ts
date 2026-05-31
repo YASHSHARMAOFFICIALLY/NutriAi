@@ -1,6 +1,9 @@
 import type { WeightEntry } from '@prisma/client';
 import { prisma } from '../config/prisma';
-import { NotFoundError } from '../utils/errors';
+import { NotFoundError, RateLimitError } from '../utils/errors';
+import { isUserPro } from './aiPolicy';
+
+const FREE_WEIGHT_ENTRY_LIMIT = 10;
 
 export interface WeightEntryDTO {
   id: string;
@@ -24,6 +27,15 @@ export const createEntry = async (
   recordedAt: Date,
   note: string | null,
 ): Promise<WeightEntryDTO> => {
+  const userPro = await isUserPro(userId);
+  if (!userPro) {
+    const count = await prisma.weightEntry.count({ where: { userId } });
+    if (count >= FREE_WEIGHT_ENTRY_LIMIT) {
+      throw new RateLimitError(
+        `Free plan allows ${FREE_WEIGHT_ENTRY_LIMIT} weight entries. Upgrade to Pro for unlimited tracking.`,
+      );
+    }
+  }
   const entry = await prisma.weightEntry.create({
     data: { userId, weightKg, recordedAt, note },
   });

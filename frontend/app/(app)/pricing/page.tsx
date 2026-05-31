@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Crown, Lightning } from "@phosphor-icons/react/dist/ssr";
 import { UnauthorizedError } from "@/lib/api/client";
-import { createCheckout, type UserPlan } from "@/lib/api/payments";
-import { getMyPlan } from "@/lib/api/payments";
+import { createCheckout } from "@/lib/api/payments";
+import { usePlan } from "@/lib/hooks/swr";
 import { withNextParam } from "@/lib/safeRedirect";
 import { PageHeader, Panel } from "../_components/ui";
 
@@ -59,17 +60,12 @@ const plans = [
 ];
 
 function PricingContent() {
-  const [plan, setPlan] = useState<UserPlan | null>(null);
-  const [planLoaded, setPlanLoaded] = useState(false);
+  const searchParams = useSearchParams();
+  const { data: plan } = usePlan();
+  const planLoaded = plan !== undefined;
   const [loading, setLoading] = useState<"monthly" | "lifetime" | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    getMyPlan({ silent: true })
-      .then(setPlan)
-      .catch(() => {})
-      .finally(() => setPlanLoaded(true));
-  }, []);
+  const autoCheckoutFired = useRef(false);
 
   const handleCheckout = useCallback(async (planId: "monthly" | "lifetime") => {
     setLoading(planId);
@@ -89,6 +85,16 @@ function PricingContent() {
       setLoading(null);
     }
   }, []);
+
+  // Auto-resume checkout if redirected here after login with ?checkout=monthly|lifetime
+  useEffect(() => {
+    if (autoCheckoutFired.current) return;
+    const checkoutPlan = searchParams.get("checkout");
+    if (checkoutPlan === "monthly" || checkoutPlan === "lifetime") {
+      autoCheckoutFired.current = true;
+      handleCheckout(checkoutPlan);
+    }
+  }, [searchParams, handleCheckout]);
 
   const isPro = plan?.tier === "PRO" && (plan.status === "ACTIVE" || plan.status === "PAST_DUE");
   const trustItems = ["Secure checkout", "Editable AI results", "Cancel anytime", "No ads"];

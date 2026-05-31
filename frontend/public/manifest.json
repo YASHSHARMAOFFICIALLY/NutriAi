@@ -1,0 +1,27 @@
+{
+  "name": "myNutriAI - AI Meal Scanner",
+  "short_name": "myNutriAI",
+  "description": "AI meal scanner for US and Indian meals. Snap food photos, get editable calories, protein, and macro estimates.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f8f3",
+  "theme_color": "#101510",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AddressBook,
   Barbell,
@@ -19,10 +19,7 @@ import {
   Sparkle,
   Star,
 } from "@phosphor-icons/react/dist/ssr";
-import { fetchMe } from "@/lib/api/account";
-import { getDailySummary } from "@/lib/api/meals";
-import { getProfile } from "@/lib/api/profile";
-import { getMyPlan } from "@/lib/api/payments";
+import { useMe, usePlan, useDailySummary, useProfile } from "@/lib/hooks/swr";
 
 const baseNav = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Home", icon: House },
@@ -38,47 +35,27 @@ const baseNav = [
 ] as const;
 
 const adminNavItem = { href: "/admin", label: "Admin", shortLabel: "Admin", icon: ShieldCheck } as const;
-const adminOwnerEmail = "yashsharmaofficially@gmail.com";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [totals, setTotals] = useState({ calories: 0, protein: 0 });
-  const [targets, setTargets] = useState({ calories: 0, protein: 0 });
   const [expanded, setExpanded] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [isPro, setIsPro] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchMe()
-      .then((user) => { if (!cancelled) setIsAdmin(user.email.toLowerCase() === adminOwnerEmail); })
-      .catch(() => { if (!cancelled) setIsAdmin(false); });
-    getMyPlan()
-      .then((p) => { if (!cancelled) setIsPro(p.tier === "PRO" && (p.status === "ACTIVE" || p.status === "PAST_DUE")); })
-      .catch(() => {});
-    Promise.all([
-      getDailySummary(new Date().toISOString().slice(0, 10)),
-      getProfile().catch(() => null),
-    ])
-      .then(([daily, profile]) => {
-        if (cancelled) return;
-        setTotals({
-          calories: Math.round(daily.totalCalories),
-          protein: Math.round(daily.totalProtein),
-        });
-        if (profile) {
-          setTargets({
-            calories: profile.dailyCalorieTarget ?? 0,
-            protein: profile.proteinTargetG ?? 0,
-          });
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: me } = useMe();
+  const { data: plan } = usePlan();
+  const { data: daily } = useDailySummary();
+  const { data: profile } = useProfile();
+
+  const isAdmin = me?.role === "ADMIN";
+  const isPro = plan?.tier === "PRO" && (plan.status === "ACTIVE" || plan.status === "PAST_DUE");
+  const totals = {
+    calories: Math.round(daily?.totalCalories ?? 0),
+    protein: Math.round(daily?.totalProtein ?? 0),
+  };
+  const targets = {
+    calories: profile?.dailyCalorieTarget ?? 0,
+    protein: profile?.proteinTargetG ?? 0,
+  };
 
   const nav = useMemo(() => isAdmin ? [...baseNav, adminNavItem] : baseNav, [isAdmin]);
   const mobileNav = useMemo(() => nav.slice(0, 4), [nav]);

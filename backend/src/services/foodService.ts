@@ -13,8 +13,10 @@ import type { AICallResult, FoodAnalysisInput, FoodAnalysisResult } from '../ai/
 import type { FoodInputType } from '@prisma/client';
 import {
   assertDailyAiBudgetAllowed,
-  assertDailyImageAnalysisAllowed,
+  assertDailyTextAnalysisAllowed,
   assertFoodTextAllowed,
+  assertImageAnalysisAllowed,
+  isUserPro,
 } from './aiPolicy';
 import { getAiSettings } from './appSettingsService';
 
@@ -62,8 +64,15 @@ export const analyzeFood = async ({
   const hash = sha256Hex(canonicalize(canonicalInput));
   const isImageQuery = !!resolvedImageUrl;
   const inputType: FoodInputType = isImageQuery ? 'IMAGE' : 'TEXT';
-  if (isImageQuery && userId) {
-    await assertDailyImageAnalysisAllowed(userId, aiSettings.aiImageDailyLimit);
+
+  // Tier-aware limits: image is Pro-only, text has a free-tier daily cap.
+  if (userId) {
+    const userPro = await isUserPro(userId);
+    if (isImageQuery) {
+      await assertImageAnalysisAllowed(userId, userPro, aiSettings.aiImageDailyLimit);
+    } else {
+      await assertDailyTextAnalysisAllowed(userId, userPro);
+    }
   }
 
   // ── Tier 0: Redis cache (identical query, any source) ──────────────────────

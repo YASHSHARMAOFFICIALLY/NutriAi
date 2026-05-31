@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowRight, Calculator, ForkKnife, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
+import { MealCalcTable } from "./_components/MealCalcTable";
 import { updateProfile } from "@/lib/api/profile";
 import { sexLabels, activityLabels, goalLabels } from "@/lib/enumLabels";
 
@@ -139,7 +140,7 @@ export default function OnboardingPage() {
               </div>
             </div>
             <div className="mt-6 grid gap-2">
-              {["Body and goal", "Food rules", "Notifications", "First meal"].map((step, index) => (
+              {["Body and goal", "Food rules", "Notifications", "Meal calculator", "First meal"].map((step, index) => (
                 <div key={step} className="flex items-center gap-3 rounded-md bg-white/10 px-3 py-2">
                   <span className="grid h-7 w-7 place-items-center rounded-md bg-[#d7ff68] text-[12px] font-bold text-[#173c2b]">{index + 1}</span>
                   <span className="text-[13px] font-semibold text-white/82">{step}</span>
@@ -252,10 +253,23 @@ export default function OnboardingPage() {
               </div>
             </section>
 
+            {targets.calories > 0 && (
+              <section className="rounded-xl border border-black/10 bg-white p-5 shadow-[0_16px_48px_rgba(16,21,16,0.07)]">
+                <div className="mb-5">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#0f8b8d]">Step 4</p>
+                  <h2 className="mt-1 text-[26px] font-semibold">See what your target looks like</h2>
+                  <p className="mt-2 text-[14px] leading-6 text-[#5f675f]">
+                    Pick foods you normally eat and see how they stack up against your {targets.calories} kcal daily target.
+                  </p>
+                </div>
+                <MealCalcTable targetCalories={targets.calories} targetProtein={targets.protein} goal={form.goal} />
+              </section>
+            )}
+
             <section className="rounded-xl border border-black/10 bg-white p-5 shadow-[0_16px_48px_rgba(16,21,16,0.07)]">
               <div className="grid gap-4 md:grid-cols-[1fr_260px] md:items-center">
                 <div>
-                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#0f8b8d]">Step 4</p>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#0f8b8d]">Step 5</p>
                   <h2 className="mt-1 text-[26px] font-semibold">Start with one real meal</h2>
                   <p className="mt-2 text-[14px] leading-6 text-[#5f675f]">
                     Once the profile is saved, log a first meal so your dashboard, recommendations, and coach have real context.

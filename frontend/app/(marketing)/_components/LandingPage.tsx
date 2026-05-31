@@ -192,7 +192,7 @@ function ScrollProgress() {
   }, []);
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[60] h-1 bg-transparent">
+    <div className="fixed inset-x-0 top-0 z-[60] h-1 bg-transparent" role="progressbar" aria-label="Page scroll progress" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
       <div
         className="h-full bg-[#d7ff68] shadow-[0_0_20px_rgba(215,255,104,0.55)]"
         style={{ transform: `scaleX(${progress})`, transformOrigin: "left" }}
@@ -211,7 +211,7 @@ function Nav() {
           </span>
           myNutriAI
         </Link>
-        <nav className="hidden items-center gap-7 text-[14px] font-medium text-white/76 md:flex">
+        <nav aria-label="Main navigation" className="hidden items-center gap-7 text-[14px] font-medium text-white/76 md:flex">
           <a href="#estimate" className="rounded-full border border-[#d7ff68]/30 bg-[#d7ff68]/12 px-3 py-1.5 text-[#d7ff68] transition hover:bg-[#d7ff68] hover:text-[#101510]">Try demo</a>
           <a href="#product" className="hover:text-white">Product</a>
           <a href="#loop" className="hover:text-white">Routine</a>
@@ -312,11 +312,11 @@ function Hero() {
             ))}
           </div>
 
-          <div className="hero-reveal hero-delay-3 mt-6 rounded-2xl border border-white/14 bg-white/10 p-4 backdrop-blur-xl lg:hidden">
+          <div className="hero-reveal hero-delay-3 mt-6 rounded-2xl border border-white/14 bg-white/10 p-4 backdrop-blur-xl lg:hidden" aria-hidden="true">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#d7ff68]">Meal saved</p>
-                <h2 className="mt-1 text-[20px] font-semibold">Greek bowl</h2>
+                <p className="mt-1 text-[20px] font-semibold">Greek bowl</p>
               </div>
               <span className="rounded-full bg-[#d7ff68] px-3 py-1 text-[11px] font-bold text-[#101510]">92% sure</span>
             </div>
@@ -348,7 +348,7 @@ function Hero() {
 
 function HeroVisual() {
   return (
-    <div className="hero-reveal hero-delay-2 hidden w-full items-center justify-end lg:flex lg:-translate-y-[4%]">
+    <div className="hero-reveal hero-delay-2 hidden w-full items-center justify-end lg:flex lg:-translate-y-[4%]" aria-hidden="true">
       <div className="relative flex aspect-[1.08/1] w-full items-center justify-center">
         <div className="phone-glow absolute left-[52%] top-[44%] h-[74%] w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d7ff68]/18 blur-[120px]" />
         <div className="absolute inset-[12%] rounded-full border border-white/8 bg-white/[0.018]" />
@@ -401,7 +401,7 @@ function FloatingPhone() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#6f796f]">Lunch analysis</p>
-                    <h3 className="mt-1 text-[18px] font-semibold leading-tight xl:text-[20px]">Paneer thali</h3>
+                    <p className="mt-1 text-[18px] font-semibold leading-tight xl:text-[20px]">Paneer thali</p>
                   </div>
                   <span className="rounded-full bg-[#d7ff68] px-2.5 py-1 text-[10px] font-bold text-[#101510] shadow-[0_8px_18px_rgba(215,255,104,0.30)]">
                     92% sure
@@ -544,7 +544,7 @@ function ProductMoments() {
                 </div>
               )}
               <div className="absolute inset-0 opacity-30 transition duration-500 group-hover:scale-110 group-hover:opacity-50">
-                <Image src={image} alt="" fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover" />
+                <Image src={image} alt={`${kicker} step illustration`} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover" />
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-[#101510] via-[#101510]/74 to-transparent" />
               <div className="absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 group-hover:shadow-[inset_0_0_0_1px_rgba(215,255,104,0.34)]" />
@@ -608,7 +608,7 @@ function ImmersiveProduct() {
                     Live
                   </span>
                 </div>
-                <h3 className="mt-3 text-[26px] font-semibold">Paneer rice bowl</h3>
+                <p className="mt-3 text-[26px] font-semibold">Paneer rice bowl</p>
                 <div className="mt-5 grid grid-cols-4 gap-2">
                   {["640", "38g", "74g", "21g"].map((v, i) => (
                     <div key={v} className="rounded-md bg-[#f2f5f1] p-3">
@@ -631,7 +631,7 @@ function ImmersiveProduct() {
               <div className="grid gap-4">
                 <div className="float-soft-delayed rounded-xl border border-white/16 bg-[#d7ff68] p-5 text-[#101510] shadow-[0_28px_80px_rgba(0,0,0,0.26)]">
                   <p className="text-[12px] font-bold uppercase tracking-[0.14em] opacity-70">Cuckoo recommendation • just now</p>
-                  <h3 className="mt-2 text-[24px] font-semibold">Make dinner protein-led.</h3>
+                  <p className="mt-2 text-[24px] font-semibold">Make dinner protein-led.</p>
                   <p className="mt-4 text-[14px] leading-6 opacity-76">You have enough carbs today. Add lean protein and vegetables, keep oils light.</p>
                   <div className="mt-5 grid grid-cols-3 gap-2">
                     {["dal", "curd", "tofu"].map((item) => (
@@ -792,7 +792,7 @@ function Personalization() {
               </div>
               <div className="h-full rounded-xl border border-[#d7ff68]/60 bg-[#101510] p-5 text-white shadow-[0_18px_50px_rgba(16,21,16,0.12)]">
                 <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-[#d7ff68]">AI preview</p>
-                <h3 className="mt-3 text-[22px] font-semibold">Protein low today.</h3>
+                <p className="mt-3 text-[22px] font-semibold">Protein low today.</p>
                 <p className="mt-3 text-[14px] leading-6 text-white/70">Suggested dinner: paneer + curd rice with cucumber salad.</p>
               </div>
             </div>
@@ -899,16 +899,20 @@ function Pricing() {
 }
 
 function SeoHub() {
+  const remainingPages = seoPages.filter(
+    (page) => !["ai-meal-scanner", "indian-meal-calorie-tracker", "us-meal-calorie-tracker"].includes(page.slug)
+  );
+
   return (
     <section className="border-t border-black/10 bg-[#f8f8f3] px-5 py-20 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-3xl">
           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#0f8b8d]">Related guides</p>
           <h2 className="mt-4 text-[36px] font-semibold leading-tight text-[#173c2b] md:text-[44px]">
-            A few practical guides for real meal tracking.
+            Practical guides for real meal tracking.
           </h2>
           <p className="mt-5 text-[16px] leading-7 text-[#5f675f]">
-            Kept short so the landing page stays focused on trying the product.
+            Explore calorie and macro tracking guides for the meals you actually eat.
           </p>
         </div>
         <div className="mt-10 grid items-stretch gap-4 lg:grid-cols-3">
@@ -927,6 +931,33 @@ function SeoHub() {
               </span>
             </Link>
           ))}
+        </div>
+        <div className="mt-6 grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {remainingPages.map((page) => (
+            <Link
+              key={page.slug}
+              href={`/${page.slug}`}
+              className="group flex items-center gap-3 rounded-lg border border-black/8 bg-white px-4 py-3.5 transition hover:border-[#173c2b]/30 hover:shadow-[0_8px_24px_rgba(16,21,16,0.06)]"
+            >
+              <span className="shrink-0 grid h-8 w-8 place-items-center rounded-md bg-[#eef5f2] text-[#173c2b] transition group-hover:bg-[#d7ff68] group-hover:text-[#101510]">
+                <ForkKnife size={14} weight="bold" />
+              </span>
+              <span>
+                <span className="block text-[14px] font-semibold text-[#173c2b]">{page.primaryKeyword}</span>
+                <span className="block text-[12px] text-[#5f675f]">{page.eyebrow}</span>
+              </span>
+              <ArrowRight size={12} weight="bold" className="ml-auto shrink-0 text-[#5f675f] transition group-hover:translate-x-0.5 group-hover:text-[#173c2b]" />
+            </Link>
+          ))}
+        </div>
+        <div className="mt-8 text-center">
+          <Link
+            href="/guides"
+            className="inline-flex items-center gap-2 rounded-lg border border-black/10 bg-white px-5 py-2.5 text-[14px] font-semibold text-[#173c2b] transition hover:border-[#173c2b]/30 hover:shadow-[0_8px_24px_rgba(16,21,16,0.06)]"
+          >
+            View all guides
+            <ArrowRight size={14} weight="bold" />
+          </Link>
         </div>
       </div>
     </section>
@@ -976,7 +1007,7 @@ function FAQ() {
 
 function Final() {
   return (
-    <section className="relative overflow-hidden bg-[#d7ff68] px-5 py-24 text-[#101510] lg:px-8 lg:py-28">
+    <footer className="relative overflow-hidden bg-[#d7ff68] px-5 py-24 text-[#101510] lg:px-8 lg:py-28">
       <div className="absolute right-[-90px] top-[-120px] h-[360px] w-[360px] rounded-full border-[50px] border-[#101510]/10" />
       <div className="absolute bottom-[-80px] left-[-60px] h-[260px] w-[260px] rounded-full border-[40px] border-[#101510]/6" />
       <div className="relative mx-auto max-w-7xl">
@@ -997,7 +1028,7 @@ function Final() {
           © 2026 myNutriAI. AI-powered nutrition tracking for real meals.
         </p>
       </div>
-    </section>
+    </footer>
   );
 }
 

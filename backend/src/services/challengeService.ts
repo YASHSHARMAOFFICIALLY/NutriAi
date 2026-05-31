@@ -1,6 +1,9 @@
 import type { ChallengeCategory, ChallengeStatus } from '@prisma/client';
 import { prisma } from '../config/prisma';
-import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
+import { BadRequestError, NotFoundError, ForbiddenError, RateLimitError } from '../utils/errors';
+import { isUserPro } from './aiPolicy';
+
+const FREE_ACTIVE_CHALLENGE_LIMIT = 1;
 
 export interface CreateUserChallengeInput {
   challengeId?: string;
@@ -44,6 +47,19 @@ export const createUserChallenge = async (userId: string, input: CreateUserChall
       where: { userId, challengeId: input.challengeId, status: 'ACTIVE' },
     });
     if (existing) throw new BadRequestError('You already have this challenge active.');
+  }
+
+  // Free users: limited active challenges.
+  const userPro = await isUserPro(userId);
+  if (!userPro) {
+    const activeCount = await prisma.userChallenge.count({
+      where: { userId, status: 'ACTIVE' },
+    });
+    if (activeCount >= FREE_ACTIVE_CHALLENGE_LIMIT) {
+      throw new RateLimitError(
+        `Free plan allows ${FREE_ACTIVE_CHALLENGE_LIMIT} active challenge. Upgrade to Pro for unlimited.`,
+      );
+    }
   }
 
   return prisma.userChallenge.create({

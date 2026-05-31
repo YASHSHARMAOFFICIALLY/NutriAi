@@ -120,7 +120,8 @@ export function siteNavigationJsonLd() {
       { "@type": "SiteNavigationElement", position: 2, name: "Indian Meal Tracker", url: absoluteUrl("/indian-meal-calorie-tracker") },
       { "@type": "SiteNavigationElement", position: 3, name: "US Meal Tracker", url: absoluteUrl("/us-meal-calorie-tracker") },
       { "@type": "SiteNavigationElement", position: 4, name: "Macro Tracker", url: absoluteUrl("/macro-tracker") },
-      { "@type": "SiteNavigationElement", position: 5, name: "Pricing", url: absoluteUrl("/pricing") },
+      { "@type": "SiteNavigationElement", position: 5, name: "Guides", url: absoluteUrl("/guides") },
+      { "@type": "SiteNavigationElement", position: 6, name: "Pricing", url: absoluteUrl("/pricing") },
     ],
   };
 }

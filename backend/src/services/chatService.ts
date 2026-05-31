@@ -11,7 +11,7 @@ import type { ChatMessage, ChatResult } from '../ai/provider';
 import type { Prisma } from '@prisma/client';
 import { startOfUtcDay } from '../utils/date';
 import { assertChatMessageAllowed } from './chatPolicy';
-import { assertDailyAiBudgetAllowed } from './aiPolicy';
+import { assertDailyAiBudgetAllowed, getChatDailyLimit, isUserPro } from './aiPolicy';
 import { getAiSettings } from './appSettingsService';
 
 interface SendMessageArgs {
@@ -78,9 +78,10 @@ const countDailyChatMessages = async (userId: string, now: Date = new Date()): P
 
 export const sendMessage = async ({ userId, conversationId, message, title }: SendMessageArgs) => {
   const aiSettings = await getAiSettings();
+  const userPro = await isUserPro(userId);
   const messagesUsedToday = await countDailyChatMessages(userId);
   assertChatMessageAllowed(message, messagesUsedToday, {
-    dailyMessageLimit: aiSettings.aiChatDailyMessageLimit,
+    dailyMessageLimit: getChatDailyLimit(userPro, aiSettings.aiChatDailyMessageLimit),
     maxWordsPerMessage: aiSettings.aiChatMaxWords,
   });
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createWeight, deleteWeight, listWeight, type WeightEntry } from "@/lib/api/weight";
-import { getProfile } from "@/lib/api/profile";
+import { useMemo, useRef, useState } from "react";
+import { createWeight, deleteWeight, type WeightEntry } from "@/lib/api/weight";
+import { useWeight, useProfile } from "@/lib/hooks/swr";
 import { PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
 type WeightRow = { id: string; date: string; weightKg: number; note: string };
@@ -17,35 +17,26 @@ function rowFromApi(entry: WeightEntry): WeightRow {
 }
 
 export default function WeightPage() {
-  const [entries, setEntries] = useState<WeightRow[]>([]);
+  const { data: weightData, error: weightError, mutate: mutateWeight } = useWeight(90);
+  const { data: profileData } = useProfile();
+
   const [weight, setWeight] = useState("");
   const [note, setNote] = useState("");
-  const [targetWeight, setTargetWeight] = useState<number | null>(null);
-  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
   const [saving, setSaving] = useState(false);
+  const formInitRef = useRef(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      listWeight({ limit: 90 }),
-      getProfile().catch(() => null),
-    ])
-      .then(([res, apiProfile]) => {
-        if (cancelled) return;
-        if (res.entries.length) {
-          const rows = res.entries.map(rowFromApi);
-          setEntries(rows);
-          setWeight(rows[0].weightKg.toFixed(1));
-          setNote(rows[0].note);
-        }
-        if (apiProfile?.targetWeightKg) setTargetWeight(apiProfile.targetWeightKg);
-        setSource("live");
-      })
-      .catch(() => setSource("error"));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const targetWeight = profileData?.targetWeightKg ?? null;
+  const source: "loading" | "live" | "error" = weightError ? "error" : weightData === undefined ? "loading" : "live";
+
+  const entries = useMemo(() => weightData?.entries.map(rowFromApi) ?? [], [weightData]);
+
+  // Initialize form from first entry once
+  if (weightData && !formInitRef.current && weightData.entries.length) {
+    formInitRef.current = true;
+    const first = weightData.entries[0];
+    setWeight(first.weightKg.toFixed(1));
+    setNote(first.note ?? "Logged weight");
+  }
 
   const latest = entries[0];
   const first = entries[entries.length - 1];
@@ -60,24 +51,26 @@ export default function WeightPage() {
     setSaving(true);
     try {
       const entry = await createWeight({ weightKg: value, note });
-      setEntries((current) => [rowFromApi(entry), ...current.filter((row) => row.id !== entry.id)]);
-      setSource("live");
+      await mutateWeight(
+        weightData ? { ...weightData, entries: [entry, ...weightData.entries.filter((e) => e.id !== entry.id)] } : undefined,
+        { revalidate: true },
+      );
     } catch {
-      setSource("error");
+      // error state derived from SWR
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    const previous = entries;
-    setEntries((current) => current.filter((entry) => entry.id !== id));
+    if (!weightData) return;
+    const optimistic = { ...weightData, entries: weightData.entries.filter((e) => e.id !== id) };
     try {
+      await mutateWeight(optimistic, { revalidate: false });
       await deleteWeight(id);
-      setSource("live");
+      await mutateWeight();
     } catch {
-      setEntries(previous);
-      setSource("error");
+      await mutateWeight();
     }
   }
 

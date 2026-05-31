@@ -1,12 +1,11 @@
 "use client";
 
-import { notFound, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { notFound } from "next/navigation";
+import { useState, type ReactNode } from "react";
 import { AddressBook, Gauge, Key, MagnifyingGlass, Pulse, SealWarning, Sparkle } from "@phosphor-icons/react";
-import { fetchMe } from "@/lib/api/account";
-import { getAdminActivity, getAdminAiSettings, getAdminOverview, getAdminRuntime, getAdminUsage, getAdminUserDetail, listAdminUsers, updateAdminAiSettings } from "@/lib/api/admin";
-import { ApiError } from "@/lib/api/client";
-import type { AdminActivityItem, AdminAiSettings, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserDetail, AdminUserRow, UserRole } from "@/lib/api/types";
+import { getAdminUserDetail, updateAdminAiSettings } from "@/lib/api/admin";
+import type { AdminAiSettings, AdminOverview, AdminRuntimeResponse, AdminUsageResponse, AdminUserDetail } from "@/lib/api/types";
+import { useMe, useAdminOverview, useAdminUsers, useAdminUsage, useAdminActivity, useAdminRuntime, useAdminAiSettings } from "@/lib/hooks/swr";
 import { PageHeader, Panel, Stat } from "../_components/ui";
 
 const emptyOverview: AdminOverview = {
@@ -111,108 +110,55 @@ function formatFeatureName(value: string) {
 }
 
 type AdminAccess = "checking" | "authorized" | "denied";
-const adminOwnerEmail = "yashsharmaofficially@gmail.com";
 
 export default function AdminPage() {
-  const router = useRouter();
-  const [access, setAccess] = useState<AdminAccess>("checking");
-  const [overview, setOverview] = useState(emptyOverview);
-  const [users, setUsers] = useState<AdminUserRow[]>([]);
-  const [usage, setUsage] = useState(emptyUsage);
-  const [runtime, setRuntime] = useState(emptyRuntime);
-  const [activity, setActivity] = useState<AdminActivityItem[]>([]);
-  const [aiSettings, setAiSettings] = useState<AdminAiSettings>(emptyAiSettings);
+  // --- Auth check via SWR ---
+  const { data: me, error: meError } = useMe();
+  const access: AdminAccess = meError ? "denied" : me ? (me.role === "ADMIN" ? "authorized" : "denied") : "checking";
+
+  // --- Filter state ---
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<"ALL" | "USER" | "ADMIN">("ALL");
   const [usageFrom, setUsageFrom] = useState("");
   const [usageTo, setUsageTo] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
+
+  // --- SWR data ---
+  const authorized = access === "authorized";
+  const { data: overview = emptyOverview, error: overviewError } = useAdminOverview(authorized);
+  const { data: usersData } = useAdminUsers(authorized, { search, role: role === "ALL" ? undefined : role as "USER" | "ADMIN", page, limit: 10 });
+  const { data: usage = emptyUsage } = useAdminUsage(authorized, { from: usageFrom || undefined, to: usageTo || undefined });
+  const { data: activity = [] } = useAdminActivity(authorized, 10);
+  const { data: runtime = emptyRuntime } = useAdminRuntime(authorized);
+  const { data: swrAiSettings, mutate: mutateAiSettings } = useAdminAiSettings(authorized);
+
+  const filteredUsers = usersData?.items ?? [];
+  const totalPages = usersData?.totalPages ?? 1;
+  const source: "loading" | "live" | "error" = overviewError ? "error" : overview === emptyOverview && authorized ? "loading" : "live";
+
+  // --- Local mutation state (AI settings are editable, so need local copy) ---
+  const [aiSettingsLocal, setAiSettingsLocal] = useState<AdminAiSettings | null>(null);
+  const aiSettings = aiSettingsLocal ?? swrAiSettings ?? emptyAiSettings;
+
   const [savingAiSettings, setSavingAiSettings] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUserDetail | null>(null);
   const [userDetailsById, setUserDetailsById] = useState<Record<string, AdminUserDetail>>({});
   const [userDetailStatus, setUserDetailStatus] = useState<"idle" | "loading" | "error">("idle");
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchMe()
-      .then((user) => {
-        if (cancelled) return;
-        if (user.email.toLowerCase() === adminOwnerEmail) {
-          setAccess("authorized");
-          return;
-        }
-        setAccess("denied");
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setAccess("denied");
-        router.replace("/login?next=/admin");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
-
-  useEffect(() => {
-    if (access !== "authorized") return;
-    let cancelled = false;
-    Promise.all([
-      getAdminOverview(),
-      listAdminUsers({ search, role: role === "ALL" ? undefined : role as UserRole, page, limit: 10 }),
-      getAdminUsage({ from: usageFrom || undefined, to: usageTo || undefined }),
-      getAdminActivity(10),
-      getAdminRuntime(),
-      getAdminAiSettings(),
-    ])
-      .then(([apiOverview, apiUsers, apiUsage, apiActivity, apiRuntime, apiAiSettings]) => {
-        if (cancelled) return;
-        setOverview(apiOverview);
-        setUsers(apiUsers.items);
-        setTotalPages(apiUsers.totalPages);
-        setUsage(apiUsage);
-        setActivity(apiActivity.items);
-        setRuntime(apiRuntime);
-        setAiSettings(apiAiSettings);
-        setSource("live");
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        if (error instanceof ApiError && error.status === 403) {
-          setAccess("denied");
-          return;
-        }
-        if (error instanceof ApiError && error.status === 401) {
-          setAccess("denied");
-          router.replace("/login?next=/admin");
-          return;
-        }
-        setSource("error");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [access, page, role, router, search, usageFrom, usageTo]);
-
-  const filteredUsers = useMemo(() => users, [users]);
-
   function updateAiField<K extends keyof AdminAiSettings>(key: K, value: string) {
     const numeric = Number(value);
-    setAiSettings((current) => ({
-      ...current,
-      [key]: Number.isFinite(numeric) ? numeric : current[key],
-    }));
+    if (!Number.isFinite(numeric)) return;
+    setAiSettingsLocal((current) => ({ ...(current ?? swrAiSettings ?? emptyAiSettings), [key]: numeric }));
   }
 
   async function handleSaveAiSettings() {
     setSavingAiSettings(true);
     try {
       const next = await updateAdminAiSettings(aiSettings);
-      setAiSettings(next);
-      setSource("live");
+      setAiSettingsLocal(next);
+      await mutateAiSettings(next, false);
     } catch {
-      setSource("error");
+      // error visible via SWR
     } finally {
       setSavingAiSettings(false);
     }
@@ -365,7 +311,7 @@ export default function AdminPage() {
             <div className="space-y-3">
               {[
                 ["API failures", `${overview.api.failedCallsToday} failed public calls today`],
-                ["Unverified users", `${users.filter((user) => !user.emailVerified).length} accounts need email verification`],
+                ["Unverified users", `${filteredUsers.filter((user) => !user.emailVerified).length} accounts need email verification`],
                 ["Usage", `$${overview.ai.costThisWeekUsd.toFixed(2)} weekly total`],
               ].map(([title, sub]) => (
                 <div key={title} className="rounded-md bg-[#f8f8f3] p-3">

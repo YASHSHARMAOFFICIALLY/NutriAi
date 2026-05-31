@@ -3,6 +3,9 @@ import { z } from 'zod';
 import type { MealType } from '@prisma/client';
 import { requireUser } from '../utils/requestUser';
 import { recommendMeals } from '../services/recommendationService';
+import { isUserPro } from '../services/aiPolicy';
+
+const FREE_RECOMMENDATION_LIMIT = 2;
 
 const MealTypeSchema = z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']);
 
@@ -39,12 +42,18 @@ export const recommendMealsHandler: RequestHandler = async (req, res) => {
       }
     : undefined;
 
+  const userPro = await isUserPro(user.id);
+  const effectiveLimit = userPro ? q.limit : Math.min(q.limit, FREE_RECOMMENDATION_LIMIT);
+
   const result = await recommendMeals({
     userId: user.id,
     mealType: q.mealType as MealType | undefined,
-    limit: q.limit,
+    limit: effectiveLimit,
     remainingOverride,
   });
 
-  res.json(result);
+  res.json({
+    ...result,
+    limited: !userPro && result.recommendations.length >= FREE_RECOMMENDATION_LIMIT,
+  });
 };

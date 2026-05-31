@@ -24,6 +24,16 @@ export function SeoArticlePage({ page, relatedPages = [] }: { page: SeoPage; rel
         </div>
       </header>
 
+      <nav aria-label="Breadcrumb" className="border-b border-black/6 bg-white/60">
+        <ol className="mx-auto flex max-w-7xl items-center gap-2 px-5 py-3 text-[13px] text-[#5f675f] lg:px-8">
+          <li><Link href="/" className="hover:text-[#173c2b]">Home</Link></li>
+          <li aria-hidden="true">/</li>
+          <li><Link href="/guides" className="hover:text-[#173c2b]">Guides</Link></li>
+          <li aria-hidden="true">/</li>
+          <li className="font-semibold text-[#173c2b]">{page.primaryKeyword}</li>
+        </ol>
+      </nav>
+
       <article>
         <section className="border-b border-black/10 bg-[#101510] px-5 py-20 text-white lg:px-8">
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">

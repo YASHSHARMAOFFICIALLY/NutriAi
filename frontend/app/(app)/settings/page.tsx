@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AddressBook, Bell, CopySimple, CreditCard, Gear, Key, PaperPlaneTilt, TrashSimple } from "@phosphor-icons/react/dist/ssr";
-import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api/apiKeys";
-import { createCheckout, getMyPlan, type UserPlan } from "@/lib/api/payments";
-import { deleteProfile, getProfile, updateProfile } from "@/lib/api/profile";
-import { createTelegramLink, getTelegramStatus, unlinkTelegram, type TelegramLink, type TelegramStatus } from "@/lib/api/telegram";
+import { createApiKey, revokeApiKey } from "@/lib/api/apiKeys";
+import { createCheckout } from "@/lib/api/payments";
+import { deleteProfile, updateProfile } from "@/lib/api/profile";
+import { createTelegramLink, unlinkTelegram, type TelegramLink, type TelegramStatus } from "@/lib/api/telegram";
 import type { ActivityLevel, ApiKeyRow, Goal, IssuedApiKey, Sex, UserProfile } from "@/lib/api/types";
+import { useProfile, usePlan, useTelegramStatus, useApiKeys } from "@/lib/hooks/swr";
 import { CheckRow, PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 import { sexLabels, activityLabels, goalLabels } from "@/lib/enumLabels";
 import { useToast } from "@/lib/toast";
@@ -69,38 +70,26 @@ function formatDate(value: string | null) {
 
 export default function SettingsPage() {
   const { toast } = useToast();
+
+  const { data: profileData, error: profileError } = useProfile();
+  const { data: plan } = usePlan();
+  const { data: telegramStatusData } = useTelegramStatus();
+  const { data: apiKeysData } = useApiKeys();
+
   const [form, setForm] = useState<ProfileForm>(formFromProfile());
-  const [plan, setPlan] = useState<UserPlan | null>(null);
   const [apiKeys, setApiKeys] = useState<ApiKeyRow[]>([]);
   const [apiKeyName, setApiKeyName] = useState("");
   const [issuedApiKey, setIssuedApiKey] = useState<IssuedApiKey | null>(null);
   const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null);
   const [telegramLink, setTelegramLink] = useState<TelegramLink | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      getProfile(),
-      getMyPlan().catch(() => null),
-      getTelegramStatus().catch(() => null),
-      listApiKeys().catch(() => []),
-    ])
-      .then(([apiProfile, apiPlan, tgStatus, keys]) => {
-        if (cancelled) return;
-        setForm(formFromProfile(apiProfile));
-        setPlan(apiPlan);
-        setTelegramStatus(tgStatus);
-        setApiKeys(keys);
-        setSource("live");
-      })
-      .catch(() => setSource("error"));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const source: "loading" | "live" | "error" = profileError ? "error" : profileData === undefined ? "loading" : "live";
+
+  useEffect(() => { if (profileData) setForm(formFromProfile(profileData)); }, [profileData]);
+  useEffect(() => { if (telegramStatusData !== undefined) setTelegramStatus(telegramStatusData); }, [telegramStatusData]);
+  useEffect(() => { if (apiKeysData) setApiKeys(apiKeysData); }, [apiKeysData]);
 
   const derived = useMemo(() => {
     const sex = form.sex;
@@ -166,10 +155,8 @@ export default function SettingsPage() {
       });
       setForm(formFromProfile(updated));
       toast("success", "Profile saved.");
-      setSource("live");
     } catch {
       toast("error", "Could not save profile.");
-      setSource("error");
     } finally {
       setSaving(false);
     }
@@ -186,10 +173,8 @@ export default function SettingsPage() {
       setForm(formFromProfile(null));
       setConfirmDelete(false);
       toast("success", "Nutrition profile deleted.");
-      setSource("live");
     } catch {
       toast("error", "Could not delete profile.");
-      setSource("error");
     } finally {
       setSaving(false);
     }

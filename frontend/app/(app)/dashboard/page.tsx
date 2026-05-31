@@ -2,14 +2,10 @@
 
 import Link from "next/link";
 import type { ElementType } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Camera, ChatCircleText, CheckCircle, Circle, Medal, Star } from "@phosphor-icons/react/dist/ssr";
-import { getStreak } from "@/lib/api/analytics";
-import { listMyChallenge } from "@/lib/api/challenges";
-import { getDailySummary, listMeals } from "@/lib/api/meals";
-import { getProfile } from "@/lib/api/profile";
-import { getMealRecommendations } from "@/lib/api/recommendations";
-import type { DailySummary, Goal, MealDTO, MealRecommendation, UserChallengeDTO } from "@/lib/api/types";
+import type { DailySummary, MealDTO } from "@/lib/api/types";
+import { useDailySummary, useMeals, useProfile, useRecommendations, useActiveChallenges, useStreak } from "@/lib/hooks/swr";
 import { BudgetBar, EmptyState, MealLine, PageHeader, Panel, Stat } from "../_components/ui";
 import type { Meal } from "../_components/ui";
 import { goalLabels } from "@/lib/enumLabels";
@@ -82,14 +78,31 @@ function getGreeting() {
 }
 
 export default function DashboardPage() {
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-  const [targets, setTargets] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-  const [goal, setGoal] = useState<Goal | null>(null);
-  const [streak, setStreak] = useState(0);
-  const [activeChallenge, setActiveChallenge] = useState<UserChallengeDTO | null>(null);
-  const [liveRec, setLiveRec] = useState<MealRecommendation | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const { data: daily, error: dailyError } = useDailySummary();
+  const { data: rawMeals, error: mealsError } = useMeals();
+  const { data: profile } = useProfile();
+  const { data: recsData } = useRecommendations({ limit: 1 });
+  const { data: activeChallenges } = useActiveChallenges();
+  const { data: streakData } = useStreak();
+
+  const status = daily && rawMeals ? "ready" : dailyError || mealsError ? "error" : "loading";
+  const meals = (rawMeals ?? []).map(mealFromApi);
+  const totals = {
+    calories: safeNumber(Math.round(daily?.totalCalories ?? 0)),
+    protein: safeNumber(Math.round(daily?.totalProtein ?? 0)),
+    carbs: safeNumber(Math.round(daily?.totalCarbs ?? 0)),
+    fat: safeNumber(Math.round(daily?.totalFat ?? 0)),
+  };
+  const targets = {
+    calories: profile?.dailyCalorieTarget ?? 0,
+    protein: profile?.proteinTargetG ?? 0,
+    carbs: profile?.carbsTargetG ?? 0,
+    fat: profile?.fatTargetG ?? 0,
+  };
+  const goal = profile?.goal ?? null;
+  const liveRec = recsData?.recommendations[0] ?? null;
+  const activeChallenge = activeChallenges?.[0] ?? null;
+  const streak = streakData?.loggingStreak ?? 0;
 
   const actions: Array<{ href: string; label: string; icon: ElementType }> = [
     { href: "/snap", label: "Analyze food", icon: Camera },
@@ -97,46 +110,6 @@ export default function DashboardPage() {
     { href: "/coach", label: "Ask Coach Cuckoo", icon: ChatCircleText },
     { href: "/challenges", label: "Check in challenge", icon: Medal },
   ];
-
-  useEffect(() => {
-    let cancelled = false;
-    const today = todayISO();
-    Promise.all([
-      getDailySummary(today).catch(() => emptyDailySummary(today)),
-      listMeals(today).catch(() => []),
-      getProfile().catch(() => null),
-      getMealRecommendations({ limit: 1 }).catch(() => ({ remaining: { calories: null, protein: null, carbs: null, fat: null }, recommendations: [] })),
-      listMyChallenge("ACTIVE").catch(() => []),
-      getStreak().catch(() => null),
-    ])
-      .then(([daily, apiMeals, apiProfile, apiRecs, apiChallenges, apiStreak]) => {
-        if (cancelled) return;
-        setTotals({
-          calories: safeNumber(Math.round(daily.totalCalories)),
-          protein: safeNumber(Math.round(daily.totalProtein)),
-          carbs: safeNumber(Math.round(daily.totalCarbs)),
-          fat: safeNumber(Math.round(daily.totalFat)),
-        });
-        setMeals(apiMeals.map(mealFromApi));
-        if (apiProfile) {
-          setGoal(apiProfile.goal);
-          setTargets({
-            calories: apiProfile.dailyCalorieTarget ?? 0,
-            protein: apiProfile.proteinTargetG ?? 0,
-            carbs: apiProfile.carbsTargetG ?? 0,
-            fat: apiProfile.fatTargetG ?? 0,
-          });
-        }
-        setLiveRec(apiRecs.recommendations[0] ?? null);
-        setActiveChallenge(apiChallenges[0] ?? null);
-        if (apiStreak) setStreak(apiStreak.loggingStreak);
-        setStatus("ready");
-      })
-      .catch(() => setStatus("error"));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const remaining = useMemo(() => ({
     calories: Math.max(0, safeNumber(targets.calories) - safeNumber(totals.calories)),
