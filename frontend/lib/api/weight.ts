@@ -34,6 +34,3 @@ export function listWeight(params: { from?: string; to?: string; limit?: number 
 export function deleteWeight(id: string): Promise<void> {
   return apiFetch<void>(`/weight/${id}`, { method: "DELETE" });
 }
-
-export const kgToLb = (kg: number) => kg * 2.20462;
-export const lbToKg = (lb: number) => lb / 2.20462;

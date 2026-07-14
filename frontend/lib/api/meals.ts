@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import { withQuery } from "./query";
+import { todayKey } from "@/lib/date";
 import type { CreateMealInput, DailySummary, MealDTO } from "./types";
 
 interface ListMealsResponse {
@@ -7,8 +8,10 @@ interface ListMealsResponse {
   meals: MealDTO[];
 }
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+interface ListMealsRangeResponse {
+  from: string;
+  to: string;
+  meals: MealDTO[];
 }
 
 export async function createMeal(input: CreateMealInput): Promise<MealDTO> {
@@ -20,8 +23,14 @@ export async function createMeal(input: CreateMealInput): Promise<MealDTO> {
 }
 
 export function listMeals(date?: string): Promise<MealDTO[]> {
-  const resolvedDate = date ?? todayISO();
+  const resolvedDate = date ?? todayKey();
   return apiFetch<ListMealsResponse>(withQuery("/meals", { date: resolvedDate })).then(
+    (res) => res.meals,
+  );
+}
+
+export function listMealsRange(from: string, to: string): Promise<MealDTO[]> {
+  return apiFetch<ListMealsRangeResponse>(withQuery("/meals", { from, to })).then(
     (res) => res.meals,
   );
 }

@@ -1,74 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ElementType } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import { Camera, ChatCircleText, CheckCircle, Circle, Medal, Star } from "@phosphor-icons/react/dist/ssr";
-import type { DailySummary, MealDTO } from "@/lib/api/types";
 import { useDailySummary, useMeals, useProfile, useRecommendations, useActiveChallenges, useStreak } from "@/lib/hooks/swr";
-import { BudgetBar, EmptyState, MealLine, PageHeader, Panel, Stat } from "../_components/ui";
-import type { Meal } from "../_components/ui";
+import { useTargets, useRemaining } from "@/lib/nutrition";
+import { mealFromApi } from "@/lib/mealAdapters";
+import { BudgetBar, EmptyState, MealLine, PageHeader, Panel, Stat, StatSkeleton, Skeleton } from "../_components/ui";
 import { goalLabels } from "@/lib/enumLabels";
 
 function safeNumber(value: number, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function emptyDailySummary(date: string): DailySummary {
-  return {
-    date,
-    totalCalories: 0,
-    totalProtein: 0,
-    totalCarbs: 0,
-    totalFat: 0,
-    totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    byMealType: {
-      BREAKFAST: { calories: 0, protein: 0, carbs: 0, fat: 0, count: 0 },
-      LUNCH: { calories: 0, protein: 0, carbs: 0, fat: 0, count: 0 },
-      DINNER: { calories: 0, protein: 0, carbs: 0, fat: 0, count: 0 },
-      SNACK: { calories: 0, protein: 0, carbs: 0, fat: 0, count: 0 },
-    },
-    mealCount: 0,
-  };
-}
-
-function mealFromApi(meal: MealDTO): Meal {
-  return {
-    id: meal.id,
-    mealType: meal.mealType,
-    title: meal.notes || meal.items[0]?.name || meal.mealType.toLowerCase(),
-    loggedAt: new Date(meal.loggedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    source: meal.foodQueryId ? "IMAGE" : "TEXT",
-    provider: "db",
-    cached: false,
-    confidence: 1,
-    totals: {
-      calories: Math.round(meal.totalCalories),
-      protein: Math.round(meal.totalProtein),
-      carbs: Math.round(meal.totalCarbs),
-      fat: Math.round(meal.totalFat),
-    },
-    items: meal.items.map((item) => ({
-      name: item.name,
-      quantity: item.quantity ?? "",
-      calories: Math.round(item.calories),
-      protein: Math.round(item.protein),
-      carbs: Math.round(item.carbs),
-      fat: Math.round(item.fat),
-      confidence: 1,
-    })),
-  };
-}
-
-import { motion } from "framer-motion";
-
-// ... existing helper functions (todayISO, mealFromApi) unchanged
-
-import { StatSkeleton, Skeleton } from "../_components/ui";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -78,26 +24,38 @@ function getGreeting() {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { data: daily, error: dailyError } = useDailySummary();
   const { data: rawMeals, error: mealsError } = useMeals();
-  const { data: profile } = useProfile();
+  const { data: profile, error: profileError, isLoading: profileLoading } = useProfile();
   const { data: recsData } = useRecommendations({ limit: 1 });
   const { data: activeChallenges } = useActiveChallenges();
   const { data: streakData } = useStreak();
 
-  const status = daily && rawMeals ? "ready" : dailyError || mealsError ? "error" : "loading";
+  const targets = useTargets();
+  const remaining = useRemaining();
+
+  // A resolved profile fetch (not loading, no transient error) that returns null
+  // means the user has not onboarded yet — route them to onboarding once.
+  const profileResolved = !profileLoading && !profileError;
+  const needsOnboarding = profileResolved && profile === null;
+  useEffect(() => {
+    if (needsOnboarding) router.replace("/onboarding");
+  }, [needsOnboarding, router]);
+
+  const profilePending = profileLoading || (profile === null && !profileError);
+  const status =
+    daily && rawMeals && !profilePending
+      ? "ready"
+      : dailyError || mealsError
+        ? "error"
+        : "loading";
   const meals = (rawMeals ?? []).map(mealFromApi);
   const totals = {
     calories: safeNumber(Math.round(daily?.totalCalories ?? 0)),
     protein: safeNumber(Math.round(daily?.totalProtein ?? 0)),
     carbs: safeNumber(Math.round(daily?.totalCarbs ?? 0)),
     fat: safeNumber(Math.round(daily?.totalFat ?? 0)),
-  };
-  const targets = {
-    calories: profile?.dailyCalorieTarget ?? 0,
-    protein: profile?.proteinTargetG ?? 0,
-    carbs: profile?.carbsTargetG ?? 0,
-    fat: profile?.fatTargetG ?? 0,
   };
   const goal = profile?.goal ?? null;
   const liveRec = recsData?.recommendations[0] ?? null;
@@ -110,13 +68,6 @@ export default function DashboardPage() {
     { href: "/coach", label: "Ask Coach Cuckoo", icon: ChatCircleText },
     { href: "/challenges", label: "Check in challenge", icon: Medal },
   ];
-
-  const remaining = useMemo(() => ({
-    calories: Math.max(0, safeNumber(targets.calories) - safeNumber(totals.calories)),
-    protein: Math.max(0, safeNumber(targets.protein) - safeNumber(totals.protein)),
-    carbs: Math.max(0, safeNumber(targets.carbs) - safeNumber(totals.carbs)),
-    fat: Math.max(0, safeNumber(targets.fat) - safeNumber(totals.fat)),
-  }), [targets, totals]);
 
   const hasTargets = safeNumber(targets.calories) > 0;
   const hasMeals = meals.length > 0;
@@ -148,7 +99,7 @@ export default function DashboardPage() {
   const targetToneClass =
     !hasTargets ? "bg-surface-alt text-muted" : goalProgress >= 95 ? "bg-amber-50 text-[#8a5514]" : "bg-lime/50 text-forest";
   const activationSteps = [
-    { label: "Set nutrition targets", done: hasTargets, href: "/settings" },
+    { label: "Set nutrition targets", done: hasTargets, href: "/onboarding" },
     { label: "Log first meal today", done: hasMeals, href: "/snap" },
     { label: "Ask Coach Cuckoo once", done: Boolean(liveRec || hasMeals), href: "/coach" },
     { label: "Join a challenge", done: Boolean(activeChallenge), href: "/challenges" },
@@ -189,12 +140,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10"
     >
-      <PageHeader 
+      <PageHeader
         eyebrow={`${greeting} · ${hasMeals ? "Today is in progress" : "Start today's log"}`}
         title="Today's nutrition"
         description={`${goal ? `${goalLabels[goal]} goal. ` : ""}${dailyInsight}`}
@@ -218,7 +169,7 @@ export default function DashboardPage() {
                 <Camera size={17} weight="bold" />
                 Log meal
               </Link>
-              <Link href={hasTargets ? "/recommendations" : "/settings"} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface-alt px-5 py-3 text-[14px] font-bold text-forest transition-colors hover:bg-white">
+              <Link href={hasTargets ? "/recommendations" : "/onboarding"} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface-alt px-5 py-3 text-[14px] font-bold text-forest transition-colors hover:bg-white">
                 <Star size={17} weight="bold" />
                 {hasTargets ? "Next meal idea" : "Set targets"}
               </Link>
@@ -231,18 +182,18 @@ export default function DashboardPage() {
             </div>
             <div className="h-4 overflow-hidden rounded-full bg-white">
               <div
-                className={`h-full rounded-full transition-all duration-700 ${goalProgress >= 95 ? "bg-[#b7791f]" : "bg-forest"}`}
+                className={`h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none ${goalProgress >= 95 ? "bg-[#b7791f]" : "bg-forest"}`}
                 style={{ width: `${hasTargets ? Math.min(100, goalProgress) : 0}%` }}
               />
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-lg bg-white p-4">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Calories left</p>
-                <p className="mt-2 text-[24px] font-bold text-forest">{hasTargets ? remaining.calories : "-"}</p>
+                <p className="mt-2 text-[24px] font-bold text-forest tabular-nums">{hasTargets ? remaining.calories : "-"}</p>
               </div>
               <div className="rounded-lg bg-white p-4">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Protein left</p>
-                <p className="mt-2 text-[24px] font-bold text-forest">{targets.protein > 0 ? `${remaining.protein}g` : "-"}</p>
+                <p className="mt-2 text-[24px] font-bold text-forest tabular-nums">{targets.protein > 0 ? `${remaining.protein}g` : "-"}</p>
               </div>
             </div>
           </div>
@@ -307,7 +258,7 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {meals.length > 0 ? (
                 meals.map((meal, i) => (
-                  <motion.div key={meal.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.1 }}>
+                  <motion.div key={meal.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(0.4, 0.1 + i * 0.05) }}>
                     <MealLine meal={meal} />
                   </motion.div>
                 ))
@@ -317,7 +268,7 @@ export default function DashboardPage() {
                   title="No meals logged today"
                   description="Start with a photo scan or type a short meal description. Your diary and daily progress update immediately after saving."
                   action={{ label: "Log first meal", href: "/snap" }}
-                  secondaryAction={{ label: hasTargets ? "Ask Coach Cuckoo" : "Set targets", href: hasTargets ? "/coach" : "/settings" }}
+                  secondaryAction={{ label: hasTargets ? "Ask Coach Cuckoo" : "Set targets", href: hasTargets ? "/coach" : "/onboarding" }}
                 />
               )}
             </div>
@@ -384,13 +335,13 @@ export default function DashboardPage() {
               </div>
               <div className="grid grid-cols-7 gap-2">
                 {challengeDuration > 0 ? Array.from({ length: challengeDuration }, (_, index) => (
-                  <div 
-                    key={index} 
-                    className={`h-10 rounded-lg transition-all ${
-                      index < challengeDays 
-                        ? "bg-forest shadow-sm" 
+                  <div
+                    key={index}
+                    className={`h-10 rounded-lg ${
+                      index < challengeDays
+                        ? "bg-forest shadow-sm"
                         : "bg-surface-alt border border-border"
-                    }`} 
+                    }`}
                   />
                 )) : <p className="col-span-7 text-[13px] font-semibold text-muted">Start a challenge to track progress.</p>}
               </div>

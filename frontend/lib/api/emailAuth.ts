@@ -1,3 +1,4 @@
+import { identify } from "@hellyeah/x-ray";
 import { apiFetch } from "./client";
 import { setAuthSessionMarker } from "./auth";
 import type { User } from "./types";
@@ -29,6 +30,7 @@ export async function login(input: {
     retry: false,
   });
   setAuthSessionMarker();
+  identify(res.user.id, { email: res.user.email });
   return res.user;
 }
 
@@ -40,6 +42,7 @@ export async function verifyEmail(token: string): Promise<AuthResponse["user"]> 
     retry: false,
   });
   setAuthSessionMarker();
+  identify(res.user.id, { email: res.user.email });
   return res.user;
 }
 

@@ -1,9 +1,10 @@
 "use client";
 
-import useSWR, { type SWRConfiguration } from "swr";
+import useSWR, { type SWRConfiguration, type SWRResponse } from "swr";
 import { fetchMe } from "@/lib/api/account";
 import { getAdminActivity, getAdminAiSettings, getAdminOverview, getAdminRuntime, getAdminUsage, listAdminUsers } from "@/lib/api/admin";
-import { getDailySummary, listMeals } from "@/lib/api/meals";
+import { getDailySummary, listMeals, listMealsRange } from "@/lib/api/meals";
+import { ApiError } from "@/lib/api/client";
 import { getProfile } from "@/lib/api/profile";
 import { getMyPlan } from "@/lib/api/payments";
 import { getMealRecommendations } from "@/lib/api/recommendations";
@@ -17,8 +18,7 @@ import { listApiKeys } from "@/lib/api/apiKeys";
 import type { User, UserProfile, DailySummary, MealDTO, MealRecommendationsResponse, UserChallengeDTO, ChallengePreset, ConversationSummary, FamilyOverview, AdminOverview, AdminUsersResponse, AdminUsageResponse, AdminActivityItem, AdminRuntimeResponse, AdminAiSettings, UserRole } from "@/lib/api/types";
 import type { UserPlan } from "@/lib/api/payments";
 import type { WeightListResponse } from "@/lib/api/weight";
-
-const todayISO = () => new Date().toISOString().slice(0, 10);
+import { todayKey } from "@/lib/date";
 
 // Shared SWR config: dedupe within 10s, revalidate on focus
 const defaults: SWRConfiguration = { dedupingInterval: 10_000, revalidateOnFocus: true };
@@ -28,21 +28,35 @@ export function useMe(config?: SWRConfiguration) {
 }
 
 export function usePlan(config?: SWRConfiguration) {
-  return useSWR<UserPlan>("plan", () => getMyPlan({ silent: true }).catch(() => ({ tier: "FREE" as const, status: "ACTIVE" as const, currentPeriodEnd: null, cancelledAt: null })), { ...defaults, ...config });
+  return useSWR<UserPlan>("plan", () => getMyPlan({ silent: true }), { ...defaults, ...config });
 }
 
 export function useProfile(config?: SWRConfiguration) {
-  return useSWR<UserProfile | null>("profile", () => getProfile().catch(() => null), { ...defaults, ...config });
+  return useSWR<UserProfile | null>(
+    "profile",
+    () =>
+      getProfile().catch((error: unknown) => {
+        // A 404 means the user has no profile yet (a real "resolved null").
+        // Any other error must surface so callers don't mistake it for no-profile.
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      }),
+    { ...defaults, ...config },
+  );
 }
 
 export function useDailySummary(date?: string, config?: SWRConfiguration) {
-  const d = date ?? todayISO();
+  const d = date ?? todayKey();
   return useSWR<DailySummary>(`daily-summary:${d}`, () => getDailySummary(d), { ...defaults, ...config });
 }
 
 export function useMeals(date?: string, config?: SWRConfiguration) {
-  const d = date ?? todayISO();
+  const d = date ?? todayKey();
   return useSWR<MealDTO[]>(`meals:${d}`, () => listMeals(d), { ...defaults, ...config });
+}
+
+export function useMealsRange(from: string, to: string, config?: SWRConfiguration) {
+  return useSWR<MealDTO[]>(`meals:range:${from}:${to}`, () => listMealsRange(from, to), { ...defaults, ...config });
 }
 
 export function useRecommendations(params?: Parameters<typeof getMealRecommendations>[0], config?: SWRConfiguration) {
@@ -112,4 +126,19 @@ export function useAdminRuntime(enabled: boolean, config?: SWRConfiguration) {
 
 export function useAdminAiSettings(enabled: boolean, config?: SWRConfiguration) {
   return useSWR<AdminAiSettings>(enabled ? "admin-ai-settings" : null, () => getAdminAiSettings(), { ...defaults, ...config });
+}
+
+// --- Resource state helper ---
+
+export interface Resource<T> {
+  data: T | undefined;
+  source: "loading" | "live" | "error";
+  error: unknown;
+  retry: () => void;
+}
+
+export function useResource<T>(result: SWRResponse<T, unknown>): Resource<T> {
+  const { data, error, isLoading, mutate } = result;
+  const source = error ? "error" : isLoading || data === undefined ? "loading" : "live";
+  return { data, source, error, retry: () => { void mutate(); } };
 }

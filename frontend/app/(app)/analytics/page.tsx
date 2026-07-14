@@ -4,11 +4,13 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { getDailyAnalytics, getMacrosSummary, getStreak } from "@/lib/api/analytics";
 import { getFamilyDailyAnalytics, getFamilyMacrosSummary, getFamilyStreak } from "@/lib/api/family";
-import { useFamilyOverview, useProfile } from "@/lib/hooks/swr";
+import { useFamilyOverview, useProfile, useResource } from "@/lib/hooks/swr";
+import { dateKeyToLocalDate } from "@/lib/date";
 import { PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
 type DayRow = {
-  date: string;
+  key: string;
+  label: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -36,7 +38,7 @@ export default function AnalyticsPage() {
   const { data: profileData } = useProfile();
 
   const analyticsKey = selectedMember ? `analytics:family:${selectedMember.id}` : "analytics:own";
-  const { data: analyticsBundle } = useSWR(analyticsKey, async () => {
+  const analyticsResult = useSWR(analyticsKey, async () => {
     const to = new Date();
     const from = new Date();
     from.setDate(to.getDate() - 6);
@@ -47,6 +49,8 @@ export default function AnalyticsPage() {
     const [daily, macros, apiStreak] = await Promise.all([dailyRequest, macrosRequest, streakRequest]);
     return { daily, macros, apiStreak };
   });
+  const analyticsResource = useResource(analyticsResult);
+  const analyticsBundle = analyticsResource.data;
 
   const apiProfile = selectedMember ? null : profileData;
   const daily = analyticsBundle?.daily;
@@ -64,7 +68,8 @@ export default function AnalyticsPage() {
 
   const days: DayRow[] = daily
     ? daily.days.map((day) => ({
-        date: new Date(day.date).toLocaleDateString([], { weekday: "short" }),
+        key: day.date,
+        label: dateKeyToLocalDate(day.date).toLocaleDateString([], { weekday: "short" }),
         calories: Math.round(day.calories),
         protein: Math.round(day.protein),
         carbs: Math.round(day.carbs),
@@ -79,7 +84,7 @@ export default function AnalyticsPage() {
     : { protein: 0, carbs: 0, fat: 0 };
 
   const streak = apiStreak?.loggingStreak ?? 0;
-  const source = analyticsBundle ? "live" : "loading";
+  const source = analyticsResource.source;
 
   function handleViewerChange(value: string) {
     setSelectedMemberId(value);
@@ -129,7 +134,15 @@ export default function AnalyticsPage() {
       <PageHeader eyebrow="Analytics" title="Adherence and streaks" />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load analytics. Sign in and try again.</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[13px] font-semibold text-[var(--danger)]">Could not load analytics. Check your connection and try again.</p>
+            <button
+              onClick={analyticsResource.retry}
+              className="min-h-10 shrink-0 rounded-lg bg-forest px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-forest-soft"
+            >
+              Retry
+            </button>
+          </div>
         </Panel>
       ) : null}
 
@@ -192,14 +205,14 @@ export default function AnalyticsPage() {
                 <Skeleton className="h-16" />
               </div>
             ) : days.map((day) => (
-              <div key={day.date} className="flex flex-1 flex-col items-center gap-2">
+              <div key={day.key} className="flex flex-1 flex-col items-center gap-2">
                 <div className="flex w-full flex-col justify-end rounded-md bg-white" style={{ height: "260px" }}>
                   <div
                     className={`rounded-md ${day.calorieTargetPct && day.calorieTargetPct > 120 ? "bg-[#b7791f]" : day.calorieTargetPct && day.calorieTargetPct >= 80 ? "bg-[#173c2b]" : "bg-[#5f8f72]"}`}
                     style={{ height: `${Math.max(8, (day.calories / max) * 100)}%` }}
                   />
                 </div>
-                <span className="text-[11px] font-bold text-[#5f675f]">{day.date}</span>
+                <span className="text-[11px] font-bold text-[#5f675f]">{day.label}</span>
               </div>
             ))}
             {source !== "loading" && !days.length ? <p className="self-center text-[13px] font-semibold text-[#5f675f]">No analytics data in this range.</p> : null}

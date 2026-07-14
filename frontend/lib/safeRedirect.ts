@@ -32,11 +32,3 @@ export function rememberPostLoginNext(next: string | null | undefined): void {
 
   window.localStorage.setItem(POST_LOGIN_NEXT_KEY, safeNext);
 }
-
-export function takePostLoginNext(fallback = DEFAULT_AUTH_REDIRECT): string {
-  if (typeof window === "undefined") return fallback;
-
-  const stored = window.localStorage.getItem(POST_LOGIN_NEXT_KEY);
-  window.localStorage.removeItem(POST_LOGIN_NEXT_KEY);
-  return safeNextPath(stored, fallback);
-}

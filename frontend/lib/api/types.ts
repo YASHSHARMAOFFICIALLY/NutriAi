@@ -245,9 +245,23 @@ export interface UserProfile {
   notifyWeeklyDigest: boolean;
   createdAt: string;
   updatedAt: string;
+  effectiveCalorieTarget: number | null;
+  effectiveProteinTargetG: number | null;
+  effectiveCarbsTargetG: number | null;
+  effectiveFatTargetG: number | null;
+  derived: DerivedTargets;
 }
 
-export type UpdateProfileInput = Partial<Omit<UserProfile, "id" | "userId" | "createdAt" | "updatedAt">>;
+export interface DerivedTargets {
+  bmr: number | null;
+  tdee: number | null;
+  dailyCalorieTarget: number | null;
+  proteinTargetG: number | null;
+  carbsTargetG: number | null;
+  fatTargetG: number | null;
+}
+
+export type UpdateProfileInput = Partial<Omit<UserProfile, "id" | "userId" | "createdAt" | "updatedAt" | "effectiveCalorieTarget" | "effectiveProteinTargetG" | "effectiveCarbsTargetG" | "effectiveFatTargetG" | "derived">>;
 
 // ── /recommendations/meals ──
 export interface MealRecommendation {
@@ -309,6 +323,8 @@ export interface UserChallengeDTO {
   status: ChallengeStatus;
   daysCheckedIn: number;
   lastCheckInDate: string | null;
+  // Server-computed against the user's profile timezone.
+  checkedInToday: boolean;
   createdAt: string;
   updatedAt: string;
   challenge: ChallengePreset | null;

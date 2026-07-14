@@ -51,14 +51,14 @@ export default function CheckoutSuccessPage() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
               href="/dashboard"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-forest px-6 py-3 text-[14px] font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-forest px-6 py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
             >
               Go to Dashboard
               <ArrowRight size={16} weight="bold" />
             </Link>
             <Link
               href="/coach"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-6 py-3 text-[14px] font-bold text-forest transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-6 py-3 text-[14px] font-bold text-forest transition-transform hover:scale-[1.02] active:scale-[0.98]"
             >
               Try Coach Cuckoo
             </Link>

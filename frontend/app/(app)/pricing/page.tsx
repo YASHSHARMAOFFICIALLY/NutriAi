@@ -4,102 +4,47 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Crown, Lightning } from "@phosphor-icons/react/dist/ssr";
-import { UnauthorizedError } from "@/lib/api/client";
-import { createCheckout } from "@/lib/api/payments";
+import { startCheckout } from "@/lib/checkout";
+import { isPaidPlanId, PLANS, type PaidPlanId } from "@/lib/plans";
 import { usePlan } from "@/lib/hooks/swr";
-import { withNextParam } from "@/lib/safeRedirect";
 import { PageHeader, Panel } from "../_components/ui";
-
-const plans = [
-  {
-    id: "free" as const,
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    subtitle: "For the first meal habit",
-    features: [
-      "Meal logging",
-      "Daily macro targets",
-      "3 food analyses per day",
-      "Saved meal history",
-      "Basic dashboard",
-    ],
-  },
-  {
-    id: "monthly" as const,
-    name: "Pro",
-    price: "$4.99",
-    period: "/month",
-    subtitle: "For daily coaching",
-    featured: true,
-    features: [
-      "Everything in Free",
-      "Unlimited food analysis",
-      "Coach Cuckoo AI chat",
-      "Meal recommendations",
-      "Weight tracking & trends",
-      "Challenges & streaks",
-      "Weekly digest emails",
-      "Family sharing",
-      "Priority support",
-    ],
-  },
-  {
-    id: "lifetime" as const,
-    name: "Pro Lifetime",
-    price: "$25",
-    period: "one-time",
-    subtitle: "Pay once, use forever",
-    features: [
-      "Everything in Pro",
-      "Lifetime access",
-      "All future features",
-      "No recurring charges",
-    ],
-  },
-];
 
 function PricingContent() {
   const searchParams = useSearchParams();
   const { data: plan } = usePlan();
-  const planLoaded = plan !== undefined;
-  const [loading, setLoading] = useState<"monthly" | "lifetime" | null>(null);
+  // Seed the loading state from the resume param so the auto-resume effect never
+  // has to call setState synchronously in its body.
+  const resumePlan = searchParams.get("checkout");
+  const [loading, setLoading] = useState<PaidPlanId | null>(isPaidPlanId(resumePlan) ? resumePlan : null);
   const [error, setError] = useState<string | null>(null);
   const autoCheckoutFired = useRef(false);
 
-  const handleCheckout = useCallback(async (planId: "monthly" | "lifetime") => {
+  const handleCheckout = useCallback(async (planId: PaidPlanId) => {
     setLoading(planId);
     setError(null);
-    try {
-      const { paymentLink } = await createCheckout(planId, { silent: true });
-      if (paymentLink) {
-        window.location.href = paymentLink;
-      }
-    } catch (err) {
-      if (err instanceof UnauthorizedError) {
-        window.location.href = withNextParam("/login", `/pricing?checkout=${planId}`);
-        return;
-      }
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
+    const result = await startCheckout(planId, { onUnauthorizedRedirectTo: "/pricing" });
+    if (result.status === "error") {
+      setError(result.message);
       setLoading(null);
     }
   }, []);
 
   // Auto-resume checkout if redirected here after login with ?checkout=monthly|lifetime
   useEffect(() => {
-    if (autoCheckoutFired.current) return;
-    const checkoutPlan = searchParams.get("checkout");
-    if (checkoutPlan === "monthly" || checkoutPlan === "lifetime") {
-      autoCheckoutFired.current = true;
-      handleCheckout(checkoutPlan);
-    }
-  }, [searchParams, handleCheckout]);
+    if (autoCheckoutFired.current || !isPaidPlanId(resumePlan)) return;
+    autoCheckoutFired.current = true;
+    startCheckout(resumePlan, { onUnauthorizedRedirectTo: "/pricing" }).then((result) => {
+      if (result.status === "error") {
+        setError(result.message);
+        setLoading(null);
+      }
+    });
+  }, [resumePlan]);
 
   const isPro = plan?.tier === "PRO" && (plan.status === "ACTIVE" || plan.status === "PAST_DUE");
   const trustItems = ["Secure checkout", "Editable AI results", "Cancel anytime", "No ads"];
   const proOutcomes = [
-    { label: "Daily ceiling", value: "Unlimited scans", copy: "Use it for snacks, restaurant meals, and corrections without waiting for tomorrow." },
+    { label: "Daily ceiling", value: "Unlimited text", copy: "Type any meal without a daily limit, plus photo scans up to 50 a day." },
     { label: "Decision support", value: "Coach + next meal", copy: "Turn logged food, targets, and preferences into the next practical choice." },
     { label: "Habit loop", value: "Trends + digests", copy: "Keep weight, streaks, challenges, and weekly summaries in one routine." },
   ];
@@ -167,7 +112,7 @@ function PricingContent() {
       )}
 
       <div className="grid gap-5 lg:grid-cols-3">
-        {plans.map(({ id, name, price, period, subtitle, featured, features }) => (
+        {PLANS.map(({ id, name, price, cadence, subtitle, featured, features }) => (
           <div
             key={id}
             className={`relative flex flex-col rounded-lg border p-6 ${
@@ -192,7 +137,7 @@ function PricingContent() {
             <div className="mt-6 flex items-baseline gap-1">
               <span className="text-[42px] font-bold leading-none">{price}</span>
               <span className={`text-[14px] ${featured ? "text-white/60" : "text-[#5f675f]"}`}>
-                {period}
+                {cadence}
               </span>
             </div>
 
@@ -234,7 +179,7 @@ function PricingContent() {
                 </div>
               ) : (
                 <button
-                  onClick={() => handleCheckout(id)}
+                  onClick={() => { if (isPaidPlanId(id)) handleCheckout(id); }}
                   disabled={loading !== null}
                   className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 text-[14px] font-semibold transition-colors disabled:opacity-50 ${
                     featured

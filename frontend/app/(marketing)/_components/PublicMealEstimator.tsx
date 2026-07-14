@@ -7,9 +7,9 @@ import { estimateMealPublic, type PublicEstimateResponse } from "@/lib/api/publi
 
 const examples = [
   "chicken burrito bowl with rice, beans, cheese, salsa and guacamole",
-  "two rotis with dal, paneer sabzi and curd",
+  "grilled salmon with roasted potatoes and greens",
   "turkey sandwich with chips and a side salad",
-  "paneer biryani with raita",
+  "tofu stir-fry with rice and mixed vegetables",
 ];
 
 function round(value: number) {
@@ -47,11 +47,11 @@ export function PublicMealEstimator({
   }
 
   return (
-    <section id="estimate" className={compact ? "" : "bg-[#101510] px-5 py-20 text-white lg:px-8"}>
+    <section id="estimate" className={compact ? "" : "bg-[#10241a] px-5 py-20 text-white lg:px-8"}>
       <div className={compact ? "" : "mx-auto max-w-7xl"}>
-        <div className={compact ? "rounded-xl border border-black/10 bg-white p-5 text-[#101510] shadow-[0_18px_48px_rgba(16,21,16,0.08)]" : "grid gap-8 rounded-xl border border-white/12 bg-white/8 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.22)] backdrop-blur lg:grid-cols-[0.82fr_1.18fr] lg:p-8"}>
+        <div className={compact ? "rounded-xl border border-black/10 bg-white p-5 text-[#10241a] shadow-[0_18px_48px_rgba(16,21,16,0.08)]" : "grid gap-8 rounded-xl border border-white/12 bg-white/8 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.22)] backdrop-blur lg:grid-cols-[0.82fr_1.18fr] lg:p-8"}>
           <div>
-            <p className={compact ? "text-[12px] font-bold uppercase tracking-[0.16em] text-[#0f8b8d]" : "text-[12px] font-bold uppercase tracking-[0.16em] text-[#d7ff68]"}>
+            <p className={compact ? "text-[12px] font-bold uppercase tracking-[0.16em] text-[#b5651d]" : "text-[12px] font-bold uppercase tracking-[0.16em] text-[#b5651d]"}>
               Try a text estimate
             </p>
             <h2 className={compact ? "mt-3 text-[26px] font-bold leading-tight text-[#173c2b]" : "mt-4 text-[42px] font-semibold leading-tight"}>
@@ -67,16 +67,17 @@ export function PublicMealEstimator({
               <textarea
                 value={text}
                 onChange={(event) => setText(event.target.value)}
+                aria-label="Describe your meal"
                 rows={compact ? 3 : 4}
                 maxLength={280}
                 placeholder="Example: chicken burrito bowl with rice, beans, cheese, salsa and guacamole"
-                className="w-full resize-none rounded-lg border border-black/10 bg-white p-4 text-[15px] font-medium text-[#101510] outline-none transition focus:border-[#0f8b8d] focus:ring-4 focus:ring-[#0f8b8d]/10"
+                className="w-full resize-none rounded-lg border border-black/10 bg-white p-4 text-[15px] font-medium text-[#10241a] outline-none transition focus:border-[#b5651d] focus:ring-4 focus:ring-[#b5651d]/20"
               />
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="submit"
                   disabled={!canSubmit}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#d7ff68] px-5 text-[14px] font-bold text-[#101510] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-55"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#b5651d] px-5 text-[14px] font-bold text-[#f6f1e7] transition hover:bg-[#a5571a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b5651d] focus-visible:ring-offset-2 focus-visible:ring-offset-[#10241a] disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   <Sparkle size={16} weight="fill" />
                   {status === "loading" ? "Estimating..." : "Estimate meal"}
@@ -96,13 +97,13 @@ export function PublicMealEstimator({
             ) : null}
 
             {result ? (
-              <div className="mt-5 rounded-lg border border-black/10 bg-white p-4 text-[#101510]">
+              <div className="mt-5 rounded-lg border border-black/10 bg-white p-4 text-[#10241a]">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#0f8b8d]">Estimated total</p>
+                    <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#b5651d]">Estimated total</p>
                     <p className="mt-1 text-[30px] font-bold text-[#173c2b]">{round(result.totals.calories)} kcal</p>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#d7ff68]/70 px-3 py-1 text-[12px] font-bold text-[#101510]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#b5651d]/15 px-3 py-1 text-[12px] font-bold text-[#b5651d]">
                     <CheckCircle size={14} weight="fill" />
                     {round(result.confidence * 100)}% confidence
                   </span>
@@ -132,6 +133,13 @@ export function PublicMealEstimator({
                 </div>
                 <Link
                   href="/signup"
+                  onClick={() => {
+                    try {
+                      window.localStorage.setItem("nutriai.estimator.meal", text.trim());
+                    } catch {
+                      // Ignore storage failures (private mode); signup still proceeds.
+                    }
+                  }}
                   className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#173c2b] px-5 py-3 text-[14px] font-bold text-white transition hover:bg-[#1f4d38]"
                 >
                   Save this meal and track your day

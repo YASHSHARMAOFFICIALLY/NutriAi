@@ -1,97 +1,69 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
 import { CrownSimple, FunnelSimple, Lock, Star } from "@phosphor-icons/react/dist/ssr";
-import { getDailySummary } from "@/lib/api/meals";
-import { getMyPlan } from "@/lib/api/payments";
-import { getProfile } from "@/lib/api/profile";
 import { getMealRecommendations } from "@/lib/api/recommendations";
-import type { MealRecommendation, MealType } from "@/lib/api/types";
+import type { MealType } from "@/lib/api/types";
+import { useProfile, usePlan } from "@/lib/hooks/swr";
+import { useRemaining } from "@/lib/nutrition";
 import { PageHeader, Panel, Skeleton, SourceBadge } from "../_components/ui";
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function safeNumber(value: number, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
 export default function RecommendationsPage() {
-  const [items, setItems] = useState<MealRecommendation[]>([]);
-  const [remaining, setRemaining] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-  const [allergies, setAllergies] = useState<string[]>([]);
   const [mealType, setMealType] = useState<MealType>("DINNER");
-  const [isPro, setIsPro] = useState(false);
-  const [source, setSource] = useState<"loading" | "live" | "error">("loading");
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      getProfile().catch(() => null),
-      getDailySummary(todayISO()).catch(() => null),
-      getMyPlan().catch(() => null),
-    ])
-      .then(async ([apiProfile, daily, apiPlan]) => {
-        if (cancelled) return;
-        setIsPro(apiPlan?.tier === "PRO" && (apiPlan.status === "ACTIVE" || apiPlan.status === "PAST_DUE"));
-        const targets = {
-          calories: apiProfile?.dailyCalorieTarget ?? 0,
-          protein: apiProfile?.proteinTargetG ?? 0,
-          carbs: apiProfile?.carbsTargetG ?? 0,
-          fat: apiProfile?.fatTargetG ?? 0,
-        };
-        const budget = {
-          calories: Math.max(0, targets.calories - (daily?.totalCalories ?? 0)),
-          protein: Math.max(0, targets.protein - (daily?.totalProtein ?? 0)),
-          carbs: Math.max(0, targets.carbs - (daily?.totalCarbs ?? 0)),
-          fat: Math.max(0, targets.fat - (daily?.totalFat ?? 0)),
-        };
-        const recs = await getMealRecommendations({
-          mealType,
-          limit: 6,
-          remainingCalories: budget.calories,
-          remainingProtein: budget.protein,
-          remainingCarbs: budget.carbs,
-          remainingFat: budget.fat,
-        });
-        if (cancelled) return;
-        setRemaining({
-          calories: recs.remaining.calories ?? budget.calories,
-          protein: recs.remaining.protein ?? budget.protein,
-          carbs: recs.remaining.carbs ?? budget.carbs,
-          fat: recs.remaining.fat ?? budget.fat,
-        });
-        setAllergies(apiProfile?.allergies ?? []);
-        setItems(recs.recommendations);
-        setSource("live");
-      })
-      .catch(() => setSource("error"));
-    return () => {
-      cancelled = true;
-    };
-  }, [mealType]);
+  const { data: profile } = useProfile();
+  const { data: plan } = usePlan();
+  const budget = useRemaining();
+
+  const isPro = plan?.tier === "PRO" && (plan.status === "ACTIVE" || plan.status === "PAST_DUE");
+  const allergies = profile?.allergies ?? [];
+
+  const recsResult = useSWR(
+    ["recommendations", mealType],
+    () =>
+      getMealRecommendations({
+        mealType,
+        limit: 6,
+        remainingCalories: budget.calories,
+        remainingProtein: budget.protein,
+        remainingCarbs: budget.carbs,
+        remainingFat: budget.fat,
+      }),
+    { keepPreviousData: true },
+  );
+
+  const data = recsResult.data;
+  const source: "loading" | "live" | "error" = recsResult.error
+    ? "error"
+    : data === undefined
+      ? "loading"
+      : "live";
+
+  const remaining = {
+    calories: safeNumber(data?.remaining.calories ?? budget.calories),
+    protein: safeNumber(data?.remaining.protein ?? budget.protein),
+    carbs: safeNumber(data?.remaining.carbs ?? budget.carbs),
+    fat: safeNumber(data?.remaining.fat ?? budget.fat),
+  };
 
   const rows = useMemo(() => {
-    return items.map((rec, index) => ({
+    return (data?.recommendations ?? []).map((rec, index) => ({
       signature: rec.signature || `${rec.sampleMealId}-${index}`,
       mealType: rec.mealType,
       title: rec.items.map((item) => item.name).join(", "),
       score: rec.score,
       frequency: rec.frequency,
-      lastLoggedAt: new Date(rec.lastLoggedAt).toLocaleDateString(),
       reasons: rec.reasons.length ? rec.reasons : ["fits your remaining targets"],
       totals: rec.totals,
       items: rec.items.map((item) => item.name),
     }));
-  }, [items]);
-
-  function handleMealTypeChange(nextMealType: MealType) {
-    if (nextMealType === mealType) return;
-    setSource("loading");
-    setMealType(nextMealType);
-  }
+  }, [data]);
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
@@ -103,7 +75,15 @@ export default function RecommendationsPage() {
       />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load recommendations. Sign in and try again.</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[13px] font-semibold text-[var(--danger)]">Could not load recommendations. Check your connection and try again.</p>
+            <button
+              onClick={() => void recsResult.mutate()}
+              className="min-h-10 shrink-0 rounded-lg bg-[#173c2b] px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-[#1f4d38]"
+            >
+              Retry
+            </button>
+          </div>
         </Panel>
       ) : null}
 
@@ -120,8 +100,8 @@ export default function RecommendationsPage() {
               [`${remaining.carbs}g`, "carbs"],
               [`${remaining.fat}g`, "fat"],
             ].map(([value, label]) => (
-              <div key={label} className="rounded-md bg-[#f8f8f3] p-3">
-                <p className="font-semibold">{typeof value === "number" ? safeNumber(value) : value}</p>
+              <div key={label} className="rounded-md bg-[#f8f8f3] p-3 tabular-nums">
+                <p className="font-semibold">{value}</p>
                 <p className="text-[11px] text-[#5f675f]">{label}</p>
               </div>
             ))}
@@ -160,7 +140,7 @@ export default function RecommendationsPage() {
         {(["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const).map((filter) => (
           <button
             key={filter}
-            onClick={() => handleMealTypeChange(filter)}
+            onClick={() => setMealType(filter)}
             className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[12px] font-bold transition-colors ${mealType === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f] hover:border-teal/30 hover:text-forest"}`}
           >
             {mealType === filter ? <FunnelSimple size={13} weight="fill" /> : null}
@@ -225,7 +205,7 @@ export default function RecommendationsPage() {
                   [`${rec.totals.carbs}g`, "carbs"],
                   [`${rec.totals.fat}g`, "fat"],
                 ].map(([value, label]) => (
-                  <div key={label} className="rounded-md bg-[#f8f8f3] p-2">
+                  <div key={label} className="rounded-md bg-[#f8f8f3] p-2 tabular-nums">
                     <p className="text-[14px] font-semibold">{value}</p>
                     <p className="text-[10px] text-[#5f675f]">{label}</p>
                   </div>
@@ -234,13 +214,13 @@ export default function RecommendationsPage() {
 
               <div className="flex items-center justify-between gap-4 xl:block xl:text-right">
                 <div>
-                  <p className="flex items-center gap-1 text-[28px] font-semibold xl:justify-end">
+                  <p className="flex items-center gap-1 text-[28px] font-semibold xl:justify-end tabular-nums">
                     <Star size={20} weight="fill" className="text-[#b7791f]" />
                     {Math.round(rec.score * 100)}
                   </p>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#5f675f]">score</p>
                 </div>
-                <Link href="/snap" className="rounded-md bg-[#173c2b] px-4 py-2.5 text-[13px] font-bold text-white xl:mt-4 xl:inline-block">
+                <Link href={`/snap?text=${encodeURIComponent(rec.title)}`} className="rounded-md bg-[#173c2b] px-4 py-2.5 text-[13px] font-bold text-white xl:mt-4 xl:inline-block">
                   Log again
                 </Link>
               </div>

@@ -5,7 +5,7 @@ import { PublicMealEstimator } from "./PublicMealEstimator";
 
 export function SeoArticlePage({ page, relatedPages = [] }: { page: SeoPage; relatedPages?: SeoPage[] }) {
   return (
-    <main className="min-h-screen bg-[#f8f8f3] text-[#101510]">
+    <main className="min-h-screen bg-[#f8f8f3] text-[#10241a]">
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8">
           <Link href="/" className="flex items-center gap-2 font-semibold text-[#173c2b]">
@@ -35,10 +35,10 @@ export function SeoArticlePage({ page, relatedPages = [] }: { page: SeoPage; rel
       </nav>
 
       <article>
-        <section className="border-b border-black/10 bg-[#101510] px-5 py-20 text-white lg:px-8">
+        <section className="border-b border-black/10 bg-[#10241a] px-5 py-20 text-white lg:px-8">
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
             <div>
-              <p className="text-[13px] font-bold uppercase tracking-[0.18em] text-[#d7ff68]">{page.eyebrow}</p>
+              <p className="text-[13px] font-bold uppercase tracking-[0.18em] text-[#b5651d]">{page.eyebrow}</p>
               <h1 className="mt-5 max-w-4xl text-[42px] font-semibold leading-[0.98] md:text-[62px]">
                 {page.title}
               </h1>
@@ -46,7 +46,7 @@ export function SeoArticlePage({ page, relatedPages = [] }: { page: SeoPage; rel
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/signup"
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#d7ff68] px-6 py-3.5 text-[15px] font-bold text-[#101510] transition hover:bg-white"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#b5651d] px-6 py-3.5 text-[15px] font-bold text-[#f6f1e7] transition hover:bg-[#a5571a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b5651d] focus-visible:ring-offset-2 focus-visible:ring-offset-[#10241a]"
                 >
                   Log first meal
                   <ArrowRight size={16} weight="bold" />
@@ -61,12 +61,12 @@ export function SeoArticlePage({ page, relatedPages = [] }: { page: SeoPage; rel
             </div>
 
             <div className="rounded-xl border border-white/12 bg-white/8 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.28)] backdrop-blur">
-              <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#d7ff68]">Search intent</p>
+              <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#b5651d]">Search intent</p>
               <h2 className="mt-3 text-[28px] font-semibold">Built for {page.primaryKeyword}</h2>
               <div className="mt-5 grid gap-3">
                 {page.secondaryKeywords.map((keyword) => (
                   <div key={keyword} className="flex items-center gap-3 rounded-lg bg-white/10 p-3 text-[14px] font-semibold text-white/80">
-                    <Check size={16} weight="bold" className="text-[#d7ff68]" />
+                    <Check size={16} weight="bold" className="text-[#b5651d]" />
                     {keyword}
                   </div>
                 ))}
@@ -114,7 +114,7 @@ export function SeoArticlePage({ page, relatedPages = [] }: { page: SeoPage; rel
                 <div className="mt-7 grid gap-3">
                   {page.steps.map((step, index) => (
                     <div key={step.title} className="grid gap-4 rounded-lg border border-black/10 bg-white p-5 md:grid-cols-[56px_1fr]">
-                      <span className="grid h-12 w-12 place-items-center rounded-lg bg-[#d7ff68] text-[18px] font-bold text-[#101510]">
+                      <span className="grid h-12 w-12 place-items-center rounded-lg bg-[#b5651d] text-[18px] font-bold text-[#10241a]">
                         {index + 1}
                       </span>
                       <div>
@@ -159,16 +159,16 @@ export function SeoArticlePage({ page, relatedPages = [] }: { page: SeoPage; rel
                 </section>
               ) : null}
 
-              <section className="rounded-xl bg-[#d7ff68] p-8">
-                <h2 className="max-w-2xl text-[34px] font-semibold leading-tight text-[#101510]">
+              <section className="rounded-xl bg-[#b5651d] p-8">
+                <h2 className="max-w-2xl text-[34px] font-semibold leading-tight text-[#f6f1e7]">
                   Make nutrition tracking faster than searching a food database.
                 </h2>
-                <p className="mt-4 max-w-xl text-[16px] leading-7 text-[#101510]/70">
+                <p className="mt-4 max-w-xl text-[16px] leading-7 text-[#f6f1e7]/80">
                   Start with one meal, review the estimate, and let myNutriAI build your daily nutrition context from there.
                 </p>
                 <Link
                   href="/signup"
-                  className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#101510] px-6 py-3 text-[14px] font-bold text-white transition hover:bg-[#173c2b]"
+                  className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#10241a] px-6 py-3 text-[14px] font-bold text-white transition hover:bg-[#173c2b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10241a] focus-visible:ring-offset-2 focus-visible:ring-offset-[#b5651d]"
                 >
                   Try myNutriAI
                   <ArrowRight size={15} weight="bold" />

@@ -89,7 +89,7 @@ export function softwareApplicationJsonLd() {
           "@type": "UnitPriceSpecification",
           price: "4.99",
           priceCurrency: "USD",
-          billingDuration: "P12Y",
+          billingDuration: "P1M",
         },
       },
       {
@@ -154,11 +154,15 @@ export function breadcrumbJsonLd(items: Array<{ name: string; url: string }>) {
   };
 }
 
+const ARTICLE_DEFAULT_DATE = "2026-06-11";
+
 export function articleJsonLd(input: {
   title: string;
   description: string;
   url: string;
   keywords?: string[];
+  datePublished?: string;
+  dateModified?: string;
 }) {
   return {
     "@context": "https://schema.org",
@@ -168,6 +172,8 @@ export function articleJsonLd(input: {
     url: input.url,
     image: absoluteUrl(siteOgImage),
     keywords: input.keywords?.join(", "),
+    datePublished: input.datePublished ?? ARTICLE_DEFAULT_DATE,
+    dateModified: input.dateModified ?? input.datePublished ?? ARTICLE_DEFAULT_DATE,
     author: {
       "@type": "Organization",
       name: siteName,

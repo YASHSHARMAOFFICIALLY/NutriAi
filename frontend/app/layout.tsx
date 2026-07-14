@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@hellyeah/x-ray/next";
+import { Hanken_Grotesk, Fraunces } from "next/font/google";
 import "lenis/dist/lenis.css";
 import "./globals.css";
 import { JsonLd } from "./JsonLd";
 import { LenisProvider } from "./lenis-provider";
+import { MotionProvider } from "./motion-provider";
 import { SiteVisitTracker } from "./SiteVisitTracker";
 import {
   organizationJsonLd,
@@ -16,14 +18,16 @@ import {
   websiteJsonLd,
 } from "./seo";
 
-const geistSans = Geist({
+const hankenSans = Hanken_Grotesk({
   variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-mono",
+const fraunces = Fraunces({
+  variable: "--font-display",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -100,15 +104,22 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${hankenSans.variable} ${fraunces.variable}`}
       suppressHydrationWarning
     >
       <head>
         <JsonLd data={[websiteJsonLd(), organizationJsonLd(), siteNavigationJsonLd()]} />
       </head>
       <body>
+        <Analytics
+          websiteId={process.env.NEXT_PUBLIC_HELLYEAH_TRACKER_ID!}
+          env={process.env.NEXT_PUBLIC_HELLYEAH_TRACKER_ENV}
+          domains="mynutriai.app"
+        />
         <SiteVisitTracker />
-        <LenisProvider>{children}</LenisProvider>
+        <LenisProvider>
+          <MotionProvider>{children}</MotionProvider>
+        </LenisProvider>
       </body>
     </html>
   );

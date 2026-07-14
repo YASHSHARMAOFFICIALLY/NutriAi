@@ -245,7 +245,7 @@ export function MealCalcTable({ targetCalories, targetProtein, goal }: Props) {
                             );
                           })}
                           {filteredFoods.length === 0 && (
-                            <p className="px-3 py-4 text-center text-[13px] text-[#5f675f]">No foods match "{search}"</p>
+                            <p className="px-3 py-4 text-center text-[13px] text-[#5f675f]">No foods match &ldquo;{search}&rdquo;</p>
                           )}
                         </div>
                       </div>
@@ -435,7 +435,7 @@ export function MealCalcTable({ targetCalories, targetProtein, goal }: Props) {
               </div>
               <div className="relative mt-1 h-3 overflow-hidden rounded-full bg-black/8">
                 <div
-                  className={`h-full rounded-full transition-all ${
+                  className={`h-full rounded-full transition-[width,background-color] ${
                     diff > 200 ? "bg-red-400" : diff < -200 ? "bg-amber-400" : "bg-[#173c2b]"
                   }`}
                   style={{ width: `${Math.min(100, (totals.calories / targetCalories) * 100)}%` }}

@@ -37,7 +37,7 @@ export function middleware(request: NextRequest) {
     const redirectUrl = new URL(safeNextPath(searchParams.get("next")), request.url);
     const response = NextResponse.redirect(redirectUrl);
     response.cookies.set(AUTH_SESSION_COOKIE, "1", {
-      httpOnly: true,
+      httpOnly: false,
       maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
       path: "/",
       sameSite: "lax",
@@ -53,7 +53,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (isGuestOnlyPath(pathname) && hasSession) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL(safeNextPath(searchParams.get("next")), request.url));
   }
 
   return NextResponse.next();

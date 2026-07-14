@@ -16,10 +16,13 @@ import {
   Medal,
   ShieldCheck,
   SidebarSimple,
+  SignOut,
   Sparkle,
   Star,
 } from "@phosphor-icons/react/dist/ssr";
 import { useMe, usePlan, useDailySummary, useProfile } from "@/lib/hooks/swr";
+import { logout } from "@/lib/api/account";
+import { clearAuthSessionMarker } from "@/lib/authSession";
 
 const baseNav = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Home", icon: House },
@@ -66,6 +69,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     protein: Math.max(0, targets.protein - totals.protein),
   }), [targets, totals]);
 
+  async function handleSignOut() {
+    try {
+      await logout();
+    } catch {
+      // Best-effort: still clear local session and redirect below.
+    } finally {
+      clearAuthSessionMarker();
+      window.location.href = "/login";
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f1f4f1] text-foreground selection:bg-teal/10">
       <aside
@@ -78,7 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-forest text-white shadow-premium transition-transform group-hover:scale-105">
               <ForkKnife size={22} weight="bold" />
             </span>
-            <span className={`overflow-hidden transition-all duration-300 ${expanded ? "w-28 opacity-100" : "w-0 opacity-0"}`}>
+            <span className={`overflow-hidden transition-[width,opacity] duration-300 ${expanded ? "w-28 opacity-100" : "w-0 opacity-0"}`}>
               <span className="block whitespace-nowrap text-[17px] font-bold tracking-tight text-forest">NutriAI</span>
               <span className="flex items-center gap-2 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.14em] text-teal/80">
                 {isPro ? (
@@ -115,7 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     href={href}
                     title={label}
                     className={[
-                      "group/nav relative flex h-11 items-center rounded-lg text-[13px] font-bold transition-all duration-300",
+                      "group/nav relative flex h-11 items-center rounded-lg text-[13px] font-bold transition-[color,background-color,padding,gap] duration-300",
                       expanded ? "gap-3 px-3" : "justify-center px-0",
                       active
                         ? "bg-forest text-white shadow-premium"
@@ -125,7 +139,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     ].join(" ")}
                   >
                     <Icon size={19} weight={active ? "fill" : "bold"} />
-                    <span className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${expanded ? "w-36 opacity-100" : "w-0 opacity-0"}`}>{label}</span>
+                    <span className={`overflow-hidden whitespace-nowrap transition-[width,opacity] duration-300 ${expanded ? "w-36 opacity-100" : "w-0 opacity-0"}`}>{label}</span>
                     {!expanded ? (
                       <span className="pointer-events-none absolute left-[64px] z-50 rounded-lg border border-border bg-white px-3 py-2 text-[12px] font-bold text-forest opacity-0 shadow-lg transition-opacity group-hover/nav:opacity-100">
                         {label}
@@ -139,16 +153,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="border-t border-border p-3">
-          <div className={`overflow-hidden rounded-lg border border-border bg-surface-alt shadow-sm transition-all duration-300 ${expanded ? "p-4" : "p-2"}`}>
+          <div className={`overflow-hidden rounded-lg border border-border bg-surface-alt shadow-sm transition-[padding] duration-300 ${expanded ? "p-4" : "p-2"}`}>
             <div className={`mb-3 flex items-center ${expanded ? "justify-between" : "justify-center"}`}>
-              <p className={`text-[10px] font-bold uppercase tracking-wider text-muted transition-all ${expanded ? "w-auto opacity-100" : "w-0 opacity-0"}`}>Daily target</p>
+              <p className={`text-[10px] font-bold uppercase tracking-wider text-muted transition-[width,opacity] ${expanded ? "w-auto opacity-100" : "w-0 opacity-0"}`}>Daily target</p>
               <span className="h-2 w-2 rounded-full bg-teal animate-pulse" />
             </div>
             <div className={`flex items-baseline gap-1 ${expanded ? "" : "justify-center"}`}>
               <span className="text-[20px] font-bold text-forest">{remaining.calories}</span>
-              <span className={`text-[11px] font-bold uppercase text-muted transition-all ${expanded ? "w-auto opacity-100" : "w-0 overflow-hidden opacity-0"}`}>kcal left</span>
+              <span className={`text-[11px] font-bold uppercase text-muted transition-[width,opacity] ${expanded ? "w-auto opacity-100" : "w-0 overflow-hidden opacity-0"}`}>kcal left</span>
             </div>
-            <div className={`mt-4 flex flex-col gap-3 transition-all ${expanded ? "max-h-32 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
+            <div className={`mt-4 flex flex-col gap-3 transition-[max-height,opacity] ${expanded ? "max-h-32 opacity-100" : "max-h-0 overflow-hidden opacity-0"}`}>
               <Link href="/recommendations" className="rounded-lg bg-white py-3 text-center text-[12px] font-bold text-forest transition-colors hover:bg-forest hover:text-white">
                 View Recommendations
               </Link>
@@ -160,6 +174,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
             </div>
           </div>
+          <button
+            onClick={handleSignOut}
+            title="Sign out"
+            className={[
+              "group/nav relative mt-2 flex h-11 w-full items-center rounded-lg text-[13px] font-bold text-muted transition-colors hover:bg-surface-alt hover:text-[#b7791f]",
+              expanded ? "gap-3 px-3" : "justify-center px-0",
+            ].join(" ")}
+          >
+            <SignOut size={19} weight="bold" />
+            <span className={`overflow-hidden whitespace-nowrap transition-[width,opacity] duration-300 ${expanded ? "w-36 opacity-100" : "w-0 opacity-0"}`}>Sign out</span>
+            {!expanded ? (
+              <span className="pointer-events-none absolute left-[64px] z-50 rounded-lg border border-border bg-white px-3 py-2 text-[12px] font-bold text-forest opacity-0 shadow-lg transition-opacity group-hover/nav:opacity-100">
+                Sign out
+              </span>
+            ) : null}
+          </button>
         </div>
       </aside>
 
@@ -213,7 +243,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     href={href}
                     onClick={() => setMoreOpen(false)}
                     className={[
-                      "flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg p-3 text-center text-[12px] font-bold transition-all",
+                      "flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg p-3 text-center text-[12px] font-bold transition-colors",
                       active ? "bg-forest text-white" : "bg-surface-alt text-muted hover:text-forest",
                     ].join(" ")}
                   >
@@ -223,6 +253,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 );
               })}
             </div>
+            <button
+              onClick={() => {
+                setMoreOpen(false);
+                void handleSignOut();
+              }}
+              className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface-alt px-3 text-[13px] font-bold text-[#b7791f] transition-colors hover:bg-white"
+            >
+              <SignOut size={18} weight="bold" />
+              Sign out
+            </button>
           </div>
         </div>
       )}
@@ -237,7 +277,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 href={href}
                 aria-label={label}
                 className={[
-                  "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg transition-all",
+                  "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg transition-[color,background-color,box-shadow]",
                   active ? "bg-forest text-white shadow-premium" : "text-muted",
                 ].join(" ")}
               >
@@ -251,7 +291,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-expanded={moreOpen}
             aria-label="Open more navigation"
             className={[
-              "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg transition-all",
+              "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg transition-[color,background-color,box-shadow]",
               moreOpen || moreNav.some((n) => pathname === n.href)
                 ? "bg-forest text-white shadow-premium"
                 : "text-muted",
