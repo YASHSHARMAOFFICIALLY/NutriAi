@@ -7,9 +7,9 @@ import { estimateMealPublic, type PublicEstimateResponse } from "@/lib/api/publi
 
 const examples = [
   "chicken burrito bowl with rice, beans, cheese, salsa and guacamole",
-  "two rotis with dal, paneer sabzi and curd",
+  "grilled salmon with roasted potatoes and greens",
   "turkey sandwich with chips and a side salad",
-  "paneer biryani with raita",
+  "tofu stir-fry with rice and mixed vegetables",
 ];
 
 function round(value: number) {

@@ -111,9 +111,9 @@ const productMoments = [
 
 const faqs = [
   {
-    question: "How accurate is Indian food detection?",
+    question: "How accurate is the meal detection?",
     answer:
-      "The scanner is designed around mixed plates like dal rice, thalis, paneer bowls, wraps, biryani, and restaurant meals. Results are estimates, so every item and macro can be reviewed before saving.",
+      "The scanner is built around real, mixed plates — home-cooked meals, bowls, wraps, and restaurant food. Results are estimates, so every item and macro can be reviewed before saving.",
   },
   {
     question: "Can I edit incorrect scans?",
@@ -121,9 +121,9 @@ const faqs = [
       "Yes. Users can adjust detected items, serving size, calories, protein, carbs, and fat before confirming the meal.",
   },
   {
-    question: "Does this work with hostel food and homemade meals?",
+    question: "Does this work with home-cooked and mixed meals?",
     answer:
-      "That is the core positioning. myNutriAI is built for real plates, including hostel meals, home-cooked thalis, rolls, rice bowls, and mixed Indian food.",
+      "That is the core positioning. myNutriAI is built for real plates — home-cooked meals, leftovers, bowls, rolls, and mixed dishes, not just packaged foods with a barcode.",
   },
   {
     question: "Does Coach Cuckoo use my daily targets?",
@@ -242,15 +242,15 @@ function Hero() {
         <div className="max-w-[720px] lg:pb-8">
           <div className="hero-reveal mb-5 inline-flex items-center gap-2 rounded-full border border-[#173c2b]/15 bg-white/60 px-4 py-2 text-[12px] font-bold uppercase tracking-[0.12em] text-[#173c2b] backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-[#b5651d]" aria-hidden="true" />
-            AI meal tracker · India + US
+            AI nutrition coach
           </div>
 
           <h1 className="hero-reveal hero-delay-1 display-heading text-[44px] font-semibold leading-[1.02] md:text-[60px] lg:text-[64px] xl:text-[80px]">
-            Finally, a calorie tracker that understands a <span className="text-[#b5651d]">thali</span>.
+            Know what to eat <span className="text-[#b5651d]">next</span>, not just what you ate.
           </h1>
 
           <p className="hero-reveal hero-delay-2 mt-6 max-w-xl text-[16px] leading-7 text-[#4a534a] md:text-[18px] xl:text-[19px] xl:leading-8">
-            Snap dal-rice, a paneer bowl, or a hostel thali and get calories, protein, and macros in seconds. Indian &amp; US meals, every estimate editable.
+            Cuckoo reads your day and your targets, then names the next meal that fits. Snap a photo or type a line &mdash; tracking takes seconds.
           </p>
 
           <div className="hero-reveal hero-delay-3 mt-8 flex flex-col gap-3 sm:flex-row">
@@ -284,7 +284,7 @@ function Hero() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#b5651d]">Meal saved</p>
-                <p className="mt-1 text-[20px] font-semibold text-[#173c2b]">Paneer thali</p>
+                <p className="mt-1 text-[20px] font-semibold text-[#173c2b]">Chicken rice bowl</p>
               </div>
               <span className="rounded-full bg-[#173c2b] px-3 py-1 text-[11px] font-bold text-[#f6f1e7]">92% sure</span>
             </div>
@@ -356,7 +356,7 @@ function FloatingPhone() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#6f796f]">Lunch analysis</p>
-                  <p className="mt-1 text-[18px] font-semibold leading-tight xl:text-[20px]">Paneer thali</p>
+                  <p className="mt-1 text-[18px] font-semibold leading-tight xl:text-[20px]">Chicken rice bowl</p>
                 </div>
                 <span className="rounded-full bg-[#b5651d] px-2.5 py-1 text-[10px] font-bold text-[#f6f1e7]">92% sure</span>
               </div>
@@ -375,7 +375,7 @@ function FloatingPhone() {
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-1.5">
-                {["rice", "paneer", "dal", "roti"].map((item) => (
+                {["rice", "chicken", "beans", "greens"].map((item) => (
                   <div key={item} className="rounded-full border border-[#173c2b]/10 bg-[#f6f8f2] px-2.5 py-1.5 text-center text-[9px] font-bold uppercase tracking-[0.08em] text-[#173c2b]">
                     {item}
                   </div>
@@ -506,7 +506,7 @@ function ImmersiveProduct() {
                     Live
                   </span>
                 </div>
-                <p className="mt-3 text-[26px] font-semibold">Paneer rice bowl</p>
+                <p className="mt-3 text-[26px] font-semibold">Chicken rice bowl</p>
                 <div className="mt-5 grid grid-cols-4 gap-2">
                   {["640", "38g", "74g", "21g"].map((v, i) => (
                     <div key={v} className="rounded-md bg-[#f2f5f1] p-3">
@@ -532,7 +532,7 @@ function ImmersiveProduct() {
                   <p className="mt-2 text-[24px] font-semibold">Make dinner protein-led.</p>
                   <p className="mt-4 text-[14px] leading-6 opacity-90">You have enough carbs today. Add lean protein and vegetables, keep oils light.</p>
                   <div className="mt-5 grid grid-cols-3 gap-2">
-                    {["dal", "curd", "tofu"].map((item) => (
+                    {["chicken", "eggs", "tofu"].map((item) => (
                       <span key={item} className="rounded-full bg-black/15 px-3 py-1.5 text-center text-[12px] font-bold uppercase tracking-[0.08em]">{item}</span>
                     ))}
                   </div>
@@ -607,7 +607,7 @@ function DailyLoop() {
             <div className="relative z-10 grid h-full items-stretch gap-5 md:grid-cols-2">
               {[
                 ["08:15", "Breakfast scanned", "Oats, banana, honey", "410 kcal", "Morning win"],
-                ["13:05", "Lunch verified", "Paneer bowl adjusted", "640 kcal", "Logged fast"],
+                ["13:05", "Lunch verified", "Chicken bowl adjusted", "640 kcal", "Logged fast"],
                 ["17:40", "Coach check-in", "Protein short by 24g", "Next meal", "Still on track"],
                 ["21:10", "Day closed", "86% calorie target", "Streak saved", "7-day badge"],
               ].map(([time, title, body, tag, badge]) => (
@@ -688,7 +688,7 @@ function Personalization() {
               <div className="h-full rounded-xl border border-black/8 bg-white p-5">
                 <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-[#5f675f]">Preferences</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {["Vegetarian", "No peanuts", "Budget meals", "Indian staples"].map((item) => (
+                  {["Vegetarian", "No peanuts", "Budget meals", "Home cooking"].map((item) => (
                     <span key={item} className="rounded-full bg-[#eef5f2] px-3 py-1.5 text-[12px] font-bold text-[#173c2b]">{item}</span>
                   ))}
                 </div>
@@ -696,7 +696,7 @@ function Personalization() {
               <div className="h-full rounded-xl border border-[#b5651d]/60 bg-[#10241a] p-5 text-white shadow-[0_18px_50px_rgba(16,21,16,0.12)]">
                 <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-[#b5651d]">AI preview</p>
                 <p className="mt-3 text-[22px] font-semibold">Protein low today.</p>
-                <p className="mt-3 text-[14px] leading-6 text-white/70">Suggested dinner: paneer + curd rice with cucumber salad.</p>
+                <p className="mt-3 text-[14px] leading-6 text-white/70">Suggested dinner: grilled chicken with greens and rice.</p>
               </div>
             </div>
           </Reveal>
