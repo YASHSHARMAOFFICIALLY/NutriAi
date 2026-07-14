@@ -324,7 +324,7 @@ function HeroVisual() {
 
 function FloatingPhone() {
   return (
-    <div className="absolute left-1/2 top-[46%] z-30 w-[66%] -translate-x-1/2 -translate-y-1/2">
+    <div className="absolute left-1/2 top-[35%] z-30 w-[54%] -translate-x-1/2 -translate-y-1/2">
       <div className="relative aspect-[304/590] w-full rotate-[4deg] rounded-[14%] bg-[linear-gradient(145deg,#2a322a,#0c100c_42%,#1a211a)] p-[3%] shadow-[0_40px_90px_rgba(23,60,43,0.20),0_0_0_1px_rgba(23,60,43,0.06)] transition-transform duration-500 hover:rotate-[2deg]">
         <span className="absolute -left-1 top-[18%] h-[9%] w-1 rounded-l-full bg-white/24" />
         <span className="absolute -left-1 top-[31%] h-[13%] w-1 rounded-l-full bg-white/20" />
