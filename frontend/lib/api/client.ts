@@ -51,7 +51,8 @@ async function tryRefresh(): Promise<boolean> {
 function redirectToLogin(): void {
   if (typeof window === "undefined") return;
   if (window.location.pathname.startsWith("/login")) return;
-  window.location.href = "/login";
+  const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+  window.location.href = `/login?next=${next}`;
 }
 
 interface FetchOptions extends Omit<RequestInit, "body"> {

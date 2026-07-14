@@ -13,6 +13,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@hellyeah/x-ray": "^1.2.0",
     "@phosphor-icons/react": "^2.1.10",
     "framer-motion": "^12.38.0",
     "lenis": "^1.3.23",

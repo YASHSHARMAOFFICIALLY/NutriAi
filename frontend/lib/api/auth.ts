@@ -1,8 +1,6 @@
 import { AUTH_SESSION_COOKIE, AUTH_SESSION_MAX_AGE_SECONDS } from "../authSession";
 
 const STORAGE_KEY = "nutriai.access_token";
-export { AUTH_SESSION_COOKIE } from "../authSession";
-export { getApiUrl } from "./config";
 
 export function clearAccessToken(): void {
   clearAuthSessionMarker();

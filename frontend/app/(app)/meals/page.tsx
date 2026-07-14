@@ -2,68 +2,50 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import useSWR from "swr";
+import useSWR, { mutate as globalMutate } from "swr";
 import { Camera } from "@phosphor-icons/react/dist/ssr";
 import { listHistory } from "@/lib/api/history";
 import { deleteMeal } from "@/lib/api/meals";
-import type { HistoryEntry, MealDTO } from "@/lib/api/types";
-import { useMeals } from "@/lib/hooks/swr";
+import type { HistoryEntry } from "@/lib/api/types";
+import { useMeals, useMealsRange, useResource } from "@/lib/hooks/swr";
+import { mealFromApi, type DiaryMeal } from "@/lib/mealAdapters";
+import { todayKey, dateKeyToLocalDate, formatDayLabel } from "@/lib/date";
 import { EmptyState, PageHeader, MealLine, Panel, Skeleton, SourceBadge, Stat } from "../_components/ui";
 import type { Meal } from "../_components/ui";
 import { useToast } from "@/lib/toast";
 
-type DiaryMeal = Meal & { loggedDate: string };
+const RANGE_FILTERS = ["Today", "7 days", "30 days"] as const;
+const TYPE_FILTERS = ["Breakfast", "Lunch", "Dinner", "Photo source"] as const;
 
-function mealFromApi(meal: MealDTO): DiaryMeal {
-  const loggedAt = new Date(meal.loggedAt);
-  return {
-    id: meal.id,
-    mealType: meal.mealType,
-    title: meal.notes || meal.items[0]?.name || meal.mealType.toLowerCase(),
-    loggedAt: loggedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    loggedDate: loggedAt.toISOString().slice(0, 10),
-    source: meal.foodQueryId ? "IMAGE" : "TEXT",
-    provider: "db",
-    cached: false,
-    confidence: 1,
-    totals: {
-      calories: Math.round(meal.totalCalories),
-      protein: Math.round(meal.totalProtein),
-      carbs: Math.round(meal.totalCarbs),
-      fat: Math.round(meal.totalFat),
-    },
-    items: meal.items.map((item) => ({
-      name: item.name,
-      quantity: item.quantity ?? "",
-      calories: Math.round(item.calories),
-      protein: Math.round(item.protein),
-      carbs: Math.round(item.carbs),
-      fat: Math.round(item.fat),
-      confidence: 1,
-    })),
-  };
-}
+type RangeFilter = (typeof RANGE_FILTERS)[number];
+type TypeFilter = (typeof TYPE_FILTERS)[number];
 
-function todayStart() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function formatDiaryDate(value: string) {
-  const date = new Date(`${value}T00:00:00`);
-  return date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+function rangeStartKey(range: RangeFilter): string {
+  const today = dateKeyToLocalDate(todayKey());
+  const span = range === "30 days" ? 29 : 6;
+  today.setDate(today.getDate() - span);
+  return today.toLocaleDateString("en-CA");
 }
 
 export default function MealsPage() {
   const { toast } = useToast();
-  const [activeFilter, setActiveFilter] = useState("Today");
+  const [rangeFilter, setRangeFilter] = useState<RangeFilter>("Today");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter | null>(null);
   const [historyFrom, setHistoryFrom] = useState("");
   const [historyTo, setHistoryTo] = useState("");
   const [minCalories, setMinCalories] = useState("");
   const [maxCalories, setMaxCalories] = useState("");
 
-  const { data: mealsData, mutate: mutateMeals } = useMeals();
+  const today = todayKey();
+  const isRange = rangeFilter !== "Today";
+  const fromKey = isRange ? rangeStartKey(rangeFilter) : today;
+
+  const todayResult = useMeals(undefined, { isPaused: () => isRange });
+  const rangeResult = useMealsRange(fromKey, today, { isPaused: () => !isRange });
+  const mealsResource = useResource(isRange ? rangeResult : todayResult);
+  const mutateMeals = isRange ? rangeResult.mutate : todayResult.mutate;
+  const mealsData = mealsResource.data;
+
   const defaultPaginated = { data: [] as HistoryEntry[], total: 0, page: 1, pageSize: 8, totalPages: 1 };
   const historyKey = `history:${historyFrom}:${historyTo}:${minCalories}:${maxCalories}`;
   const { data: historyData } = useSWR(historyKey, () =>
@@ -76,33 +58,23 @@ export default function MealsPage() {
     }).catch(() => defaultPaginated),
   );
 
-  const meals = (mealsData ?? []).map(mealFromApi);
+  const meals = useMemo<DiaryMeal[]>(() => (mealsData ?? []).map(mealFromApi), [mealsData]);
   const history = historyData?.data ?? [];
-  const source = mealsData && historyData ? "live" : "loading";
 
   const days = useMemo(() => {
     const groups = new Map<string, Meal[]>();
-    const today = todayStart();
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 6);
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(today.getDate() - 29);
     const filtered = meals.filter((meal) => {
-      const loggedDay = new Date(`${meal.loggedDate}T00:00:00`);
-      if (activeFilter === "Today") return loggedDay.getTime() === today.getTime();
-      if (activeFilter === "7 days") return loggedDay >= sevenDaysAgo;
-      if (activeFilter === "30 days") return loggedDay >= thirtyDaysAgo;
-      if (activeFilter === "Breakfast" || activeFilter === "Lunch" || activeFilter === "Dinner") {
-        return meal.mealType === activeFilter.toUpperCase();
+      if (typeFilter === "Breakfast" || typeFilter === "Lunch" || typeFilter === "Dinner") {
+        return meal.mealType === typeFilter.toUpperCase();
       }
-      if (activeFilter === "Photo source") return meal.source === "IMAGE";
+      if (typeFilter === "Photo source") return meal.source === "IMAGE";
       return true;
     });
     filtered.forEach((meal) => groups.set(meal.loggedDate, [...(groups.get(meal.loggedDate) ?? []), meal]));
     return Array.from(groups.entries())
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([date, groupedMeals]) => ({ date, meals: groupedMeals }));
-  }, [activeFilter, meals]);
+  }, [typeFilter, meals]);
 
   const visibleTotals = useMemo(() => days.reduce(
     (acc, day) => {
@@ -123,7 +95,11 @@ export default function MealsPage() {
     try {
       await deleteMeal(id);
       toast("success", "Meal deleted.");
-      await mutateMeals();
+      await Promise.all([
+        mutateMeals(),
+        // The daily summary is keyed by today; refresh it so the dashboard stays in sync.
+        globalMutate(`daily-summary:${today}`),
+      ]);
     } catch {
       await mutateMeals(previous, { revalidate: false });
       toast("error", "Could not delete meal.");
@@ -131,15 +107,18 @@ export default function MealsPage() {
   }
 
   const filtersActive =
-    activeFilter !== "Today" || Boolean(historyFrom || historyTo || minCalories || maxCalories);
+    rangeFilter !== "Today" || typeFilter !== null || Boolean(historyFrom || historyTo || minCalories || maxCalories);
 
   function clearFilters() {
-    setActiveFilter("Today");
+    setRangeFilter("Today");
+    setTypeFilter(null);
     setHistoryFrom("");
     setHistoryTo("");
     setMinCalories("");
     setMaxCalories("");
   }
+
+  const filterSummary = typeFilter ? `${rangeFilter} · ${typeFilter}` : rangeFilter;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-5 sm:py-8 lg:px-8">
@@ -149,16 +128,30 @@ export default function MealsPage() {
         description="Review saved meals, filter by time or meal type, and use analysis history to keep the diary accurate."
         action={{ label: "Log meal", href: "/snap" }}
       />
-      {source === "error" ? (
+      {mealsResource.source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load meal data. Sign in and try again.</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[13px] font-semibold text-[var(--danger)]">Could not load meal data. Check your connection and try again.</p>
+            <button
+              onClick={mealsResource.retry}
+              className="min-h-10 shrink-0 rounded-lg bg-forest px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-forest-soft"
+            >
+              Retry
+            </button>
+          </div>
         </Panel>
       ) : null}
 
       <div className="mb-5 flex flex-col gap-3 rounded-lg border border-border bg-white p-3 shadow-sm md:flex-row md:items-center md:justify-between">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 md:flex-wrap md:overflow-visible md:pb-0">
-          {["Today", "7 days", "30 days", "Breakfast", "Lunch", "Dinner", "Photo source"].map((filter) => (
-            <button key={filter} onClick={() => setActiveFilter(filter)} className={`min-h-10 shrink-0 rounded-lg border px-3 py-1.5 text-[12px] font-bold transition-colors ${activeFilter === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f] hover:border-teal/30 hover:text-forest"}`}>
+          {RANGE_FILTERS.map((filter) => (
+            <button key={filter} onClick={() => setRangeFilter(filter)} className={`min-h-10 shrink-0 rounded-lg border px-3 py-1.5 text-[12px] font-bold transition-colors ${rangeFilter === filter ? "border-[#173c2b] bg-[#173c2b] text-white" : "border-black/10 bg-white text-[#5f675f] hover:border-teal/30 hover:text-forest"}`}>
+              {filter}
+            </button>
+          ))}
+          <span className="mx-1 hidden w-px self-stretch bg-border md:block" aria-hidden />
+          {TYPE_FILTERS.map((filter) => (
+            <button key={filter} onClick={() => setTypeFilter((current) => (current === filter ? null : filter))} className={`min-h-10 shrink-0 rounded-lg border px-3 py-1.5 text-[12px] font-bold transition-colors ${typeFilter === filter ? "border-teal bg-teal text-white" : "border-black/10 bg-white text-[#5f675f] hover:border-teal/30 hover:text-forest"}`}>
               {filter}
             </button>
           ))}
@@ -172,7 +165,7 @@ export default function MealsPage() {
         </button>
       </div>
 
-      {source === "loading" ? (
+      {mealsResource.source === "loading" ? (
         <div className="space-y-5">
           <div className="grid gap-3 md:grid-cols-3">
             <Skeleton className="h-28" />
@@ -187,16 +180,16 @@ export default function MealsPage() {
         </div>
       ) : null}
 
-      {source !== "loading" ? (
+      {mealsResource.source === "live" ? (
         <section className="mb-5 grid gap-3 md:grid-cols-3">
-          <Stat label="Visible meals" value={`${visibleTotals.meals}`} sub={`${activeFilter} filter`} />
+          <Stat label="Visible meals" value={`${visibleTotals.meals}`} sub={`${filterSummary} filter`} />
           <Stat label="Calories" value={`${visibleTotals.calories}`} sub="In current view" />
           <Stat label="Protein" value={`${visibleTotals.protein}g`} sub="In current view" />
         </section>
       ) : null}
 
       <section className="space-y-6">
-        {source !== "loading" && days.map((day) => {
+        {mealsResource.source === "live" && days.map((day) => {
           const totals = day.meals.reduce(
             (acc, meal) => ({
               calories: acc.calories + meal.totals.calories,
@@ -209,19 +202,18 @@ export default function MealsPage() {
             <Panel key={day.date} className="overflow-hidden">
               <div className="flex flex-col gap-3 border-b border-black/10 p-5 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-[22px] font-semibold">{formatDiaryDate(day.date)}</h2>
+                  <h2 className="text-[22px] font-semibold">{formatDayLabel(day.date)}</h2>
                   <p className="mt-1 text-[13px] text-[#5f675f]">{day.meals.length} meals · {totals.calories} kcal · {totals.protein}g protein</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <SourceBadge label="editable items" />
+                  <SourceBadge label="tap to expand" />
                 </div>
               </div>
               <div className="space-y-3 p-3 sm:p-5">
-                {day.meals.map((meal, index) => (
+                {day.meals.map((meal) => (
                   <MealLine
                     key={meal.id}
                     meal={meal}
-                    expanded={index === 1}
                     action={
                       <button onClick={() => handleDeleteMeal(meal.id)} className="min-h-9 rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#b7791f] transition-colors hover:border-[#b7791f]/30 hover:bg-amber-50">
                         Delete
@@ -233,7 +225,7 @@ export default function MealsPage() {
             </Panel>
           );
         })}
-        {source !== "loading" && !days.length ? (
+        {mealsResource.source === "live" && !days.length ? (
           <Panel className="p-6">
             <EmptyState
               icon={Camera}

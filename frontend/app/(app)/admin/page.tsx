@@ -196,7 +196,7 @@ export default function AdminPage() {
       <PageHeader eyebrow={`Admin · ${source}`} title="Operations, users, usage" />
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load admin data. Sign in with an admin account and try again.</p>
+          <p className="text-[13px] font-semibold text-[var(--danger)]">Could not load admin data. Sign in with an admin account and try again.</p>
         </Panel>
       ) : null}
 
@@ -341,7 +341,7 @@ export default function AdminPage() {
 
       {userDetailStatus === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">Could not load selected user details.</p>
+          <p className="text-[13px] font-semibold text-[var(--danger)]">Could not load selected user details.</p>
         </Panel>
       ) : null}
 

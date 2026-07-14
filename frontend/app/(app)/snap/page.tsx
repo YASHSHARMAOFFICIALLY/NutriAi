@@ -3,15 +3,29 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Camera, CheckCircle, Crown, ImageSquare, ListChecks, Lock, PencilSimple, Sparkle, Trash, X } from "@phosphor-icons/react/dist/ssr";
+import { mutate as globalMutate } from "swr";
+import { ArrowRight, Camera, CheckCircle, ImageSquare, ListChecks, PencilSimple, Sparkle, Trash, X } from "@phosphor-icons/react/dist/ssr";
+import { motion, AnimatePresence } from "framer-motion";
 import { analyzeFood } from "@/lib/api/food";
 import { ApiError } from "@/lib/api/client";
 import { createMeal, inferMealType } from "@/lib/api/meals";
 import { usePlan } from "@/lib/hooks/swr";
+import { useRemaining } from "@/lib/nutrition";
 import { uploadFoodImage } from "@/lib/api/uploads";
+import { numberOrNull } from "@/lib/form";
+import { todayKey } from "@/lib/date";
 import type { AnalyzeFoodResponse, MealType } from "@/lib/api/types";
 import { EmptyState, PageHeader, Panel } from "../_components/ui";
 import { useToast } from "@/lib/toast";
+import { AnalyzingState } from "./_components/AnalyzingState";
+
+// Mirror the backend upload constraints (backend/src/services/uploadService.ts +
+// env UPLOAD_MAX_SIZE_BYTES). Keep these in sync if the server allowlist changes.
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const IMAGE_HELP = "Use a JPEG, PNG, WebP, or HEIC image up to 10 MB.";
+
+type EditField = "calories" | "protein" | "carbs" | "fat";
 
 type Candidate = {
   queryId: string;
@@ -62,10 +76,17 @@ function candidateFromApi(result: AnalyzeFoodResponse): Candidate {
   };
 }
 
-import { motion, AnimatePresence } from "framer-motion";
-import { AnalyzingState } from "./_components/AnalyzingState";
-
-// ... (helper functions and types remain same)
+function sumTotals(items: Candidate["items"]) {
+  return items.reduce(
+    (acc, item) => ({
+      calories: acc.calories + item.calories,
+      protein: acc.protein + item.protein,
+      carbs: acc.carbs + item.carbs,
+      fat: acc.fat + item.fat,
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  );
+}
 
 export default function SnapPage() {
   const { toast } = useToast();
@@ -77,19 +98,43 @@ export default function SnapPage() {
   const [inputMode, setInputMode] = useState<"photo" | "text">("photo");
   const [errorMessage, setErrorMessage] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
-  const { data: plan } = usePlan();
-  const planLoaded = plan !== undefined;
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [limitMessage, setLimitMessage] = useState("");
+  // Raw, in-progress strings for numeric line-item fields, keyed by `${index}:${field}`.
+  // Lets a field be emptied while typing; committed (clamped) on blur.
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  const { data: plan } = usePlan();
   const previewUrlRef = useRef("");
+  const textRef = useRef<HTMLTextAreaElement>(null);
 
   const isPro = plan?.tier === "PRO" && (plan.status === "ACTIVE" || plan.status === "PAST_DUE");
-  const photoLocked = planLoaded && !isPro;
+  const remaining = useRemaining();
 
   const sourceSteps = useMemo(() => [
     { label: assetId ? "Photo ready" : selectedFile ? "Photo selected" : "Prompt ready", icon: ImageSquare },
     { label: "Nutrition estimated", icon: ListChecks },
     { label: "Review before saving", icon: Sparkle },
   ], [assetId, selectedFile]);
+
+  // Consume a prefill on mount: ?text= query wins over the estimator handoff in
+  // localStorage. Either one switches to the text tab and focuses the field. The
+  // values are client-only (query/localStorage), so this must run after mount;
+  // the setState-in-effect rule is the intended mount-data escape hatch here.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = params.get("text");
+    const fromStorage = window.localStorage.getItem("nutriai.estimator.meal");
+    if (fromStorage) window.localStorage.removeItem("nutriai.estimator.meal");
+    const prefill = fromQuery ?? fromStorage;
+    if (prefill) {
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setText(prefill);
+      setInputMode("text");
+      /* eslint-enable react-hooks/set-state-in-effect */
+      requestAnimationFrame(() => textRef.current?.focus());
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -98,9 +143,15 @@ export default function SnapPage() {
   }, []);
 
   function handleFileChange(file: File | null) {
-    if (photoLocked && file) {
-      setUpgradeModalOpen(true);
-      return;
+    if (file) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        toast("error", `Unsupported image format. ${IMAGE_HELP}`);
+        return;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        toast("error", `That image is too large. ${IMAGE_HELP}`);
+        return;
+      }
     }
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     const nextPreviewUrl = file ? URL.createObjectURL(file) : "";
@@ -112,12 +163,18 @@ export default function SnapPage() {
     setStatus("ready");
   }
 
+  function handleLimitError(message: string) {
+    setStatus("ready");
+    if (isPro) {
+      toast("error", message);
+    } else {
+      setLimitMessage(message);
+      setUpgradeModalOpen(true);
+    }
+  }
+
   async function handleAnalyze() {
     if (!text.trim() && !selectedFile && !assetId) return;
-    if ((selectedFile || assetId) && photoLocked) {
-      setUpgradeModalOpen(true);
-      return;
-    }
     try {
       setErrorMessage("");
       let confirmedAssetId = assetId;
@@ -132,11 +189,11 @@ export default function SnapPage() {
         confirmedAssetId ? { assetId: confirmedAssetId, text: text.trim() || undefined } : { text: text.trim() },
       );
       setCandidate(candidateFromApi(result));
+      setEditValues({});
       setStatus("ready");
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        setUpgradeModalOpen(true);
-        setStatus("ready");
+      if (error instanceof ApiError && error.status === 429) {
+        handleLimitError(error.message);
         return;
       }
       setErrorMessage(
@@ -149,7 +206,7 @@ export default function SnapPage() {
   }
 
   async function handleSave() {
-    if (!candidate) return;
+    if (!candidate || status === "saving" || status === "saved") return;
     setStatus("saving");
     try {
       await createMeal({
@@ -167,6 +224,11 @@ export default function SnapPage() {
       });
       setStatus("saved");
       toast("success", "Meal saved to your diary.");
+      // Refresh today's diary, daily summary, and analytics so other pages are fresh.
+      const today = todayKey();
+      void globalMutate(`meals:${today}`);
+      void globalMutate(`daily-summary:${today}`);
+      void globalMutate("analytics:own");
     } catch {
       setErrorMessage("Could not save this meal right now.");
       toast("error", "Could not save this meal.");
@@ -174,25 +236,55 @@ export default function SnapPage() {
     }
   }
 
-  function updateItem(index: number, field: keyof Candidate["items"][number], value: string) {
-    setCandidate((current) => {
-      if (!current) return current;
-      const items = current.items.map((item, itemIndex) => {
-        if (itemIndex !== index) return item;
-        if (field === "quantity" || field === "name") return { ...item, [field]: value };
-        const numeric = Number(value);
-        return { ...item, [field]: Number.isFinite(numeric) ? numeric : 0 };
-      });
-      const totals = items.reduce(
-        (acc, item) => ({
-          calories: acc.calories + item.calories,
-          protein: acc.protein + item.protein,
-          carbs: acc.carbs + item.carbs,
-          fat: acc.fat + item.fat,
-        }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 },
-      );
-      return { ...current, items, totals };
+  function resetFlow() {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = "";
+    setText("");
+    setCandidate(null);
+    setSelectedFile(null);
+    setAssetId(null);
+    setPreviewUrl("");
+    setErrorMessage("");
+    setEditValues({});
+    setStatus("ready");
+  }
+
+  function editKey(index: number, field: EditField) {
+    return `${index}:${field}`;
+  }
+
+  function fieldDisplayValue(index: number, field: EditField, numericValue: number) {
+    return editValues[editKey(index, field)] ?? String(numericValue);
+  }
+
+  function handleNumericChange(index: number, field: EditField, raw: string) {
+    setEditValues((current) => ({ ...current, [editKey(index, field)]: raw }));
+  }
+
+  function commitNumericField(index: number, field: EditField) {
+    const key = editKey(index, field);
+    const raw = editValues[key];
+    setEditValues((current) => {
+      if (!(key in current)) return current;
+      const rest = { ...current };
+      delete rest[key];
+      return rest;
+    });
+    setCandidate((cur) => {
+      if (!cur) return cur;
+      const current = cur.items[index]?.[field] ?? 0;
+      const parsed = raw === undefined ? current : numberOrNull(raw);
+      const next = Math.max(0, parsed != null && Number.isFinite(parsed) ? parsed : 0);
+      const items = cur.items.map((item, i) => (i === index ? { ...item, [field]: next } : item));
+      return { ...cur, items, totals: sumTotals(items) };
+    });
+  }
+
+  function updateItemText(index: number, field: "name" | "quantity", value: string) {
+    setCandidate((cur) => {
+      if (!cur) return cur;
+      const items = cur.items.map((item, i) => (i === index ? { ...item, [field]: value } : item));
+      return { ...cur, items };
     });
   }
 
@@ -204,17 +296,9 @@ export default function SnapPage() {
     setCandidate((current) => {
       if (!current || current.items.length <= 1) return current;
       const items = current.items.filter((_, itemIndex) => itemIndex !== index);
-      const totals = items.reduce(
-        (acc, item) => ({
-          calories: acc.calories + item.calories,
-          protein: acc.protein + item.protein,
-          carbs: acc.carbs + item.carbs,
-          fat: acc.fat + item.fat,
-        }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 },
-      );
-      return { ...current, items, totals };
+      return { ...current, items, totals: sumTotals(items) };
     });
+    setEditValues({});
   }
 
   function addItem() {
@@ -231,8 +315,10 @@ export default function SnapPage() {
     setCandidate((current) => current ? { ...current, mealType: value } : current);
   }
 
+  const saved = status === "saved";
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10"
@@ -247,7 +333,7 @@ export default function SnapPage() {
         <div className="space-y-6">
           <Panel className="p-4 sm:p-6">
             <div className="mb-6 grid grid-cols-2 rounded-lg border border-border bg-surface-alt p-1" role="tablist" aria-label="Meal input mode">
-              <button 
+              <button
                 onClick={() => setInputMode("photo")}
                 aria-pressed={inputMode === "photo"}
                 className={`flex min-h-11 items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
@@ -257,7 +343,7 @@ export default function SnapPage() {
                 <Camera size={16} weight={inputMode === "photo" ? "fill" : "bold"} />
                 Photo
               </button>
-              <button 
+              <button
                 onClick={() => setInputMode("text")}
                 aria-pressed={inputMode === "text"}
                 className={`flex min-h-11 items-center justify-center gap-2 rounded-md py-2.5 text-[13px] font-bold transition-colors ${
@@ -276,46 +362,29 @@ export default function SnapPage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
-                  onClick={() => {
-                    if (photoLocked) setUpgradeModalOpen(true);
-                  }}
-                  className={`group relative flex h-[260px] flex-col items-center justify-center rounded-lg border border-dashed p-5 text-center transition-colors sm:h-[340px] sm:p-8 ${
-                    photoLocked
-                      ? "cursor-pointer border-[#d7ff68]/50 bg-[#173c2b] text-white shadow-[0_22px_60px_rgba(23,60,43,0.16)]"
-                      : "cursor-pointer border-border bg-surface-alt/60 hover:border-teal/50 hover:bg-surface-alt"
-                  }`}
+                  className="group relative flex h-[260px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-alt/60 p-5 text-center transition-colors hover:border-teal/50 hover:bg-surface-alt sm:h-[340px] sm:p-8"
                 >
-                  <span className={`relative grid h-16 w-16 place-items-center overflow-hidden rounded-lg shadow-sm ${photoLocked ? "bg-white/12 text-[#d7ff68]" : "bg-white text-forest"}`}>
+                  <span className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-lg bg-white text-forest shadow-sm">
                     {previewUrl ? (
                       <Image src={previewUrl} alt="Selected meal" fill className="rounded-lg object-cover" unoptimized />
-                    ) : photoLocked ? (
-                      <Lock size={30} weight="duotone" />
                     ) : (
                       <ImageSquare size={32} weight="duotone" />
                     )}
                   </span>
-                  <p className={`mt-6 text-[18px] font-bold ${photoLocked ? "text-white" : "text-forest"}`}>
-                    {photoLocked ? "Photo scans are Pro" : selectedFile ? "Change photo" : "Drop food photo"}
+                  <p className="mt-6 text-[18px] font-bold text-forest">
+                    {selectedFile ? "Change photo" : "Drop food photo"}
                   </p>
-                  <p className={`mt-2 max-w-[260px] text-[13px] leading-relaxed ${photoLocked ? "text-white/72" : "text-muted"}`}>
-                    {photoLocked ? "Upgrade to analyze meals from images. You can still type meals for free." : selectedFile ? `${selectedFile.name} ready` : "Upload a photo to estimate nutrition"}
+                  <p className="mt-2 max-w-[260px] text-[13px] leading-relaxed text-muted">
+                    {selectedFile ? `${selectedFile.name} ready` : IMAGE_HELP}
                   </p>
-                  {!photoLocked && (
-                    <label className="absolute inset-0 cursor-pointer" aria-label="Upload food photo">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="sr-only"
-                        onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
-                      />
-                    </label>
-                  )}
-                  {photoLocked && (
-                    <span className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#d7ff68] px-4 py-2 text-[12px] font-bold text-forest">
-                      <Crown size={14} weight="fill" />
-                      Unlock photo scan
-                    </span>
-                  )}
+                  <label className="absolute inset-0 cursor-pointer" aria-label="Upload food photo">
+                    <input
+                      type="file"
+                      accept={ALLOWED_IMAGE_TYPES.join(",")}
+                      className="sr-only"
+                      onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
                   {selectedFile ? (
                     <button
                       type="button"
@@ -331,7 +400,7 @@ export default function SnapPage() {
                   ) : null}
                 </motion.div>
               ) : (
-                <motion.div 
+                <motion.div
                   key="text"
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -340,6 +409,7 @@ export default function SnapPage() {
                 >
                   <p className="text-[12px] font-bold uppercase tracking-wider text-muted mb-3">What are you eating?</p>
                   <textarea
+                    ref={textRef}
                     className="h-40 w-full resize-none rounded-lg border border-border bg-white p-4 text-[15px] font-medium text-forest outline-none transition-colors focus:border-teal"
                     placeholder="e.g., Two scrambled eggs with avocado toast and a side of blueberries..."
                     value={text}
@@ -356,7 +426,7 @@ export default function SnapPage() {
             >
               {status === "uploading" ? "Uploading photo..." : status === "analyzing" ? "Estimating nutrition..." : "Estimate nutrition"}
             </button>
-            
+
             {status === "error" && (
               <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 p-3 text-center text-[12px] font-bold text-amber-700">
                 {errorMessage || "Could not analyze this meal. Check your connection and try again."}
@@ -377,10 +447,10 @@ export default function SnapPage() {
         <div className="space-y-8">
           <AnimatePresence mode="wait">
             {status === "analyzing" || status === "uploading" ? (
-              <motion.div 
+              <motion.div
                 key="loading"
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
                 <Panel className="flex min-h-[360px] h-full items-center justify-center p-6 sm:min-h-[500px] sm:p-12">
@@ -388,9 +458,9 @@ export default function SnapPage() {
                 </Panel>
               </motion.div>
             ) : candidate ? (
-              <motion.div 
+              <motion.div
                 key="result"
-                initial={{ opacity: 0, y: 20 }} 
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-8"
               >
@@ -406,7 +476,8 @@ export default function SnapPage() {
                         <input
                           value={candidate.title}
                           onChange={(event) => updateTitle(event.target.value)}
-                          className="w-full rounded-lg border border-transparent bg-transparent px-0 py-1 text-[26px] font-bold leading-tight tracking-tight text-forest outline-none transition-colors focus:border-teal/30 focus:bg-surface-alt focus:px-3 sm:text-[32px] md:text-[36px]"
+                          disabled={saved}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-0 py-1 text-[26px] font-bold leading-tight tracking-tight text-forest outline-none transition-colors focus:border-teal/30 focus:bg-surface-alt focus:px-3 disabled:opacity-100 sm:text-[32px] md:text-[36px]"
                           aria-label="Meal title"
                         />
                       </h2>
@@ -415,6 +486,7 @@ export default function SnapPage() {
                         <select
                           value={candidate.mealType}
                           onChange={(event) => updateMealType(event.target.value as MealType)}
+                          disabled={saved}
                           className="bg-transparent text-[13px] font-bold outline-none"
                         >
                           {(["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const).map((type) => (
@@ -423,7 +495,7 @@ export default function SnapPage() {
                         </select>
                       </label>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {[
                         { val: candidate.totals.calories, unit: "kcal", label: "Energy" },
@@ -432,7 +504,7 @@ export default function SnapPage() {
                         { val: `${candidate.totals.fat}g`, unit: "", label: "Fat" },
                       ].map((macro) => (
                         <div key={macro.label} className="rounded-lg border border-border bg-surface-alt p-4 text-center">
-                          <p className="text-[20px] font-bold text-forest leading-none">{macro.val}</p>
+                          <p className="text-[20px] font-bold text-forest leading-none tabular-nums">{macro.val}</p>
                           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-muted opacity-70">{macro.label}</p>
                         </div>
                       ))}
@@ -454,12 +526,12 @@ export default function SnapPage() {
                 <Panel className="overflow-hidden">
                   <div className="flex flex-col gap-3 border-b border-border bg-surface-alt p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                     <h2 className="text-[20px] font-bold text-forest tracking-tight">Verified Line Items</h2>
-                    <button onClick={addItem} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-[13px] font-bold text-forest transition-colors hover:bg-surface-alt">
+                    <button onClick={addItem} disabled={saved} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-[13px] font-bold text-forest transition-colors hover:bg-surface-alt disabled:opacity-50">
                       <PencilSimple size={16} weight="bold" />
                       Add row
                     </button>
                   </div>
-                  
+
                   <div className="hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[980px] text-left text-[14px]">
                       <thead className="bg-surface-alt/50 text-muted">
@@ -478,50 +550,64 @@ export default function SnapPage() {
                         {candidate.items.map((item, index) => (
                           <tr key={index} className="group hover:bg-surface-alt/20 transition-colors">
                             <td className="px-6 py-4">
-                              <input 
-                                className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 font-bold text-forest outline-none transition-colors group-focus-within:border-teal/30 group-focus-within:bg-white group-focus-within:text-teal" 
-                                value={item.name} 
-                                onChange={(event) => updateItem(index, "name", event.target.value)} 
+                              <input
+                                className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 font-bold text-forest outline-none transition-colors group-focus-within:border-teal/30 group-focus-within:bg-white group-focus-within:text-teal"
+                                value={item.name}
+                                onChange={(event) => updateItemText(index, "name", event.target.value)}
+                                disabled={saved}
                                 aria-label={`Food item ${index + 1} name`}
                               />
                             </td>
                             <td className="px-6 py-4">
-                              <input 
-                                className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-muted outline-none transition-colors focus:border-teal/30 focus:bg-white" 
-                                value={item.quantity || ""} 
-                                onChange={(event) => updateItem(index, "quantity", event.target.value)} 
+                              <input
+                                className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-muted outline-none transition-colors focus:border-teal/30 focus:bg-white"
+                                value={item.quantity || ""}
+                                onChange={(event) => updateItemText(index, "quantity", event.target.value)}
+                                disabled={saved}
                                 aria-label={`Food item ${index + 1} amount`}
                               />
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <input 
-                                className="w-20 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-forest outline-none transition-colors focus:border-teal/30 focus:bg-white" 
-                                value={item.calories} 
-                                onChange={(event) => updateItem(index, "calories", event.target.value)} 
+                              <input
+                                inputMode="numeric"
+                                className="w-20 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-forest outline-none transition-colors focus:border-teal/30 focus:bg-white tabular-nums"
+                                value={fieldDisplayValue(index, "calories", item.calories)}
+                                onChange={(event) => handleNumericChange(index, "calories", event.target.value)}
+                                onBlur={() => commitNumericField(index, "calories")}
+                                disabled={saved}
                                 aria-label={`Food item ${index + 1} calories`}
                               />
                             </td>
                             <td className="px-6 py-4 text-right">
                               <input
-                                className="w-16 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-teal outline-none transition-colors focus:border-teal/30 focus:bg-white"
-                                value={item.protein}
-                                onChange={(event) => updateItem(index, "protein", event.target.value)}
+                                inputMode="decimal"
+                                className="w-16 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-teal outline-none transition-colors focus:border-teal/30 focus:bg-white tabular-nums"
+                                value={fieldDisplayValue(index, "protein", item.protein)}
+                                onChange={(event) => handleNumericChange(index, "protein", event.target.value)}
+                                onBlur={() => commitNumericField(index, "protein")}
+                                disabled={saved}
                                 aria-label={`Food item ${index + 1} protein`}
                               />
                             </td>
                             <td className="px-6 py-4 text-right">
                               <input
-                                className="w-16 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-sage outline-none transition-colors focus:border-teal/30 focus:bg-white"
-                                value={item.carbs}
-                                onChange={(event) => updateItem(index, "carbs", event.target.value)}
+                                inputMode="decimal"
+                                className="w-16 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-sage outline-none transition-colors focus:border-teal/30 focus:bg-white tabular-nums"
+                                value={fieldDisplayValue(index, "carbs", item.carbs)}
+                                onChange={(event) => handleNumericChange(index, "carbs", event.target.value)}
+                                onBlur={() => commitNumericField(index, "carbs")}
+                                disabled={saved}
                                 aria-label={`Food item ${index + 1} carbs`}
                               />
                             </td>
                             <td className="px-6 py-4 text-right">
                               <input
-                                className="w-16 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-[#b7791f] outline-none transition-colors focus:border-teal/30 focus:bg-white"
-                                value={item.fat}
-                                onChange={(event) => updateItem(index, "fat", event.target.value)}
+                                inputMode="decimal"
+                                className="w-16 rounded-md border border-transparent bg-transparent px-2 py-1 text-right font-bold text-[#b7791f] outline-none transition-colors focus:border-teal/30 focus:bg-white tabular-nums"
+                                value={fieldDisplayValue(index, "fat", item.fat)}
+                                onChange={(event) => handleNumericChange(index, "fat", event.target.value)}
+                                onBlur={() => commitNumericField(index, "fat")}
+                                disabled={saved}
                                 aria-label={`Food item ${index + 1} fat`}
                               />
                             </td>
@@ -530,13 +616,13 @@ export default function SnapPage() {
                                 <div className="h-1.5 w-12 rounded-full bg-surface-alt overflow-hidden">
                                   <div className="h-full bg-teal" style={{ width: `${item.confidence * 100}%` }} />
                                 </div>
-                                <span className="text-[11px] font-bold text-muted">{Math.round(item.confidence * 100)}%</span>
+                                <span className="text-[11px] font-bold text-muted tabular-nums">{Math.round(item.confidence * 100)}%</span>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-right">
                               <button
                                 onClick={() => removeItem(index)}
-                                disabled={candidate.items.length <= 1}
+                                disabled={candidate.items.length <= 1 || saved}
                                 className="inline-grid h-8 w-8 place-items-center rounded-md border border-border bg-white text-muted transition-colors hover:border-[#b7791f]/30 hover:text-[#b7791f] disabled:opacity-40"
                                 aria-label={`Remove food item ${index + 1}`}
                               >
@@ -558,7 +644,8 @@ export default function SnapPage() {
                             <input
                               className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-forest outline-none focus:border-teal"
                               value={item.name}
-                              onChange={(event) => updateItem(index, "name", event.target.value)}
+                              onChange={(event) => updateItemText(index, "name", event.target.value)}
+                              disabled={saved}
                             />
                           </label>
                           <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
@@ -566,52 +653,68 @@ export default function SnapPage() {
                             <input
                               className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-foreground outline-none focus:border-teal"
                               value={item.quantity || ""}
-                              onChange={(event) => updateItem(index, "quantity", event.target.value)}
+                              onChange={(event) => updateItemText(index, "quantity", event.target.value)}
+                              disabled={saved}
                             />
                           </label>
                           <div className="grid grid-cols-2 gap-2">
                             <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
                               kcal
                               <input
-                                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-forest outline-none focus:border-teal"
-                                value={item.calories}
-                                onChange={(event) => updateItem(index, "calories", event.target.value)}
+                                inputMode="numeric"
+                                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-forest outline-none focus:border-teal tabular-nums"
+                                value={fieldDisplayValue(index, "calories", item.calories)}
+                                onChange={(event) => handleNumericChange(index, "calories", event.target.value)}
+                                onBlur={() => commitNumericField(index, "calories")}
+                                disabled={saved}
+                                aria-label={`Food item ${index + 1} calories`}
                               />
                             </label>
                             <div className="rounded-lg bg-white p-3">
                               <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Protein</p>
                               <input
-                                className="mt-1 w-full rounded-md border border-transparent bg-transparent text-[14px] font-bold text-teal outline-none focus:border-teal/30 focus:bg-surface-alt"
-                                value={item.protein}
-                                onChange={(event) => updateItem(index, "protein", event.target.value)}
+                                inputMode="decimal"
+                                className="mt-1 w-full rounded-md border border-transparent bg-transparent text-[14px] font-bold text-teal outline-none focus:border-teal/30 focus:bg-surface-alt tabular-nums"
+                                value={fieldDisplayValue(index, "protein", item.protein)}
+                                onChange={(event) => handleNumericChange(index, "protein", event.target.value)}
+                                onBlur={() => commitNumericField(index, "protein")}
+                                disabled={saved}
                                 aria-label={`Food item ${index + 1} protein`}
                               />
                             </div>
                             <div className="rounded-lg bg-white p-3">
                               <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Certainty</p>
-                              <p className="mt-1 text-[14px] font-bold text-forest">{Math.round(item.confidence * 100)}%</p>
+                              <p className="mt-1 text-[14px] font-bold text-forest tabular-nums">{Math.round(item.confidence * 100)}%</p>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
                               carbs
                               <input
-                                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-sage outline-none focus:border-teal"
-                                value={item.carbs}
-                                onChange={(event) => updateItem(index, "carbs", event.target.value)}
+                                inputMode="decimal"
+                                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-sage outline-none focus:border-teal tabular-nums"
+                                value={fieldDisplayValue(index, "carbs", item.carbs)}
+                                onChange={(event) => handleNumericChange(index, "carbs", event.target.value)}
+                                onBlur={() => commitNumericField(index, "carbs")}
+                                disabled={saved}
+                                aria-label={`Food item ${index + 1} carbs`}
                               />
                             </label>
                             <label className="text-[11px] font-bold uppercase tracking-wider text-muted">
                               fat
                               <input
-                                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-[#b7791f] outline-none focus:border-teal"
-                                value={item.fat}
-                                onChange={(event) => updateItem(index, "fat", event.target.value)}
+                                inputMode="decimal"
+                                className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] font-bold text-[#b7791f] outline-none focus:border-teal tabular-nums"
+                                value={fieldDisplayValue(index, "fat", item.fat)}
+                                onChange={(event) => handleNumericChange(index, "fat", event.target.value)}
+                                onBlur={() => commitNumericField(index, "fat")}
+                                disabled={saved}
+                                aria-label={`Food item ${index + 1} fat`}
                               />
                             </label>
                             <button
                               onClick={() => removeItem(index)}
-                              disabled={candidate.items.length <= 1}
+                              disabled={candidate.items.length <= 1 || saved}
                               className="col-span-2 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-[12px] font-bold text-muted transition-colors hover:border-[#b7791f]/30 hover:text-[#b7791f] disabled:opacity-40"
                             >
                               <Trash size={14} weight="bold" />
@@ -624,19 +727,55 @@ export default function SnapPage() {
                   </div>
 
                   <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 flex flex-col gap-4 border-t border-border bg-surface-alt p-4 shadow-[0_-12px_32px_rgba(16,21,16,0.08)] lg:static lg:flex-row lg:items-center lg:justify-between lg:p-8 lg:shadow-none">
-                    <div>
-                      <p className="text-[14px] font-medium text-muted leading-relaxed">
-                        Saving this meal adds the reviewed totals to your diary and updates today&apos;s dashboard.
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleSave}
-                      disabled={status === "saving"}
-                      className="flex h-14 w-full items-center justify-center gap-3 rounded-lg bg-lime px-6 text-[16px] font-bold text-forest transition-colors hover:bg-white disabled:opacity-50 lg:w-auto lg:px-10"
-                    >
-                      <CheckCircle size={20} weight="fill" />
-                      {status === "saving" ? "Saving meal..." : status === "saved" ? "Meal saved" : "Confirm and save"}
-                    </button>
+                    {saved ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className="flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-lime text-forest shadow-sm">
+                            <CheckCircle size={20} weight="fill" />
+                          </span>
+                          <p className="text-[15px] font-bold text-forest tabular-nums">
+                            Saved · {remaining.calories} kcal left today
+                          </p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:flex">
+                          <Link
+                            href="/dashboard"
+                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-forest px-5 text-[14px] font-bold text-white transition-colors hover:bg-forest-soft"
+                          >
+                            View dashboard
+                            <ArrowRight size={15} weight="bold" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={resetFlow}
+                            className="inline-flex min-h-12 items-center justify-center rounded-lg border border-border bg-white px-5 text-[14px] font-bold text-forest transition-colors hover:bg-surface-alt"
+                          >
+                            Log another
+                          </button>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="text-[14px] font-medium text-muted leading-relaxed">
+                            Saving this meal adds the reviewed totals to your diary and updates today&apos;s dashboard.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleSave}
+                          disabled={status === "saving"}
+                          className="flex h-14 w-full items-center justify-center gap-3 rounded-lg bg-lime px-6 text-[16px] font-bold text-forest transition-colors hover:bg-white disabled:opacity-50 lg:w-auto lg:px-10"
+                        >
+                          <CheckCircle size={20} weight="fill" />
+                          {status === "saving" ? "Saving meal..." : "Confirm and save"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </Panel>
               </motion.div>
@@ -682,24 +821,13 @@ export default function SnapPage() {
               >
                 <X size={16} weight="bold" />
               </button>
-              <div className="grid h-14 w-14 place-items-center rounded-lg bg-[#173c2b] text-[#d7ff68] shadow-[0_16px_34px_rgba(23,60,43,0.18)]">
-                <Crown size={28} weight="fill" />
-              </div>
-              <p className="mt-6 text-[12px] font-bold uppercase tracking-[0.16em] text-teal">Pro feature</p>
-              <h2 id="photo-upgrade-title" className="mt-2 text-[28px] font-bold tracking-tight text-forest">
-                Photo meal scans are for Pro.
+              <p className="mt-1 text-[12px] font-bold uppercase tracking-[0.16em] text-teal">Daily limit reached</p>
+              <h2 id="photo-upgrade-title" className="mt-2 text-[24px] font-bold tracking-tight text-forest">
+                You&apos;ve used today&apos;s free scans.
               </h2>
               <p className="mt-3 text-[14px] leading-6 text-muted">
-                Upgrade to scan food images, get editable nutrition estimates, and keep every meal synced with your dashboard.
+                {limitMessage || "Free plan allows 3 photo scans per day. Upgrade to Pro for more scans."}
               </p>
-              <div className="mt-5 grid gap-2">
-                {["Image-based meal analysis", "Editable calories and macros", "Unlimited Pro workflow"].map((item) => (
-                  <div key={item} className="flex items-center gap-3 rounded-lg border border-border bg-surface-alt px-3 py-2.5 text-[13px] font-bold text-forest">
-                    <CheckCircle size={16} weight="fill" className="text-teal" />
-                    {item}
-                  </div>
-                ))}
-              </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]">
                 <Link
                   href="/pricing"
@@ -713,6 +841,7 @@ export default function SnapPage() {
                   onClick={() => {
                     setUpgradeModalOpen(false);
                     setInputMode("text");
+                    requestAnimationFrame(() => textRef.current?.focus());
                   }}
                   className="inline-flex min-h-12 items-center justify-center rounded-lg border border-border bg-white px-5 text-[14px] font-bold text-forest transition-colors hover:bg-surface-alt"
                 >

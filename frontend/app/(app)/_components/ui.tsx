@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import type { ComponentType } from "react";
-import { ArrowRight, Check, ForkKnife } from "@phosphor-icons/react/dist/ssr";
+import { useState, type ComponentType } from "react";
+import { ArrowRight, CaretDown, Check, ForkKnife } from "@phosphor-icons/react/dist/ssr";
 
 export type Meal = {
   id: string;
@@ -94,7 +96,7 @@ export function Stat({
     <Panel className={`border-t-4 p-5 ${tones[tone]}`}>
       <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p>
       <div className="mt-3 flex items-baseline gap-1">
-        <p className="max-w-full break-words text-[26px] font-bold leading-none tracking-tight text-forest sm:text-[30px]">{value}</p>
+        <p className="max-w-full break-words text-[26px] font-bold leading-none tracking-tight text-forest tabular-nums sm:text-[30px]">{value}</p>
       </div>
       {sub ? <p className="mt-2 text-[12px] font-medium text-muted/80">{sub}</p> : null}
     </Panel>
@@ -129,16 +131,16 @@ export function BudgetBar({
     <div className="group">
       <div className="mb-2.5 flex flex-wrap justify-between gap-x-3 gap-y-1 text-[13px]">
         <span className="font-bold text-forest">{label}</span>
-        <span className="font-medium text-muted">
+        <span className="font-medium text-muted tabular-nums">
           <span className="text-forest font-bold">{safeValue}</span>
           {unit} / {safeTarget}
           {unit}
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-surface-alt">
-        <div 
-          className={`h-full rounded-full transition-all duration-1000 ease-out ${colors[tone]}`} 
-          style={{ width: `${pct}%` }} 
+        <div
+          className={`h-full rounded-full transition-[width] duration-300 ease-out motion-reduce:transition-none ${colors[tone]}`}
+          style={{ width: `${pct}%` }}
         />
       </div>
     </div>
@@ -146,22 +148,37 @@ export function BudgetBar({
 }
 
 export function MealLine({ meal, expanded = false, action }: { meal: Meal; expanded?: boolean; action?: React.ReactNode }) {
+  const [open, setOpen] = useState(expanded);
+  const panelId = `meal-items-${meal.id}`;
+
   return (
     <div className="group/meal rounded-lg border border-border bg-surface-alt transition-colors hover:border-teal/25">
-      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3 sm:flex-1">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/40"
+        >
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-forest shadow-sm transition-colors group-hover/meal:bg-forest group-hover/meal:text-white">
             <ForkKnife size={17} weight="bold" />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-semibold">{meal.title}</p>
             <p className="mt-1 text-[12px] text-muted">
               {meal.loggedAt} · {meal.mealType.toLowerCase()}
             </p>
           </div>
-        </div>
+          <CaretDown
+            size={15}
+            weight="bold"
+            className={`shrink-0 text-muted transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+            aria-hidden
+          />
+        </button>
         <div className="flex w-full shrink-0 items-center justify-between gap-3 sm:w-auto sm:justify-end">
-            <div className="grid flex-1 grid-cols-2 gap-3 text-left text-[12px] sm:flex-none sm:grid-cols-4 sm:text-right">
+            <div className="grid flex-1 grid-cols-2 gap-3 text-left text-[12px] tabular-nums sm:flex-none sm:grid-cols-4 sm:text-right">
             <span><b className="block text-[14px] text-[#101510]">{meal.totals.calories}</b>kcal</span>
             <span><b className="block text-[14px] text-[#101510]">{meal.totals.protein}g</b>pro</span>
             <span className="hidden sm:block"><b className="block text-[14px] text-[#101510]">{meal.totals.carbs}g</b>carb</span>
@@ -170,8 +187,8 @@ export function MealLine({ meal, expanded = false, action }: { meal: Meal; expan
           {action}
         </div>
       </div>
-      {expanded ? (
-        <div className="border-t border-border px-4 pb-4">
+      {open ? (
+        <div id={panelId} className="border-t border-border px-4 pb-4">
           <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-white">
             <table className="w-full min-w-[520px] text-left text-[12px]">
               <thead className="bg-surface-alt text-muted">

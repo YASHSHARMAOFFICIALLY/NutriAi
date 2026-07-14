@@ -35,6 +35,13 @@ export function removeFamilyMember(memberId: string): Promise<void> {
   return apiFetch<void>(`/family/members/${memberId}`, { method: "DELETE" });
 }
 
+export function updateMySharing(analyticsAccess: boolean): Promise<FamilyMemberDTO> {
+  return apiFetch<FamilyMemberDTO>("/family/me/sharing", {
+    method: "PATCH",
+    body: { analyticsAccess },
+  });
+}
+
 export function getFamilyDailyAnalytics(memberId: string, q: DateRangeQuery = {}): Promise<DailyAnalytics> {
   return apiFetch<DailyAnalytics>(withQuery(`/family/members/${memberId}/analytics/daily`, q));
 }

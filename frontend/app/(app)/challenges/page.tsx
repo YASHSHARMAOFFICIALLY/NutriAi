@@ -5,7 +5,7 @@ import { CheckCircle, Flag, MinusCircle, Plus, X } from "@phosphor-icons/react/d
 import { ApiError } from "@/lib/api/client";
 import { abandonChallenge, checkInToday, startChallenge } from "@/lib/api/challenges";
 import type { UserChallengeDTO } from "@/lib/api/types";
-import { useActiveChallenges, useAllChallenges, useChallengePresets } from "@/lib/hooks/swr";
+import { useActiveChallenges, useAllChallenges, useChallengePresets, useResource } from "@/lib/hooks/swr";
 import { PageHeader, Panel, Skeleton, SourceBadge } from "../_components/ui";
 
 type ActiveChallenge = {
@@ -14,7 +14,7 @@ type ActiveChallenge = {
   description: string;
   durationDays: number;
   daysCheckedIn: number;
-  lastCheckInDate: string;
+  checkedInToday: boolean;
   status: string;
   category: string;
 };
@@ -26,21 +26,39 @@ function fromUserChallenge(item: UserChallengeDTO): ActiveChallenge {
     description: item.description ?? "",
     durationDays: item.durationDays,
     daysCheckedIn: item.daysCheckedIn,
-    lastCheckInDate: item.lastCheckInDate ?? "",
+    checkedInToday: item.checkedInToday ?? false,
     status: item.status,
     category: item.challenge?.category ?? "HABIT",
   };
 }
 
 export default function ChallengesPage() {
-  const { data: activeChallenges, mutate: mutateActive } = useActiveChallenges();
-  const { data: allChallenges, mutate: mutateAll } = useAllChallenges();
-  const { data: presetsData } = useChallengePresets();
+  const activeResult = useActiveChallenges();
+  const allResult = useAllChallenges();
+  const presetsResult = useChallengePresets();
+  const { mutate: mutateActive } = activeResult;
+  const { mutate: mutateAll } = allResult;
 
-  const active = activeChallenges?.[0] ? fromUserChallenge(activeChallenges[0]) : null;
-  const past = (allChallenges ?? []).filter((r) => r.status !== "ACTIVE");
-  const presets = presetsData ?? [];
-  const source = activeChallenges && allChallenges && presetsData ? "live" : "loading";
+  const activeRes = useResource(activeResult);
+  const allRes = useResource(allResult);
+  const presetsRes = useResource(presetsResult);
+  // The active/all hooks swallow errors to []; presets surfaces them — so any of
+  // the three reporting "error" should reveal the error panel + retry.
+  const source: "loading" | "live" | "error" =
+    activeRes.source === "error" || allRes.source === "error" || presetsRes.source === "error"
+      ? "error"
+      : activeRes.source === "loading" || allRes.source === "loading" || presetsRes.source === "loading"
+        ? "loading"
+        : "live";
+  function retryAll() {
+    activeRes.retry();
+    allRes.retry();
+    presetsRes.retry();
+  }
+
+  const active = activeResult.data?.[0] ? fromUserChallenge(activeResult.data[0]) : null;
+  const past = (allResult.data ?? []).filter((r) => r.status !== "ACTIVE");
+  const presets = presetsResult.data ?? [];
 
   const [busy, setBusy] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -49,7 +67,7 @@ export default function ChallengesPage() {
   const [customDurationDays, setCustomDurationDays] = useState(14);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const canCheckIn = Boolean(active && active.lastCheckInDate !== new Date().toISOString().slice(0, 10));
+  const canCheckIn = Boolean(active && !active.checkedInToday);
   const pastRows = past.map((row) => ({
     title: row.title,
     status: row.status,
@@ -125,6 +143,7 @@ export default function ChallengesPage() {
 
   async function handleAbandon() {
     if (!active) return;
+    if (!window.confirm("Abandon this challenge? Your progress will be ended.")) return;
     setBusy(true);
     try {
       await abandonChallenge(active.id);
@@ -157,7 +176,20 @@ export default function ChallengesPage() {
       </div>
       {source === "error" ? (
         <Panel className="mb-5 p-4">
-          <p className="text-[13px] font-semibold text-[#b7791f]">{formError || "Could not load challenge data. Sign in and try again."}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[13px] font-semibold text-[var(--danger)]">Could not load challenge data. Check your connection and try again.</p>
+            <button
+              onClick={retryAll}
+              className="min-h-10 shrink-0 rounded-lg bg-[#173c2b] px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-[#1f4d38]"
+            >
+              Retry
+            </button>
+          </div>
+        </Panel>
+      ) : null}
+      {formError ? (
+        <Panel className="mb-5 p-4">
+          <p className="text-[13px] font-semibold text-[var(--danger)]">{formError}</p>
         </Panel>
       ) : null}
       {createOpen ? (
@@ -203,7 +235,6 @@ export default function ChallengesPage() {
               Create
             </button>
           </form>
-          {formError ? <p className="mt-3 text-[12px] font-semibold text-[#b7791f]">{formError}</p> : null}
         </Panel>
       ) : null}
 
@@ -300,14 +331,14 @@ export default function ChallengesPage() {
               <Skeleton className="h-44" />
             </>
           ) : presets.map((preset) => (
-            <div key={preset.id} className="group/preset rounded-xl border border-border bg-surface-alt p-5 transition-all hover:border-teal/20 hover:bg-white hover:shadow-md">
+            <div key={preset.id} className="group/preset rounded-xl border border-border bg-surface-alt p-5 transition-[border-color,background-color,box-shadow] hover:border-teal/20 hover:bg-white hover:shadow-md">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-forest shadow-sm transition-colors group-hover/preset:bg-forest group-hover/preset:text-white">
                 <Flag size={20} weight="duotone" />
               </span>
               <p className="mt-4 text-[15px] font-bold text-forest">{preset.title}</p>
               <p className="mt-1 text-[12px] leading-5 text-muted">{preset.category} · {preset.durationDays} days</p>
               <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-muted">{preset.description}</p>
-              <button onClick={() => handleStart(preset)} disabled={busy || Boolean(active)} className="mt-4 rounded-xl border border-border bg-white px-4 py-2.5 text-[12px] font-bold text-forest transition-all hover:bg-forest hover:text-white hover:shadow-sm disabled:opacity-60">{active ? "Finish current first" : "Start"}</button>
+              <button onClick={() => handleStart(preset)} disabled={busy || Boolean(active)} className="mt-4 rounded-xl border border-border bg-white px-4 py-2.5 text-[12px] font-bold text-forest transition-[color,background-color,box-shadow] hover:bg-forest hover:text-white hover:shadow-sm disabled:opacity-60">{active ? "Finish current first" : "Start"}</button>
             </div>
           ))}
           {source !== "loading" && !presets.length ? <p className="text-[13px] font-semibold text-[#5f675f]">No challenge presets are available yet.</p> : null}

@@ -7,17 +7,22 @@ import {
   createFamilyInvite,
   removeFamilyMember,
   revokeFamilyInvite,
+  updateMySharing,
 } from "@/lib/api/family";
-import { useFamilyOverview } from "@/lib/hooks/swr";
-import type { FamilyInviteResponse } from "@/lib/api/types";
+import { useFamilyOverview, useMe } from "@/lib/hooks/swr";
+import type { FamilyInviteResponse, FamilyOverview } from "@/lib/api/types";
+import { useToast } from "@/lib/toast";
 import { PageHeader, Panel, Skeleton, Stat } from "../_components/ui";
 
 export default function FamilyPage() {
+  const { toast } = useToast();
   const { data: overview, error: overviewError, mutate } = useFamilyOverview();
+  const { data: me } = useMe();
   const [email, setEmail] = useState("");
   const [acceptToken, setAcceptToken] = useState("");
   const [latestInvite, setLatestInvite] = useState<FamilyInviteResponse | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [sharingBusy, setSharingBusy] = useState(false);
   const [message, setMessage] = useState("");
 
   const status: "idle" | "loading" | "saving" | "error" = isSaving
@@ -98,6 +103,32 @@ export default function FamilyPage() {
     }
   }
 
+  async function handleToggleSharing(next: boolean) {
+    if (!me) return;
+    setSharingBusy(true);
+    const apply = (value: boolean) => (current: FamilyOverview | undefined): FamilyOverview | undefined => {
+      if (!current) return current;
+      const patch = (member: FamilyOverview["families"][number]["members"][number]) =>
+        member.user.id === me.id ? { ...member, analyticsAccess: value } : member;
+      const patchFamily = (family: FamilyOverview["families"][number]) => ({ ...family, members: family.members.map(patch) });
+      return {
+        ownedFamily: current.ownedFamily ? patchFamily(current.ownedFamily) : current.ownedFamily,
+        families: current.families.map(patchFamily),
+      };
+    };
+    // Optimistic update without revalidation.
+    await mutate(apply(next), { revalidate: false });
+    try {
+      await updateMySharing(next);
+      toast("success", next ? "Sharing your analytics with family." : "Stopped sharing your analytics.");
+    } catch {
+      await mutate(apply(!next), { revalidate: false });
+      toast("error", "Couldn't update sharing.");
+    } finally {
+      setSharingBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
       <PageHeader eyebrow="Family" title="Analytics sharing" />
@@ -117,7 +148,7 @@ export default function FamilyPage() {
       )}
 
       {(message || (overviewError && !overview)) ? (
-        <div className={`mb-5 rounded-lg border p-4 text-[13px] font-semibold ${status === "error" ? "border-[#b7791f]/30 bg-[#fff8e7] text-[#8a5a10]" : "border-[#173c2b]/20 bg-[#eef5f2] text-[#173c2b]"}`}>
+        <div className={`mb-5 rounded-lg border p-4 text-[13px] font-semibold ${status === "error" ? "border-[var(--danger)]/30 bg-[#fdf2f0] text-[var(--danger)]" : "border-[#173c2b]/20 bg-[#eef5f2] text-[#173c2b]"}`}>
           {message || "Family sharing is unavailable right now."}
         </div>
       ) : null}
@@ -140,19 +171,38 @@ export default function FamilyPage() {
                 <Skeleton className="h-20" />
                 <Skeleton className="h-20" />
               </>
-            ) : members.map((member) => (
+            ) : members.map((member) => {
+              const isMe = !!me && member.user.id === me.id;
+              return (
               <div key={member.id} className="flex flex-col gap-3 rounded-lg border border-black/8 bg-[#f8f8f3] p-4 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-semibold">{member.user.name || member.user.email}</p>
+                  <p className="truncate text-[15px] font-semibold">{member.user.name || member.user.email}{isMe ? " (you)" : ""}</p>
                   <p className="mt-1 text-[12px] text-[#5f675f]">{member.user.email}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#5f675f]">{member.role.toLowerCase()}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#eef5f2] px-3 py-1 text-[11px] font-bold text-[#173c2b]">
-                    <Check size={12} weight="bold" />
-                    Analytics
-                  </span>
-                  {member.role !== "OWNER" ? (
+                  {isMe ? (
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={member.analyticsAccess}
+                      aria-label="Share my analytics with family"
+                      onClick={() => handleToggleSharing(!member.analyticsAccess)}
+                      disabled={sharingBusy}
+                      className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1.5 text-[12px] font-bold text-[#173c2b] transition-colors hover:border-[#173c2b]/30 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f8b8d]/40"
+                    >
+                      Share my analytics
+                      <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${member.analyticsAccess ? "bg-[#173c2b]" : "bg-black/15"}`}>
+                        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-[left] duration-200 motion-reduce:transition-none ${member.analyticsAccess ? "left-[18px]" : "left-0.5"}`} />
+                      </span>
+                    </button>
+                  ) : (
+                    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold ${member.analyticsAccess ? "bg-[#eef5f2] text-[#173c2b]" : "bg-white text-[#5f675f]"}`}>
+                      {member.analyticsAccess ? <Check size={12} weight="bold" /> : null}
+                      {member.analyticsAccess ? "Sharing analytics" : "Not sharing"}
+                    </span>
+                  )}
+                  {member.role !== "OWNER" && !isMe ? (
                     <button
                       onClick={() => handleRemove(member.id)}
                       disabled={status === "saving"}
@@ -164,7 +214,8 @@ export default function FamilyPage() {
                   ) : null}
                 </div>
               </div>
-            ))}
+              );
+            })}
             {!members.length && status !== "loading" ? (
               <div className="rounded-lg border border-black/8 bg-[#f8f8f3] p-5 text-[13px] font-semibold text-[#5f675f]">
                 No family members yet. Send an invite to start sharing analytics.
